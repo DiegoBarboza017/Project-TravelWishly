@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="row justify-content-center align-items-center main-min-height">
+    <div class="col-md-7 col-lg-5">
+        <div class="card border-dark border-3 rounded-0 shadow-none hover-lift"
+            style="box-shadow: 8px 8px 0 0 #000 !important;">
+            <div class="card-header bg-white border-bottom border-dark border-3 pt-4 pb-3 px-4 text-center">
+                <i class="bi bi-person-fill-add fs-1 text-dark mb-2"></i>
+                <h3 class="fw-bold mb-0 text-uppercase tracking-wider">Crea tu Perfil</h3>
+                <p class="text-dark small fw-bold mb-0 mt-2 text-uppercase">Tu información se encripta de forma segura
+                </p>
+            </div>
+            <div class="card-body p-4 p-md-5 bg-white">
+                <form action="{{ url_for('registro') }}" method="POST">
+                    <div class="mb-4">
+                        <label for="username" class="form-label text-dark fw-bold text-uppercase">Nombre de Usuario
+                            Público</label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-white border-dark border-2 border-end-0 rounded-0"><i
+                                    class="bi bi-person text-dark"></i></span>
+                            <input type="text"
+                                class="form-control border-dark border-2 border-start-0 ps-0 text-dark rounded-0 fw-bold"
+                                id="username" name="username" placeholder="ej. VIAJERO123" required>
+                        </div>
+                    </div>
+                    <div class="mb-4">
+                        <label for="email" class="form-label text-dark fw-bold text-uppercase">Correo Electrónico
+                            Válido</label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-white border-dark border-2 border-end-0 rounded-0"><i
+                                    class="bi bi-envelope text-dark"></i></span>
+                            <input type="email"
+                                class="form-control border-dark border-2 border-start-0 ps-0 text-dark rounded-0 fw-bold"
+                                id="email" name="email" placeholder="VIAJERO@EMAIL.COM" required>
+                        </div>
+                    </div>
+                    <div class="mb-5">
+                        <label for="password" class="form-label text-dark fw-bold text-uppercase">Contraseña
+                            Fuerte</label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-white border-dark border-2 border-end-0 rounded-0"><i
+                                    class="bi bi-lock text-dark"></i></span>
+                            <input type="password"
+                                class="form-control border-dark border-2 border-start-0 ps-0 text-dark rounded-0 fw-bold"
+                                id="password" name="password" placeholder="MíNIMO 8 CARACTERES" required>
+                        </div>
+                    </div>
+                    <button type="submit"
+                        class="btn btn-dark w-100 py-3 fw-bold rounded-0 text-uppercase tracking-wider border-2 border-dark">Registrarse
+                        Totalmente Gratis</button>
+
+                    <div class="text-center mt-4 fw-bold small text-uppercase">
+                        ¿Ya formas parte de TravelWishly? <a href="{{ url_for('login') }}"
+                            class="text-dark text-decoration-none fw-bold ms-1 border-bottom border-dark border-2">Inicia
+                            Sesión</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,116 @@
+/*
+ * TravelWishly - Minimalist Black & White Theme
+ * Proyectada con metodologías de UI/UX limítrofes y responsive design
+ */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800;900&display=swap');
+
+:root {
+    --tw-bg-body: #ffffff;
+    --tw-text-main: #000000;
+    --tw-font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    --tw-shadow-sm: 4px 4px 0px 0px rgba(0, 0, 0, 1);
+    --tw-shadow-lg: 8px 8px 0px 0px rgba(0, 0, 0, 1);
+    --tw-border-bold: 3px solid #000000;
+}
+
+body {
+    background-color: var(--tw-bg-body);
+    color: var(--tw-text-main);
+    font-family: var(--tw-font-family);
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+}
+
+/* Hero Section Personalizado Minimalista */
+.custom-hero {
+    background: #ffffff;
+    border: var(--tw-border-bold) !important;
+    border-radius: 0 !important;
+    box-shadow: var(--tw-shadow-sm);
+}
+
+/* Efectos Brutalistas / Minimalistas para tarjetas de UI */
+.hover-lift {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    border: 2px solid #000000;
+    border-radius: 0 !important;
+    background-color: #ffffff;
+}
+
+.hover-lift:hover {
+    transform: translate(-4px, -4px);
+    box-shadow: var(--tw-shadow-sm) !important;
+}
+
+/* Utilidades */
+.tracking-wider {
+    letter-spacing: 0.15em;
+}
+
+.text-dark {
+    color: #000000 !important;
+}
+
+.bg-dark {
+    background-color: #000000 !important;
+}
+
+.border-dark {
+    border-color: #000000 !important;
+}
+
+/* Ajustes de Navegación Minimalista */
+.navbar {
+    background-color: #ffffff !important;
+    border-bottom: var(--tw-border-bold) !important;
+    transition: all 0.3s ease;
+}
+
+.navbar .nav-link,
+.navbar .navbar-brand {
+    color: #000000 !important;
+}
+
+.navbar .nav-link:hover {
+    text-decoration: underline;
+    text-underline-offset: 4px;
+    font-weight: 600;
+}
+
+.btn-dark {
+    background-color: #000000;
+    color: #ffffff;
+    border: none;
+    border-radius: 0;
+    transition: all 0.2s;
+}
+
+.btn-dark:hover {
+    background-color: #ffffff;
+    color: #000000;
+    box-shadow: inset 0 0 0 3px #000000;
+}
+
+.btn-outline-dark {
+    border: 3px solid #000;
+    color: #000;
+    border-radius: 0;
+    font-weight: 800;
+}
+
+.btn-outline-dark:hover {
+    background-color: #000;
+    color: #fff;
+}
+
+.main-min-height {
+    min-height: 60vh;
+}
+
+ul>li>i.bi {
+    margin-right: 8px;
+    font-size: 1.1rem;
+}

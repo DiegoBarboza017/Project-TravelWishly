@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description"
+        content="TravelWishly: Agencia digital inteligente y optimizador de presupuestos internacionales.">
+    <title>TravelWishly | Planificador Inteligente de Viajes</title>
+    <!-- Framework CSS Global (Bootstrap 5) -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <!-- Three.js y Globe.gl -->
+    <script src="https://unpkg.com/three"></script>
+    <script src="https://unpkg.com/globe.gl"></script>
+    <!-- CSS Propio -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+
+<body>
+    <!-- Menú de Navegación Monocromático -->
+    <nav class="navbar navbar-expand-lg navbar-light stick-top py-3">
+        <div class="container">
+            <a class="navbar-brand fw-bold fs-4 d-flex align-items-center gap-2 text-uppercase tracking-wider"
+                href="{{ url_for('index') }}">
+                <i class="bi bi-airplane-engines-fill text-dark"></i> TravelWishly
+            </a>
+            <button class="navbar-toggler rounded-0 border-dark" type="button" data-bs-toggle="collapse"
+                data-bs-target="#mainNav" aria-controls="mainNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="mainNav">
+                <ul class="navbar-nav ms-auto align-items-lg-center">
+                    <li class="nav-item">
+                        <a class="nav-link px-3" href="{{ url_for('index') }}">INICIO</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link px-3" href="{{ url_for('guia') }}">GUÍA TURÍSTICA</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link px-3" href="{{ url_for('dashboard') }}">DASHBOARD <i
+                                class="bi bi-bar-chart-fill small ms-1"></i></a>
+                    </li>
+                    <li class="nav-item ms-lg-2">
+                        <a class="btn btn-outline-dark px-4 ms-2 rounded-0" href="{{ url_for('login') }}">ACCEDER</a>
+                    </li>
+                    <li class="nav-item ms-lg-2 mt-2 mt-lg-0">
+                        <a class="btn btn-dark fw-bold px-4 rounded-0" href="{{ url_for('registro') }}">EMPIEZA
+                            GRATIS</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Área principal de inyección de contenido -->
+    <main class="container py-5 my-2 flex-grow-1">
+        <!-- Renderizado de Alertas de Flask Flash -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+        <div class="mb-4">
+            {% for category, message in messages %}
+            <div class="alert alert-dark alert-dismissible fade show rounded-0 border-3 border-dark" role="alert"
+                style="box-shadow: 4px 4px 0 0 #000;">
+                <i class="bi bi-info-circle-fill me-2"></i> {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+        {% endwith %}
+
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Footer Responsivo y Semántico Brutalista -->
+    <footer class="bg-dark text-white text-center py-5 border-top border-5 border-dark mt-auto">
+        <div class="container">
+            <h4 class="text-white text-uppercase tracking-wider fw-bold mb-3"><i
+                    class="bi bi-airplane-engines me-2"></i> TravelWishly</h4>
+            <div class="d-flex justify-content-center gap-4 mb-3">
+                <a href="#" class="text-white"><i class="bi bi-twitter-x fs-4"></i></a>
+                <a href="#" class="text-white"><i class="bi bi-instagram fs-4"></i></a>
+                <a href="#" class="text-white"><i class="bi bi-github fs-4"></i></a>
+            </div>
+            <p class="mb-0 small fw-bold text-uppercase">&copy; 2026 TravelWishly. DISEÑADO PARA VIAJEROS.</p>
+        </div>
+    </footer>
+
+    <!-- Bootstrap JS Bundle -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Script de lógica Frontend (Calculadora / Guía Turística) -->
+    <script src="{{ url_for('static', filename='app.js') }}"></script>
+    <!-- Lógica del Globo Interactivo -->
+    <script src="{{ url_for('static', filename='globe_logic.js') }}"></script>
+</body>
+
+</html>
