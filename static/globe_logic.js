@@ -53,6 +53,26 @@ document.addEventListener('DOMContentLoaded', () => {
                     const countryName = polygon.properties.ADMIN;
                     const info = generateCountryInfo(countryName);
 
+                    // Puntos de referencia para Arcos (Aproximados por centroide virtual)
+                    // Nota: En un entorno real se usaría una tabla de Lat/Lng por país
+                    const lat = polygon.bbox ? (polygon.bbox[1] + polygon.bbox[3]) / 2 : 0;
+                    const lng = polygon.bbox ? (polygon.bbox[0] + polygon.bbox[2]) / 2 : 0;
+
+                    // Dibujar Arco de Vuelo desde México (HOME)
+                    const HOME = { lat: 19.43, lng: -99.13 };
+                    world.arcsData([{
+                        startLat: HOME.lat,
+                        startLng: HOME.lng,
+                        endLat: lat,
+                        endLng: lng,
+                        color: ['#000000', '#ffffff'] // Gradiente B&W
+                    }]);
+
+                    // Detener rotación momentanea para enfocar
+                    world.controls().autoRotate = false;
+                    setTimeout(() => { world.controls().autoRotate = true; }, 10000);
+
+                    // Actualizar Modal
                     document.getElementById('modalCountryName').innerText = countryName;
                     document.getElementById('modalCost').innerText = info.cost;
                     document.getElementById('modalTypes').innerText = info.types;
@@ -69,6 +89,14 @@ document.addEventListener('DOMContentLoaded', () => {
             if (loader) loader.innerText = "Error de Sistema.";
             console.error("Globe Error:", err);
         });
+
+    // Configuración Estética de Arcos
+    world.arcColor('color')
+         .arcAltitude(0.25)
+         .arcStroke(0.8)
+         .arcDashLength(0.4)
+         .arcDashGap(0.2)
+         .arcDashAnimateTime(2000);
 
     // Interacción y Rotación
     world.controls().autoRotate = true;

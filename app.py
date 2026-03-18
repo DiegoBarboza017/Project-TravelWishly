@@ -55,6 +55,16 @@ def create_app():
         """Panel Principal: Calculadora de presupuestos y gráficas dinámicas"""
         return render_template('dashboard.html')
 
+    @app.route('/constructor')
+    def constructor():
+        """Centro de Controles: Personalización y Armado de Viaje"""
+        return render_template('constructor.html')
+
+    @app.route('/financiamiento')
+    def financiamiento():
+        """Simulador de Préstamos y Tarjetas de Crédito para Viajes"""
+        return render_template('financiamiento.html')
+
     @app.route('/guia')
     def guia():
         """Guía Turística: Visualización de información cultural inteligente"""

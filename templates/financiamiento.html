@@ -1,0 +1,176 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-5 border-bottom border-dark border-3">
+    <div>
+        <h1 class="h2 fw-black text-dark text-uppercase tracking-wider mb-1" style="font-weight:900;">
+            <i class="bi bi-credit-card-fill me-3"></i>Simulador de Financiamiento
+        </h1>
+        <p class="text-dark fw-bold text-uppercase small mb-0">¿No tienes el dinero completo? Calcula tu Plan B con crédito.</p>
+    </div>
+</div>
+
+<div class="row g-4 align-items-start">
+
+    <!-- ===== Panel izquierdo: Formulario ===== -->
+    <div class="col-lg-5">
+        <div class="card border-dark border-3 rounded-0" style="box-shadow: 6px 6px 0 0 #000;">
+            <div class="card-header bg-dark text-white py-3 border-dark border-bottom border-3 rounded-0">
+                <h5 class="mb-0 fw-bold text-uppercase tracking-wider">
+                    <i class="bi bi-sliders me-2"></i>Parámetros del Crédito
+                </h5>
+            </div>
+            <div class="card-body p-4 bg-white">
+
+                <!-- Monto del Viaje -->
+                <div class="mb-4">
+                    <label class="form-label fw-bold text-dark text-uppercase">Costo Total del Viaje / Artículo</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-white border-dark border-2 border-end-0 rounded-0 text-dark fw-bold">$</span>
+                        <input type="number" id="fMonto" class="form-control border-dark border-2 border-start-0 rounded-0 fw-bold text-dark bg-white"
+                            placeholder="Ej: 25000" min="1" oninput="simularCredito()">
+                        <span class="input-group-text bg-white border-dark border-2 border-start-0 rounded-0 text-dark fw-bold">MXN</span>
+                    </div>
+                </div>
+
+                <!-- Enganche -->
+                <div class="mb-4">
+                    <label class="form-label fw-bold text-dark text-uppercase">Enganche / Pago Inicial</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-white border-dark border-2 border-end-0 rounded-0 text-dark fw-bold">$</span>
+                        <input type="number" id="fEnganche" class="form-control border-dark border-2 border-start-0 rounded-0 fw-bold text-dark bg-white"
+                            placeholder="Ej: 5000" min="0" value="0" oninput="simularCredito()">
+                    </div>
+                    <div class="form-text fw-bold small">Si no hay enganche, deja en 0.</div>
+                </div>
+
+                <!-- Tasa de Interés Anual -->
+                <div class="mb-4">
+                    <label class="form-label fw-bold text-dark text-uppercase">Tasa de Interés Anual (%)</label>
+                    <div class="input-group">
+                        <input type="number" id="fTasa" class="form-control border-dark border-2 border-end-0 rounded-0 fw-bold text-dark bg-white"
+                            placeholder="Ej: 36" min="0" max="200" oninput="simularCredito()">
+                        <span class="input-group-text bg-white border-dark border-2 border-start-0 rounded-0 text-dark fw-bold"><i class="bi bi-percent"></i></span>
+                    </div>
+                    <div class="form-text fw-bold small">BBVA MX ~40% | Nu MX ~32% | HSBC ~30% | Oxxo Pay ~0% (MSI)</div>
+                </div>
+
+                <!-- Plazo -->
+                <div class="mb-5">
+                    <label class="form-label fw-bold text-dark text-uppercase">Número de Meses</label>
+                    <div class="d-flex flex-wrap gap-2">
+                        <button class="btn btn-outline-dark fw-bold rounded-0 border-2 btn-plazo" data-meses="3" onclick="seleccionarPlazo(3, this)">3</button>
+                        <button class="btn btn-outline-dark fw-bold rounded-0 border-2 btn-plazo" data-meses="6" onclick="seleccionarPlazo(6, this)">6</button>
+                        <button class="btn btn-dark fw-bold rounded-0 border-2 btn-plazo" data-meses="12" onclick="seleccionarPlazo(12, this)">12 ⭐</button>
+                        <button class="btn btn-outline-dark fw-bold rounded-0 border-2 btn-plazo" data-meses="18" onclick="seleccionarPlazo(18, this)">18</button>
+                        <button class="btn btn-outline-dark fw-bold rounded-0 border-2 btn-plazo" data-meses="24" onclick="seleccionarPlazo(24, this)">24</button>
+                    </div>
+                    <input type="hidden" id="fMeses" value="12">
+                </div>
+
+                <button class="btn btn-dark w-100 py-3 fw-black text-uppercase rounded-0 border-2 border-dark tracking-wider"
+                    style="box-shadow: 3px 3px 0 0 #555; letter-spacing: 1px;"
+                    onclick="simularCredito()">
+                    <i class="bi bi-calculator-fill me-2"></i>Calcular Plan de Pagos
+                </button>
+            </div>
+        </div>
+
+        <!-- Aviso legal -->
+        <div class="mt-3 p-3 border border-dark border-2 bg-white">
+            <p class="mb-0 small fw-bold text-dark text-uppercase"><i class="bi bi-exclamation-triangle-fill me-2 text-warning"></i>Las tasas son referenciales. Consulta tu institución bancaria para cifras exactas antes de contratar.</p>
+        </div>
+    </div>
+
+    <!-- ===== Panel derecho: Resultados ===== -->
+    <div class="col-lg-7">
+
+        <!-- Resumen principal (oculto hasta calcular) -->
+        <div id="resultadoPanel" class="d-none">
+
+            <!-- KPIs superiores -->
+            <div class="row g-3 mb-4">
+                <div class="col-6 col-md-3">
+                    <div class="p-3 bg-dark text-white border border-dark border-3 text-center" style="box-shadow: 4px 4px 0 0 #555;">
+                        <p class="mb-1 small fw-bold text-uppercase" style="font-size:10px;">Pago Mensual</p>
+                        <h4 class="fw-black mb-0" id="kpiMensual">—</h4>
+                        <p class="mb-0" style="font-size:10px;">MXN</p>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="p-3 bg-white text-dark border border-dark border-3 text-center" style="box-shadow: 4px 4px 0 0 #000;">
+                        <p class="mb-1 small fw-bold text-uppercase" style="font-size:10px;">Total a Pagar</p>
+                        <h4 class="fw-black mb-0 text-primary" id="kpiTotal">—</h4>
+                        <p class="mb-0" style="font-size:10px;">MXN</p>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="p-3 bg-white text-dark border border-dark border-3 text-center" style="box-shadow: 4px 4px 0 0 #000;">
+                        <p class="mb-1 small fw-bold text-uppercase" style="font-size:10px;">Intereses Totales</p>
+                        <h4 class="fw-black mb-0 text-danger" id="kpiIntereses">—</h4>
+                        <p class="mb-0" style="font-size:10px;">MXN</p>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="p-3 bg-white text-dark border border-dark border-3 text-center" style="box-shadow: 4px 4px 0 0 #000;">
+                        <p class="mb-1 small fw-bold text-uppercase" style="font-size:10px;">Costo Real (%)</p>
+                        <h4 class="fw-black mb-0 text-warning" id="kpiCAT">—</h4>
+                        <p class="mb-0" style="font-size:10px;">sobre el crédito</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Comparativa de Plazos -->
+            <div class="card border-dark border-3 rounded-0 mb-4" style="box-shadow: 5px 5px 0 0 #000;">
+                <div class="card-header bg-white py-2 border-dark border-bottom border-2 rounded-0">
+                    <h6 class="mb-0 fw-black text-uppercase tracking-wider"><i class="bi bi-table me-2"></i>Comparativa de Plazos</h6>
+                </div>
+                <div class="card-body p-0 bg-white">
+                    <table class="table table-bordered mb-0 fw-bold" style="border-color: #000;">
+                        <thead class="table-dark text-uppercase small">
+                            <tr>
+                                <th class="rounded-0 fw-black">Meses</th>
+                                <th class="fw-black">Pago/mes</th>
+                                <th class="fw-black">Total</th>
+                                <th class="fw-black">Intereses</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tablaComparativa" class="small">
+                            <!-- Llenado dinámico -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Gráfico de Comparación Real -->
+            <div class="card border-dark border-3 rounded-0 mb-4 bg-light" style="box-shadow: 5px 5px 0 0 #000;">
+                <div class="card-header bg-dark text-white py-2 border-dark border-bottom border-2 rounded-0">
+                    <h6 class="mb-0 fw-black text-uppercase tracking-wider">Costo Real de Tu Decisión</h6>
+                </div>
+                <div class="card-body p-3 bg-white" style="height: 250px; position: relative;">
+                    <canvas id="financeChart"></canvas>
+                </div>
+                <div class="card-footer bg-white border-top border-dark border-2 small fw-bold text-uppercase">
+                    <i class="bi bi-info-circle me-1"></i>Ahorrar te ahorra los intereses rojos de la gráfica.
+                </div>
+            </div>
+
+            <!-- Consejo inteligente -->
+            <div id="consejoFinanciero" class="p-3 bg-white border border-dark border-3" style="box-shadow: 4px 4px 0 0 #000;">
+                <h6 class="fw-black text-dark text-uppercase tracking-wider mb-2">
+                    <i class="bi bi-robot text-primary me-2"></i>Consejo TravelWishly
+                </h6>
+                <p id="consejoTexto" class="mb-0 small fw-bold text-dark">—</p>
+            </div>
+        </div>
+
+        <!-- Estado vacío -->
+        <div id="resultadoVacio" class="text-center py-5 mt-4">
+            <i class="bi bi-credit-card text-dark mb-3" style="font-size: 5rem; opacity: 0.2;"></i>
+            <p class="fw-black text-uppercase text-dark" style="opacity:0.3;">Ingresa los datos y calcula tu plan de pagos</p>
+        </div>
+
+    </div>
+</div>
+
+{% endblock %}

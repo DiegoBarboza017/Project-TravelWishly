@@ -26,7 +26,7 @@
                 <form id="calculatorForm" class="needs-validation" novalidate>
                     <div class="mb-4">
                         <label for="ingresosMensuales" class="form-label fw-bold text-dark text-uppercase">Tus Ingresos
-                            Mensuales ($ USD)</label>
+                            Mensuales ($ MXN)</label>
                         <div class="input-group">
                             <span
                                 class="input-group-text bg-white border-dark border-2 border-end-0 rounded-0 text-dark"><i
@@ -50,7 +50,7 @@
                     </div>
                     <div class="mb-5">
                         <label class="form-label fw-bold d-block text-dark text-uppercase">Presupuesto del Viaje Meta ($
-                            USD)</label>
+                            MXN)</label>
                         <input type="number"
                             class="form-control form-control-lg border-dark border-3 rounded-0 text-dark fw-bold bg-white"
                             id="viajeObjetivo" placeholder="EJ: 3500" min="1" required
@@ -58,6 +58,25 @@
                         <div class="form-text mt-3 fw-bold text-dark small text-uppercase"><i
                                 class="bi bi-info-circle me-1"></i>Ingresa el capital total líquido que deseas invertir
                             en tu viaje.</div>
+                    </div>
+
+                    <div class="row mb-5">
+                        <div class="col-md-6 mb-4 mb-md-0">
+                            <label class="form-label fw-bold text-dark text-uppercase">Estilo de Viaje</label>
+                            <select id="estiloViaje" class="form-select border-dark border-3 rounded-0 fw-bold fw-black bg-white" style="box-shadow: inset 4px 4px 0 0 rgba(0,0,0,0.1);">
+                                <option value="mochilero">Mochilero / Económico</option>
+                                <option value="estandar" selected>Estándar / Balanceado</option>
+                                <option value="lujo">Lujo / VIP</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold text-dark text-uppercase">Moneda</label>
+                            <select id="divisaSeleccionada" class="form-select border-dark border-3 rounded-0 fw-bold fw-black bg-white" style="box-shadow: inset 4px 4px 0 0 rgba(0,0,0,0.1);">
+                                <option value="MXN" selected>MXN ($)</option>
+                                <option value="USD">USD ($)</option>
+                                <option value="EUR">EUR (€)</option>
+                            </select>
+                        </div>
                     </div>
 
                     <button type="button"
@@ -105,6 +124,124 @@
                             class="bi bi-lightbulb-fill me-2 text-white"></i>Proyección de Ahorro:</h6>
                     <p id="mesesAhorroTexto" class="mb-0 small fw-bold">Calculando el esfuerzo...</p>
                 </div>
+
+                <!-- 1. Panel de Escenarios de Tiempo -->
+                <div id="escenariosTiempo" class="w-100 mt-4 d-none">
+                    <h6 class="fw-bold text-dark text-uppercase tracking-wider border-bottom border-dark border-2 pb-2 mb-3"><i class="bi bi-clock-history me-2"></i>Escenarios de Tiempo</h6>
+                    
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between small fw-bold mb-1">
+                            <span>Modo Relajado (Ahorrando 10%)</span>
+                            <span id="tiempoRelajado" class="text-dark">--</span>
+                        </div>
+                        <div class="progress rounded-0 border border-dark bg-white" style="height: 15px;">
+                            <div class="progress-bar bg-info border-end border-dark" role="progressbar" style="width: 28%"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between small fw-bold mb-1">
+                            <span>Tu Plan Propuesto</span>
+                            <span id="tiempoPropuesto" class="text-primary">--</span>
+                        </div>
+                        <div class="progress rounded-0 border border-dark bg-white" style="height: 15px;">
+                            <div class="progress-bar bg-primary border-end border-dark" id="barPropuesto" role="progressbar" style="width: 50%"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between small fw-bold mb-1">
+                            <span>Modo Agresivo (Ahorrando 35%)</span>
+                            <span id="tiempoAgresivo" class="text-success">--</span>
+                        </div>
+                        <div class="progress rounded-0 border border-dark bg-white" style="height: 15px;">
+                            <div class="progress-bar bg-success border-end border-dark" role="progressbar" style="width: 100%"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 3. Asesor Inteligente de Cotizaciones -->
+                <div id="asesorInteligente" class="w-100 mt-4 p-3 bg-white border border-dark border-3 d-none" style="box-shadow: 4px 4px 0 0 #000;">
+                    <h6 class="fw-black text-dark text-uppercase tracking-wider mb-2"><i class="bi bi-robot me-2 text-primary"></i>TravelWishly Advisor</h6>
+                    <p id="asesorMensaje" class="small fw-bold text-dark mb-0">Analizando rutas óptimas...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Módulos Extra: Conversor de Divisas y Clima en Tiempo Real -->
+<div class="row g-4 mt-5">
+    <!-- Conversor de Divisas -->
+    <div class="col-lg-6">
+        <div class="card border-dark border-3 rounded-0 shadow-none hover-lift h-100"
+            style="box-shadow: 6px 6px 0 0 #000 !important;">
+            <div class="card-header bg-dark text-white py-3 border-dark border-bottom border-3 rounded-0">
+                <h5 class="mb-0 fw-bold text-uppercase tracking-wider"><i class="bi bi-currency-exchange me-2"></i>Conversor de Divisas Pro</h5>
+            </div>
+            <div class="card-body p-4 bg-white">
+                <div class="row g-3">
+                    <div class="col-md-5">
+                        <label class="form-label fw-bold small text-uppercase">Cantidad</label>
+                        <input type="number" id="currencyAmount" class="form-control border-dark border-2 rounded-0 fw-bold" value="100">
+                    </div>
+                    <div class="col-md-7">
+                        <label class="form-label fw-bold small text-uppercase">De / A</label>
+                        <div class="input-group">
+                            <select id="fromCurrency" class="form-select border-dark border-2 rounded-0 fw-bold">
+                                <option value="USD">USD</option>
+                                <option value="EUR">EUR</option>
+                                <option value="MXN" selected>MXN</option>
+                                <option value="JPY">JPY</option>
+                                <option value="GBP">GBP</option>
+                            </select>
+                            <span class="input-group-text bg-white border-dark border-2 border-start-0 border-end-0 rounded-0"><i class="bi bi-arrow-right-short"></i></span>
+                            <select id="toCurrency" class="form-select border-dark border-2 rounded-0 fw-bold">
+                                <option value="USD" selected>USD</option>
+                                <option value="EUR">EUR</option>
+                                <option value="MXN">MXN</option>
+                                <option value="JPY">JPY</option>
+                                <option value="GBP">GBP</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="mt-4 p-3 border border-dark border-2 bg-light text-center">
+                    <h1 id="currencyResult" class="fw-black mb-0">--</h1>
+                    <p class="small fw-bold text-uppercase mb-0 mt-2">Tipo de cambio actualizado</p>
+                </div>
+                <button class="btn btn-dark w-100 mt-3 fw-bold text-uppercase rounded-0" onclick="if(window.convertCurrency) window.convertCurrency()">Actualizar Cambio</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Clima Global Rápido -->
+    <div class="col-lg-6">
+        <div class="card border-dark border-3 rounded-0 shadow-none hover-lift h-100"
+            style="box-shadow: 6px 6px 0 0 #000 !important;">
+            <div class="card-header bg-white py-3 border-dark border-bottom border-3 rounded-0">
+                <h5 class="mb-0 fw-bold text-dark text-uppercase tracking-wider"><i class="bi bi-cloud-sun-fill me-2"></i>Clima en Destinos Populares</h5>
+            </div>
+            <div class="card-body p-4 bg-white">
+                <div class="list-group list-group-flush border border-dark border-2">
+                    <div class="list-group-item d-flex justify-content-between align-items-center bg-white border-bottom border-dark">
+                        <span class="fw-bold text-uppercase">Tokyo, JP</span>
+                        <span class="badge bg-dark rounded-0 px-3 py-2 fw-bold" id="weather-tokyo">12°C <i class="bi bi-cloud-sun"></i></span>
+                    </div>
+                    <div class="list-group-item d-flex justify-content-between align-items-center bg-white border-bottom border-dark">
+                        <span class="fw-bold text-uppercase">New York, US</span>
+                        <span class="badge bg-dark rounded-0 px-3 py-2 fw-bold" id="weather-ny">5°C <i class="bi bi-snow"></i></span>
+                    </div>
+                    <div class="list-group-item d-flex justify-content-between align-items-center bg-white border-bottom border-dark">
+                        <span class="fw-bold text-uppercase">Paris, FR</span>
+                        <span class="badge bg-dark rounded-0 px-3 py-2 fw-bold" id="weather-paris">10°C <i class="bi bi-cloud-rain"></i></span>
+                    </div>
+                    <div class="list-group-item d-flex justify-content-between align-items-center bg-white">
+                        <span class="fw-bold text-uppercase">Cancún, MX</span>
+                        <span class="badge bg-dark rounded-0 px-3 py-2 fw-bold" id="weather-cancun">28°C <i class="bi bi-brightness-high"></i></span>
+                    </div>
+                </div>
+                <p class="small fw-bold text-uppercase mt-4 mb-0 text-center"><i class="bi bi-info-circle me-1"></i>Actualizado cada hora</p>
             </div>
         </div>
     </div>
