@@ -712,3 +712,82 @@ document.addEventListener("DOMContentLoaded", () => {
         setInterval(actualizarClimaGlobal, 15000);
     }
 });
+
+/* =========================================================================
+   MÓDULO: CHATBOT IA FRONTEND (SIMULADO)
+========================================================================= */
+document.addEventListener("DOMContentLoaded", () => {
+    const bubbleBtn = document.getElementById('chatBotBubble');
+    const chatWindow = document.getElementById('chatWindow');
+    const closeChatBtn = document.getElementById('closeChatBtn');
+    const sendBtn = document.getElementById('sendChatBtn');
+    const chatInput = document.getElementById('chatInput');
+    const chatBody = document.getElementById('chatBody');
+
+    if (!bubbleBtn || !chatWindow) return;
+
+    // Toggle Chat Window
+    bubbleBtn.addEventListener('click', () => {
+        chatWindow.classList.add('active');
+        bubbleBtn.style.transform = "scale(0)";
+    });
+
+    closeChatBtn.addEventListener('click', () => {
+        chatWindow.classList.remove('active');
+        bubbleBtn.style.transform = "scale(1)";
+    });
+
+    // Handle Send Message
+    const procesarMensaje = () => {
+        const text = chatInput.value.trim();
+        if (text === "") return;
+
+        // Add user message
+        const userMsg = document.createElement('div');
+        userMsg.className = "chat-message user shadow-sm";
+        userMsg.innerText = text;
+        chatBody.appendChild(userMsg);
+        chatInput.value = "";
+        
+        chatBody.scrollTop = chatBody.scrollHeight;
+
+        // Mock Bot Reply
+        setTimeout(() => {
+            const botMsg = document.createElement('div');
+            botMsg.className = "chat-message bot shadow-sm";
+            botMsg.innerText = "¡Miau! Soy Leia. Todavía estoy entrenándome para conocer los secretos del mundo de TravelWishly, pronto podré responderte todo. 🐾";
+            chatBody.appendChild(botMsg);
+            chatBody.scrollTop = chatBody.scrollHeight;
+        }, 800);
+    };
+
+    if(sendBtn) sendBtn.addEventListener('click', procesarMensaje);
+    if(chatInput) chatInput.addEventListener('keypress', (e) => {
+        if(e.key === 'Enter') procesarMensaje();
+    });
+});
+
+/* =========================================================================
+   MÓDULO: ANIMACIONES DE SCROLL (OBSERVER)
+========================================================================= */
+document.addEventListener("DOMContentLoaded", () => {
+    const observerOptions = {
+        root: null,
+        rootMargin: '0px',
+        threshold: 0.15
+    };
+
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                entry.target.classList.add('visible');
+            } else {
+                entry.target.classList.remove('visible');
+            }
+        });
+    }, observerOptions);
+
+    document.querySelectorAll('.scroll-animate').forEach(el => {
+        observer.observe(el);
+    });
+});
