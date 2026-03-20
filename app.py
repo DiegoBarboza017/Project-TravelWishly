@@ -9,6 +9,7 @@ import threading
 import webbrowser
 from models import User, TripBudget, DestinationGuide
 
+# Módulo de Inicialización - Contribución inicial por Diego Barboza
 def create_app():
     app = Flask(__name__)
     
