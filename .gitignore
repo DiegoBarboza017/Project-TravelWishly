@@ -1,0 +1,24 @@
+# Entornos y Variables
+venv/
+env/
+.env
+
+# Compilados y Caché de Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Configuración de Editores / IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Bases de datos y archivos locales de Flask
+instance/
+*.sqlite
+*.sqlite3
+
+# Archivos del sistema
+.DS_Store
+Thumbs.db
