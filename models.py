@@ -3,6 +3,7 @@ Definición de tablas (Modelos) para PostgreSQL utilizando SQLAlchemy
 Se cumplen las especificaciones de: Usuarios, Presupuestos y Destinos.
 """
 from database import db
+
 from datetime import datetime
 from werkzeug.security import generate_password_hash, check_password_hash
 
@@ -47,3 +48,12 @@ class DestinationGuide(db.Model):
     places_to_visit = db.Column(db.Text)
     things_to_do = db.Column(db.Text)
     areas_to_avoid = db.Column(db.Text)
+
+
+
+
+
+
+
+
+
