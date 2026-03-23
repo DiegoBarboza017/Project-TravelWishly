@@ -44,10 +44,11 @@
                 </div>
             </div>
 
-            <!-- Buscador de Países -->
+            <!-- Buscador de Ciudades Bilingüe -->
             <div class="input-group mb-2" style="max-width: 400px;">
                 <span class="input-group-text bg-white border-dark border-2 rounded-0 text-dark"><i class="bi bi-search"></i></span>
-                <input type="text" id="countrySearchInput" class="form-control border-dark border-2 rounded-0 fw-bold" placeholder="BUSCAR PAÍS (EJ. MEXICO)...">
+                <input type="text" id="countrySearchInput" list="globeDestinosList" class="form-control border-dark border-2 rounded-0 fw-bold global-search-input" placeholder="BUSCAR CIUDAD (EJ. MADRID)..." autocomplete="off">
+                <datalist id="globeDestinosList"></datalist>
                 <button class="btn btn-dark fw-bold rounded-0 px-4 text-uppercase tracking-wider" type="button" id="countrySearchBtn">Buscar</button>
             </div>
             <div id="searchError" class="text-danger small fw-bold mb-3 d-none">País no encontrado. Verifica la ortografía.</div>
@@ -194,8 +195,9 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body bg-white text-dark p-4">
-                <h2 id="modalCountryName" class="fw-black text-uppercase mb-4"
+                <h2 id="modalCountryName" class="fw-black text-uppercase mb-0"
                     style="font-weight: 900; letter-spacing: -1px; font-size: 2.5rem;">NOMBRE</h2>
+                <p id="modalLocationFull" class="text-muted fw-bold small text-uppercase mb-4 mt-1"><i class="bi bi-geo-alt-fill me-1"></i>Ubicación Global</p>
 
                 <div class="mb-4">
                     <h6 class="fw-bold border-bottom border-2 border-dark pb-2 text-uppercase mb-3">Métricas Estimadas

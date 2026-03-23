@@ -352,81 +352,113 @@ function actualizarTextosDeInsights(monedaAhorradaXMes, cantMeses, distr, ingres
    MÓDULO: MOTOR DE GUÍA TURÍSTICA CONTEXTUAL PREVENTIVA
 ========================================================================= */
 
-// Data Fuente simulando un acceso a un API RESTful backend
-const inteligenciaDestinosJSON = {
-    'tokio': {
-        titulo: "Tokio, Japón",
-        cultura: "Tokio fusiona reverencia arraigada por lo antiguo junto a lo ultra-vanguardista digital. Una ley no escrita muy respetada en el entorno nipón es la disciplina pública: hablar fuerte por los teléfonos móviles dentro del Metro se considera inapropiado e intrusivo.",
-        puntosInteres: [
-            "Sensorial recorrido en el Templo Senso-ji, de noche preferiblemente",
-            "Sumergirse en Akihabara (electrónica)",
-            "Espectador silencioso en el cruce peatonal de Shibuya"
-        ],
-        zonasRojas: "Roppongi central pasada la medianoche. Evita promotores que te ofrecen 'drink all you can cheap' en la calle, ya que son estafadores notorios y podrías enfrentarte a cuentas hiper infladas insuperables."
-    },
-    'buenos_aires': {
-        titulo: "Buenos Aires, Argentina",
-        cultura: "Pasión de fútbol y asado, una metrópoli repleta de un fuerte sello arquitectónico europeo (apodada la 'París sudamericana') e impulsada por fuertes movidas literias, cafés notables, y el emblemático ambiente romántico del Tango.",
-        puntosInteres: [
-            "Visita arquitectónica obligatoria al legendario Teatro Colón",
-            "Caminata matutina por Puerto Madero de frente al río",
-            "Fin de semana feriado en la Feria de San Telmo y antigüedades"
-        ],
-        zonasRojas: "Limita tu visita nocturna en La Boca netamente a ciertas áreas de Caminito. No ostentes electrónica cara o celulares de gama puntera al cruzar grandes avenidas descuidadamente. Previene tirones de motociclistas ('motochorros')."
-    },
-    'roma': {
-        titulo: "Roma, Italia",
-        cultura: "Como pasear por la cuna del imperio en un monumental museo en vivo. Se respira el peso de la iglesia en el Vaticano y es vital que se demuestre respeto al código de vestimenta conservador para no ser rechazado denegado en ingresos eclesiásticos.",
-        puntosInteres: [
-            "Fotografía en el Coliseo Romano pre comprado virtualmente",
-            "Lanzar tu moneda por sobre el hombro izquierdo en la majestuosa Fontana Di Trevi",
-            "Almuerzo pausado de la culinaria Trasteveriana genuina"
-        ],
-        zonasRojas: "Altamente propensos al carterismo sofisticado cercano a zonas pico alrededor de Termini Station (Estación central) y dentro de las aglomeradas rutas de los buses y tren del Metro, principalmente por distracciones o bloqueos de sujetos."
-    },
-    'estambul': {
-        titulo: "Estambul, Turquía",
-        cultura: "La fantástica ciudad intercontinental entrelazada donde occidente choca visualmente con oriente. Llamados profundos al rezo a través de amplificadores que inundan las calles desde mezquitas majestuosamente elaboradas. Regatear en bazares no solo es aceptado, es fuertemente esperado por el locatario.",
-        puntosInteres: [
-            "Visión obligatoria a la Santa Sofía y Mezquita Azul conectadas por espectaculares plazas",
-            "Viaje escénico cruzando los dos continentes sobre un ferry del Bósforo",
-            "Aperitivo clásico del auténtico Döner Kebab callejero y tes árabes"
-        ],
-        zonasRojas: "Prohibidamente rechaza la aproximación aleatoria de guías de 'lustradores de zapatos' supuestamente amigables, que acaban extorsionando dinero en las calles y bares locales sin licencia."
-    }
-};
+// Data Fuente simulando un acceso a un API RESTful backend global
+const INTELIGENCIA_DESTINOS_DB = [
+    { ciudad: "Tokio", pais: "Japón", cultura: "Fusión de reverencia antigua y vanguardia digital. Respeta el silencio público en el Metro.", puntosInteres: ["Templo Senso-ji de noche", "Akihabara y electrónica", "Cruce peatonal de Shibuya"], zonasRojas: "Roppongi pasada la medianoche. Evita promotores de bares en la calle que podrían estafar." },
+    { ciudad: "Kioto", pais: "Japón", cultura: "El verdadero corazón espiritual y estricto de Japón. No detengas ni toques a las Maikos o Geishas.", puntosInteres: ["Fushimi Inari Taisha", "Pabellón de Oro", "Bosque de Bambú Arashiyama"], zonasRojas: "Es extremadamente seguro, pero respeta el espacio privado y no entres a calles residenciales en Gion." },
+    { ciudad: "Osaka", pais: "Japón", cultura: "Capital gastronómica y rebelde del país, gente más abierta y amigable al hablar.", puntosInteres: ["Castillo de Osaka", "Dotonbori nocturno", "Universal Studios Japan"], zonasRojas: "Algunas áreas puntuales en Shinsekai muy tarde, aunque en términos generales Japón raya el 100% en seguridad." },
+    { ciudad: "Buenos Aires", pais: "Argentina", cultura: "Pasión por el fútbol, asado y cultura europea sudamericana. Vida literaria rica.", puntosInteres: ["Teatro Colón", "Puerto Madero", "Feria de San Telmo"], zonasRojas: "Limita visitas en La Boca netamente a Caminito. Evita mostrar electrónica cara en avenidas." },
+    { ciudad: "Roma", pais: "Italia", cultura: "Un museo vivo con fuerte peso histórico y religioso. Vístete conservador al visitar iglesias.", puntosInteres: ["Coliseo Romano", "Fontana Di Trevi", "Paseo por Trastevere"], zonasRojas: "Previene a carteristas en los alrededores céntricos de Termini y del Vaticano en fuertes aglomeraciones." },
+    { ciudad: "Estambul", pais: "Turquía", cultura: "Ciudad intercontinental donde occidente choca con oriente. Regatear en bazares es vital.", puntosInteres: ["Santa Sofía y Mezquita Azul", "Cruce del Bósforo en ferry", "Döner Kebab original callejero"], zonasRojas: "Rechaza 'lustradores de zapatos' amistosos en el puente de Gálata, acabarán extorsionando por el servicio no solicitado." },
+    { ciudad: "París", pais: "Francia", cultura: "Romanticismo puro, moda e historia extensa. Aprender francés básico ('Bonjour', 'Merci') abre muchísimas puertas.", puntosInteres: ["La Torre Eiffel", "Museo del Louvre", "Barrio de Montmartre"], zonasRojas: "Los alrededores inmediatos de Gare du Nord por la noche. Ojo con el engaño del anillo de oro tirado en el piso." },
+    { ciudad: "Nueva York", pais: "EE.UU.", cultura: "Meca cultural global que camina rápido. Da propina (18-20%) religiosamente, es parte estructural del servicio.", puntosInteres: ["Times Square", "Central Park", "Metropolitan Museum (MET)"], zonasRojas: "Partes remotas del Bronx o este de Brooklyn de madrugada. Manten cuidado básico en el Subway muy tarde." },
+    { ciudad: "Cancún", pais: "México", cultura: "Paraíso caribeño orientado fuertemente al turismo, fiesta y relajación extrema. Respeta el delicado ecosistema.", puntosInteres: ["Zona Arqueológica Maya", "Cenotes circundantes", "Playas de la Zona Hotelera"], zonasRojas: "Evita caminar fuera de la zona hotelera o el centro turístico seguro durante la madrugada profunda." },
+    { ciudad: "Bali", pais: "Indonesia", cultura: "Religiosidad hindú omnipresente. Viste modesto en templos sagrados, usando siempre un pareo (sarong).", puntosInteres: ["Terrazas de Tegalalang", "Templo de Uluwatu", "Descanso en Seminyak"], zonasRojas: "No cambies dinero en stands informales de las calles, la manipulación de billetes de alta denominación genera robos sutiles." },
+    { ciudad: "Madrid", pais: "España", cultura: "Vida orientada al disfrute callejero, tapeo e historia imperial. La cena sucede pasadas las 9 PM usualmente.", puntosInteres: ["Museo del Prado", "Parque del Retiro", "La Plaza Mayor"], zonasRojas: "Carteristas activos en Gran Vía, Sol o el Metro. No dejes móviles sobre las mesas expuestos." },
+    { ciudad: "Ciudad de México", pais: "México", cultura: "Metrópolis inmensa repleta de historia Azteca, gastronomía inigualable y hospitalidad desbordante.", puntosInteres: ["Zócalo y Bellas Artes", "Coyoacán y Museo Frida Kahlo", "Pirámides de Teotihuacán"], zonasRojas: "Zonas alejadas (ej. Tepito, Doctores). En el metro protege firmemente tus pertenencias en hora pico." },
+    { ciudad: "Bangkok", pais: "Tailandia", cultura: "Caos tropical, espiritualidad budista y comida callejera. Jamás ofendas a la figura del Rey (es penado legalmente).", puntosInteres: ["El Gran Palacio", "Templos Wat Pho y Wat Arun", "Mercados flotantes"], zonasRojas: "Tuk-Tuks que te ofrecen viajes 'casi gratis' te secuestrarán tiempo llevándote a tiendas de trajes o gemas falsas buscando comisión." },
+    { ciudad: "San Juan", pais: "Puerto Rico", cultura: "Joya colonial caribeña y capital innegable de la salsa. Gran hospitalidad con fuerte influencia estadounidense combinada.", puntosInteres: ["Viejo San Juan y El Morro", "Bosque El Yunque", "Playa del Condado"], zonasRojas: "Transitar zonas alejadas del marjal denso de noche pura; el interior profundo del barrio La Perla sin guía diurno." },
+    { ciudad: "San Juan", pais: "Argentina", cultura: "Oasis vitivinícola rodeado de aridez andina y valles imponentes. Cuna del buen vino sanjuanino.", puntosInteres: ["Parque Provincial Ischigualasto", "Ruta del Vino", "Dique Punta Negra"], zonasRojas: "Ciudad muy pacífica en general. Precaución estándar en zonas céntricas o salidas de discotecas un fin de semana." },
+    { ciudad: "Londres", pais: "Reino Unido", cultura: "Fusión monárquica clásica y diversidad extrema global. Respeta a rajatabla las filas cívicas formadas al esperar cualquier cosa.", puntosInteres: ["El Ojo de Londres (Eye)", "Museo Británico", "Paseo por el Támesis"], zonasRojas: "Aglomeraciones turísticas altas cerca de Piccadilly Circus y el tubo subterráneo central están plagadas de distracciones." },
+    { ciudad: "Medellín", pais: "Colombia", cultura: "La 'Ciudad de la Eterna Primavera', ejemplo mundial de increíble transformación de seguridad social y urbanismo verde.", puntosInteres: ["Comuna 13 (Grafiti Tour)", "Pueblito Paisa", "Uso del Metrocable"], zonasRojas: "El centro ('El Centro') y la Zona Norte muy pasada la medianoche. Respeta a los locales y no romantices conflictos pasados de capos." },
+    { ciudad: "Río de Janeiro", pais: "Brasil", cultura: "Capital incansable con samba en las venas. La interacción es cariñosamente táctil y muy expresiva. ¡Usa siempre protector!", puntosInteres: ["Cristo Redentor", "Pan de Azúcar", "Ipanema y Copacabana"], zonasRojas: "Pasear de noche solitariamente por las playas. Las Favelas son prohibidas si no tienes un contacto oficial y verificado directo del tour local." },
+    { ciudad: "Lima", pais: "Perú", cultura: "Capital en un acantilado del pacífico, cima indiscutible de comida criolla de exportación e increíble historia colonial/incaica.", puntosInteres: ["Malecón de Miraflores", "Centro Histórico de Lima", "Experiencia Gastronómica top"], zonasRojas: "Barrios como Callao y el centro norte (ej: Rímac) cuando empieza a bajar el sol radicalmente." },
+    { ciudad: "Santiago", pais: "Chile", cultura: "Urbe andina desarrollada y formal en el gran cono sur. Montañas majestuosas rodeando el valle central de extremo a extremo.", puntosInteres: ["Cerro San Cristóbal", "Palacio de La Moneda", "Barrios Lastarria / Bellavista"], zonasRojas: "Carteristas prolíficos dentro del Metro en hora pico. Alrededores de Estación Central en horas de la madrugada." },
+    { ciudad: "Bogotá", pais: "Colombia", cultura: "Urbe elevadísima cerca de las nubes, capital cafetera y un foco inmenso de la cultura de galerías y universidades de Sudamérica.", puntosInteres: ["Museo del Oro", "Cerro de Monserrate", "La Candelaria histórica"], zonasRojas: "Las fronteras sureñas de la ciudad sin razón aparente. Nunca pares o tomes taxis 'libres' en la calle trasnochado, pídelos siempre por App." }
+];
 
-/** @function cargarGuiaSegura inserta textualmente insights y listas mediante inyección DOM */
+document.addEventListener("DOMContentLoaded", () => {
+    // Poblar datalist global dinámicamente
+    const guiaList = document.getElementById('guiaDestinosList');
+    if (guiaList) {
+        INTELIGENCIA_DESTINOS_DB.forEach(d => {
+            const op = document.createElement('option');
+            op.value = `${d.ciudad}, ${d.pais}`;
+            guiaList.appendChild(op);
+        });
+    }
+});
+
+/** @function cargarGuiaSegura busca dentro del array y reemplaza/anima elementos DOM */
 function cargarGuiaSegura() {
-    const cajaSelectora = document.getElementById('destinosDropdown');
+    const selectorObj = document.getElementById('destinosDropdown');
     const panelUI = document.getElementById('panelDestino');
     
-    if(!cajaSelectora || !panelUI) return;
+    if(!selectorObj || !panelUI) return;
     
-    const destinoClave = cajaSelectora.value;
-    const objetoData = inteligenciaDestinosJSON[destinoClave];
+    let txtBuscado = selectorObj.value.trim().toLowerCase();
+    
+    if (txtBuscado.length < 2) return;
 
-    // Detener ejecucion si seleccion esta invalida o vacia
-    if(!objetoData) return;
+    // Buscador "fuzzy/preciso" que prioriza lo que esté en nuestra base de datos.
+    let destinoObj = INTELIGENCIA_DESTINOS_DB.find(db => 
+        `${db.ciudad}, ${db.pais}`.toLowerCase() === txtBuscado ||
+        db.ciudad.toLowerCase() === txtBuscado || 
+        db.pais.toLowerCase() === txtBuscado
+    );
+
+    // Fallback Generativo Global Absoluto para cualquier ciudad del mundo de Nominatim
+    if(!destinoObj && txtBuscado.includes(',')) {
+        let partes = selectorObj.value.split(','); // Respeta casing original
+        let cName = partes[0].trim();
+        let pName = partes[partes.length - 1].trim(); // Por si hay multiples comas ej: City, State, Country
+        
+        destinoObj = {
+            ciudad: cName,
+            pais: pName,
+            cultura: `Descubre la cultura local de ${cName}. Al explorar ${pName}, debes estar siempre abierto a adaptarte a los modismos ciudadanos y reglas locales para maximizar tu inmersión. Aprender frases básicas abre muchísimas puertas.`,
+            zonasRojas: `Aplica el sentido común internacional de TravelWishly. ${cName}, como todo destino, posee carterismo potencial en zonas muy aglomeradas, el transporte público o al pasear por madrugadas en soledad absoluta. Mantén alerta tus pertenencias.`,
+            puntosInteres: [
+                `Recrearte en la plaza central o el casco histórico de ${cName}`,
+                `Degustación de la gastronomía representativa popular de ${pName}`,
+                `Paseo de reconocimiento del área urbana principal de vida`
+            ]
+        };
+    }
+
+    // Si no hizo click todavia o solo esta tecleando
+    if(!destinoObj) { 
+        panelUI.classList.add('d-none');
+        return; 
+    }
 
     // Despliegue de Panel Oculto Inicial
     panelUI.classList.remove('d-none');
 
     // Inyección de Strings Base
-    document.getElementById('panelTitulo').innerText = objetoData.titulo;
-    document.getElementById('panelCultura').innerText = objetoData.cultura;
-    document.getElementById('panelEvitar').innerText = objetoData.zonasRojas;
+    document.getElementById('panelTitulo').innerText = `${destinoObj.ciudad}, ${destinoObj.pais}`;
+    document.getElementById('panelCultura').innerText = destinoObj.cultura;
+    document.getElementById('panelEvitar').innerText = destinoObj.zonasRojas;
 
     // Poblamiento Dinámico Iterativo de Checklist Beneficiosa
     const listaHtmlUl = document.getElementById('panelRecomendaciones');
-    listaHtmlUl.innerHTML = ''; // Restet
+    listaHtmlUl.innerHTML = ''; // Reset
 
-    objetoData.puntosInteres.forEach((punto) => {
+    destinoObj.puntosInteres.forEach((punto, i) => {
         const elementoHijo = document.createElement('li');
-        elementoHijo.className = "fs-6 fw-medium d-flex align-items-center bg-white p-2 rounded shadow-sm";
-        // Uso de ícono Bootstrap
-        elementoHijo.innerHTML = `<i class="bi bi-check-circle-fill text-success me-2"></i> ${punto}`;
+        elementoHijo.className = "fs-6 fw-medium d-flex align-items-center bg-white p-2 rounded shadow-sm opacity-0";
+        elementoHijo.innerHTML = `<i class="bi bi-check-circle-fill text-success me-3 fs-5"></i> ${punto}`;
         listaHtmlUl.appendChild(elementoHijo);
+        
+        // Animacion intro encadenada
+        setTimeout(() => {
+            elementoHijo.style.transition = 'opacity 0.4s ease-in, transform 0.4s ease-out';
+            elementoHijo.style.transform = 'translateX(10px)';
+        }, 10 + (i * 100));
+        setTimeout(() => {
+            elementoHijo.classList.remove('opacity-0');
+            elementoHijo.style.transform = 'translateX(0px)';
+        }, 30 + (i * 100));
     });
 }
 
@@ -458,52 +490,415 @@ function calcularMochila() {
     }
 }
 
-const recomendacionesPorInteres = {
-    'fiesta': {
-        titulo: "Ibiza, España o Cancún, MX",
-        desc: "¡Ideal para la vida nocturna ilimitada! Tendrás acceso a clubes de renombre mundial, festivales y fiestas en la playa que nunca terminan. Tu presupuesto debe enfocarse principalmente a entretenimiento y entradas."
+const TODOS_DESTINOS_DB = [
+    { 
+      id: 1, ciudad: "Tokio", pais: "Japón", tags: ["cultura", "fiesta"], desc: "Tecnología, templos ancestrales y la mejor vida nocturna en Shinjuku y Shibuya.", timezone: "Asia/Tokyo", moneda: "JPY (Yen)", climaBase: 15,
+      galeria: [{n:"Cruce Shibuya",q:"shibuya,crossing"},{n:"Akihabara",q:"akihabara,neon"},{n:"Templo Senso-ji",q:"sensoji,temple"},{n:"Shinjuku de Noche",q:"shinjuku,night"},{n:"Monte Fuji (Cercanías)",q:"fuji,mountain"},{n:"Torre de Tokio",q:"tokyotower"},{n:"Parque Ueno",q:"ueno,park"},{n:"Mercado Tsukiji",q:"tsukiji,market"},{n:"Santuario Meiji",q:"meijijingu,shrine"},{n:"Jardines Nacionales",q:"tokyo,garden"}]
     },
-    'cultura': {
-        titulo: "Roma, Italia o CDMX, MX",
-        desc: "Sumérgete en un museo al aire libre. Estás rodeado de ruinas, galerías hiper-realistas y una historia milenaria. Los pases culturales y los recorridos guiados serán tu mayor enfoque, los hospedajes céntricos te darán la mejor experiencia."
+    { 
+      id: 2, ciudad: "París", pais: "Francia", tags: ["cultura", "relax"], desc: "El romanticismo puro en cada esquina, museos increíbles y atardeceres frente a la torre Eiffel.", timezone: "Europe/Paris", moneda: "EUR (€)", climaBase: 12,
+      galeria: [{n:"Torre Eiffel",q:"eiffel,tower"},{n:"Museo del Louvre",q:"louvre,museum"},{n:"Catedral de Notre Dame",q:"notredame,paris"},{n:"Arco de Triunfo",q:"arcdetriomphe"},{n:"Montmartre",q:"montmartre,street"},{n:"Río Sena",q:"seine,river"},{n:"Palacio de Versalles",q:"versailles,palace"},{n:"Panteón de París",q:"pantheon,paris"},{n:"Jardines de Luxemburgo",q:"luxembourg,gardens"},{n:"Barrio Latino",q:"latinquarter,paris"}]
     },
-    'naturaleza': {
-        titulo: "Patagonia, Arg o Chiapas, MX",
-        desc: "Respira aire puro y desconéctate del sistema. Perfectos para hiking o ecoturismo responsable. Tus fondos se pueden concentrar en tours locales y transporte rústico; no necesitas lujos para disfrutar asombrosos paisajes y rios."
+    { 
+      id: 3, ciudad: "Cancún", pais: "México", tags: ["fiesta", "relax", "naturaleza"], desc: "Playas azul turquesa, la adrenalina interminable de Xcaret y cenotes vírgenes.", timezone: "America/Cancun", moneda: "MXN ($)", climaBase: 28,
+      galeria: [{n:"Zona Hotelera",q:"cancun,beach"},{n:"Playa del Carmen",q:"playadelcarmen,mexico"},{n:"Ruinas de Tulum",q:"tulum,ruins"},{n:"Isla Mujeres",q:"islamujeres,beach,mexico"},{n:"Cenote Sagrado",q:"cenote,mexico,water"},{n:"Parque Xcaret",q:"xcaret,mexico,nature"},{n:"Chichén Itzá",q:"chichenitza,mexico"},{n:"Isla Cozumel",q:"cozumel,ocean,reef"},{n:"Holbox",q:"holbox,island,mexico"},{n:"Vida Nocturna Coco Bongo",q:"cancun,nightclub"}]
     },
-    'relax': {
-        titulo: "Maldivas o Tulum, MX",
-        desc: "Tu mente merece un descanso reparador. Aguas celestes y arena blanca. El 60% de tu presupuesto se puede destinar a un resort All-Inclusive de lujo, limitando tus costos en extras, pues el mismo hotel proveerá tu paz mental pura."
+    { 
+      id: 4, ciudad: "Bali", pais: "Indonesia", tags: ["relax", "naturaleza", "cultura"], desc: "Retiros Zen en la jungla profunda, santuarios de monos y meditación total.", timezone: "Asia/Makassar", moneda: "IDR (Rupia)", climaBase: 27,
+      galeria: [{n:"Terrazas de Tegalalang",q:"bali,riceterrace"},{n:"Bosque de los Monos",q:"monkeyforest,bali"},{n:"Templo Uluwatu",q:"uluwatu,temple"},{n:"Nusa Penida",q:"nusapenida,cliff"},{n:"Playa Seminyak",q:"seminyak,beach"},{n:"Cascada Tegenungan",q:"waterfall,bali"},{n:"Templo Tanah Lot",q:"tanahlot,sunset"},{n:"Monte Batur",q:"batur,volcano"},{n:"Puertas del Cielo",q:"lempuyang,temple"},{n:"Ubud Centro",q:"ubud,bali,street"}]
+    },
+    { 
+      id: 5, ciudad: "Nueva York", pais: "EE.UU.", tags: ["cultura", "fiesta"], desc: "La ciudad que no duerme. Rascacielos impresionantes, Broadway y eventos exclusivos.", timezone: "America/New_York", moneda: "USD ($)", climaBase: 8,
+      galeria: [{n:"Times Square",q:"timessquare,newyork"},{n:"Central Park",q:"centralpark,newyork"},{n:"Estatua de la Libertad",q:"statueofliberty"},{n:"Puente de Brooklyn",q:"brooklynbridge"},{n:"Empire State",q:"empirestate,building"},{n:"El MET",q:"metropolitanmuseum"},{n:"Wall Street",q:"wallstreet"},{n:"Rockerfeller Center",q:"rockefeller,center"},{n:"Broadway",q:"broadway,theater"},{n:"Grand Central",q:"grandcentral,station"}]
+    },
+    { 
+      id: 6, ciudad: "Patagonia", pais: "Argentina", tags: ["naturaleza", "relax"], desc: "Glaciares imponentes. La pureza espectacular del verdadero fin del mundo.", timezone: "America/Argentina/Rio_Gallegos", moneda: "ARS ($)", climaBase: 2,
+      galeria: [{n:"Glaciar Perito Moreno",q:"peritomoreno,glacier"},{n:"Monte Fitz Roy",q:"fitzroy,mountain"},{n:"Ushuaia",q:"ushuaia,argentina"},{n:"Parque Tierra del Fuego",q:"tierradelfuego,park"},{n:"El Chaltén",q:"elchalten,nature"},{n:"Península Valdés",q:"valdes,peninsula"},{n:"Cueva de las Manos",q:"patagonia,cave"},{n:"Cerro Tronador",q:"cerrotronador"},{n:"Faro Les Eclaireurs",q:"ushuaia,lighthouse"},{n:"Ruta de los 7 Lagos",q:"patagonia,lakes"}]
+    },
+    { 
+      id: 7, ciudad: "Roma", pais: "Italia", tags: ["cultura", "fiesta"], desc: "Calles cargadas de historia milenaria, pizzerías nocturnas y vida urbana animada.", timezone: "Europe/Rome", moneda: "EUR (€)", climaBase: 16,
+      galeria: [{n:"El Coliseo",q:"colosseum,rome"},{n:"Fontana di Trevi",q:"trevi,fountain"},{n:"Panteón de Agripa",q:"pantheon,rome"},{n:"Foro Romano",q:"romanforum"},{n:"El Vaticano",q:"vatican,basilica"},{n:"Piazza Navona",q:"piazzanavona"},{n:"Villa Borghese",q:"villaborghese"},{n:"Trastevere",q:"trastevere,rome"},{n:"Castillo Sant'Angelo",q:"castelsantangelo"},{n:"Piazza di Spagna",q:"piazzadispagna"}]
+    },
+    { 
+      id: 8, ciudad: "Ibiza", pais: "España", tags: ["fiesta", "relax"], desc: "Discotecas monumentales por las madrugadas y playas escondidas perfectas por las mañanas.", timezone: "Europe/Madrid", moneda: "EUR (€)", climaBase: 22,
+      galeria: [{n:"Dalt Vila",q:"daltvila,ibiza"},{n:"Cala Comte",q:"calacomte,beach"},{n:"Es Vedrà",q:"esvedra,ibiza"},{n:"Playa d'en Bossa",q:"playadenbossa"},{n:"Discotecas de Ibiza",q:"ibiza,nightclub"},{n:"Cala Bassa",q:"calabassa"},{n:"Mercado Las Dalias",q:"lasdalias,market"},{n:"Cala Salada",q:"calasalada"},{n:"Puerto de Sant Antoni",q:"ibiza,port"},{n:"Cueva de Can Marçà",q:"ibiza,cave"}]
+    },
+    { 
+      id: 9, ciudad: "Cusco", pais: "Perú", tags: ["cultura", "naturaleza"], desc: "Exploración de la mística ciudadela de Machu Picchu rodeada de alturas imponentes.", timezone: "America/Lima", moneda: "PEN (Sol)", climaBase: 14,
+      galeria: [{n:"Machu Picchu",q:"machupicchu"},{n:"Plaza de Armas Cusco",q:"cusco,plaza"},{n:"Valle Sagrado",q:"sacredvalley,peru"},{n:"Montaña 7 Colores",q:"rainbowmountain,peru"},{n:"Sacsayhuamán",q:"sacsayhuaman"},{n:"Ollantaytambo",q:"ollantaytambo"},{n:"Laguna Humantay",q:"humantay,lake"},{n:"Barrio San Blas",q:"sanblas,cusco"},{n:"Qorikancha",q:"qorikancha"},{n:"Mercado San Pedro",q:"cusco,market"}]
+    },
+    { 
+      id: 10, ciudad: "Kioto", pais: "Japón", tags: ["cultura", "relax"], desc: "Geishas misteriosas, jardines pulcros y santuarios apartados totalmente del ruido urbano.", timezone: "Asia/Tokyo", moneda: "JPY (Yen)", climaBase: 14,
+      galeria: [{n:"Fushimi Inari-taisha",q:"fushimiinari"},{n:"Kinkaku-ji (Pabellón de Oro)",q:"kinkakuji"},{n:"Bosque de Bambú Arashiyama",q:"arashiyama,bamboo"},{n:"Barrio de Gion",q:"gion,kyoto"},{n:"Templo Kiyomizu-dera",q:"kiyomizudera"},{n:"Castillo Nijo",q:"nijocastle"},{n:"Camino del Filósofo",q:"kyoto,path"},{n:"Ginkaku-ji (Pabellón Plata)",q:"ginkakuji"},{n:"Palacio Imperial",q:"kyoto,palace"},{n:"Torre de Kioto",q:"kyototower"}]
+    },
+    { 
+      id: 11, ciudad: "Las Vegas", pais: "EE.UU.", tags: ["fiesta"], desc: "El parque de diversiones adulto definitivo: vida de lujos repentinos, casinos y conciertos.", timezone: "America/Los_Angeles", moneda: "USD ($)", climaBase: 30,
+      galeria: [{n:"Las Vegas Strip",q:"lasvegas,strip"},{n:"Fuentes del Bellagio",q:"bellagio,fountains"},{n:"Fremont Street",q:"fremont,lasvegas"},{n:"High Roller Ferris",q:"highroller,vegas"},{n:"Gran Cañón (viaje corto)",q:"grandcanyon"},{n:"Torre Stratosphere",q:"stratosphere,vegas"},{n:"El Volcán del Mirage",q:"mirage,volcano"},{n:"Signo Bienvenidos",q:"lasvegas,sign"},{n:"Presa Hoover",q:"hooverdam"},{n:"Resorts Venetian",q:"venetian,lasvegas"}]
+    },
+    { 
+      id: 12, ciudad: "Banff", pais: "Canadá", tags: ["naturaleza", "relax"], desc: "Fauna salvaje increíble conviviendo en un oasis de lagos azules montañosos perfectos.", timezone: "America/Edmonton", moneda: "CAD ($)", climaBase: -2,
+      galeria: [{n:"Lake Louise",q:"lakelouise,banff"},{n:"Parque Nacional Banff",q:"banff,nationalpark"},{n:"Moraine Lake",q:"morainelake"},{n:"Icefields Parkway",q:"icefields,canada"},{n:"Johnston Canyon",q:"johnstoncanyon"},{n:"Montaña Sulphur",q:"sulphurmountain"},{n:"Peyto Lake",q:"peytolake"},{n:"Athabasca Glacier",q:"athabasca,glacier"},{n:"Bow Falls",q:"bowfalls"},{n:"Castillo Fairmont",q:"fairmont,banff"}]
+    },
+    { 
+      id: 13, ciudad: "Oaxaca", pais: "México", tags: ["cultura", "fiesta"], desc: "Aromas que enamoran, alebrijes coloridos y festivales locales con mucho mezcal espectacular.", timezone: "America/Mexico_City", moneda: "MXN ($)", climaBase: 22,
+      galeria: [{n:"Templo Santo Domingo",q:"santodomingo,oaxaca"},{n:"Monte Albán",q:"montealban,oaxaca"},{n:"Hierve el Agua",q:"hierveelagua"},{n:"Árbol del Tule",q:"eltule,tree"},{n:"Mitla",q:"mitla,ruins"},{n:"Mercado 20 de Noviembre",q:"oaxaca,market"},{n:"Playas Puerto Escondido",q:"puertoescondido"},{n:"Bahías de Huatulco",q:"huatulco,mexico"},{n:"Centro Histórico",q:"oaxaca,street"},{n:"Ruta del Mezcal",q:"mezcal,agave"}]
+    },
+    { 
+      id: 14, ciudad: "Bora Bora", pais: "Polinesia", tags: ["relax", "naturaleza"], desc: "Lujo flotante sobre mares cristalinos, donde solo importa la tranquilidad visual pura y sana.", timezone: "Pacific/Tahiti", moneda: "XPF (Franco)", climaBase: 28,
+      galeria: [{n:"Bungalows sobre el agua",q:"borabora,bungalow"},{n:"Monte Otemanu",q:"otemanu,mountain"},{n:"Playa Matira",q:"matirabeach"},{n:"Laguna de Bora Bora",q:"borabora,lagoon"},{n:"Arrecifes de coral",q:"borabora,reef"},{n:"Motos de agua",q:"jetski,ocean"},{n:"Vuelos escénicos",q:"borabora,aerial"},{n:"Buceo con tiburones",q:"borabora,shark"},{n:"Pueblo Vaitape",q:"vaitape,tahiti"},{n:"Atardeceres del Pacífico",q:"borabora,sunset"}]
     }
-};
+];
 
-/** @function recomendarDestino procesa la entrada del panel de intereses del constructor */
-function recomendarDestino(interesStr, btnElement) {
-    // Resetear colores de todos los botones
-    const botones = document.querySelectorAll('.btn-interes');
-    if(botones.length > 0) {
-        botones.forEach(b => {
-            b.classList.remove('btn-dark', 'text-white');
-            b.classList.add('btn-outline-dark');
-        });
-        
-        // Colorear el presionado
-        if(btnElement) {
+let interesesGlobalesSeleccionados = [];
+
+window.recomendarDestino = function(interesStr, btnElement) {
+    // Alternancia lógica de selecciones múltiples (Toggle)
+    const index = interesesGlobalesSeleccionados.indexOf(interesStr);
+    if (index > -1) {
+        interesesGlobalesSeleccionados.splice(index, 1);
+        if (btnElement) {
+            btnElement.classList.remove('btn-dark', 'text-white');
+            btnElement.classList.add('btn-outline-dark');
+        }
+    } else {
+        interesesGlobalesSeleccionados.push(interesStr);
+        if (btnElement) {
             btnElement.classList.remove('btn-outline-dark');
             btnElement.classList.add('btn-dark', 'text-white');
         }
     }
 
-    const rec = recomendacionesPorInteres[interesStr];
-    if(!rec) return;
-
     const panelObj = document.getElementById('panelDestinoRecomendado');
-    if(panelObj) {
-        panelObj.classList.remove('d-none');
-        document.getElementById('recomendacionTitulo').innerText = rec.titulo;
-        document.getElementById('recomendacionDesc').innerText = rec.desc;
+    const tituloObj = document.getElementById('recomendacionTitulo');
+    const descObj = document.getElementById('recomendacionDesc');
+
+    if (!panelObj || !tituloObj || !descObj) return;
+
+    if (interesesGlobalesSeleccionados.length === 0) {
+        panelObj.classList.add('d-none');
+        return;
     }
+
+    panelObj.classList.remove('d-none');
+
+    // Mapeo Scoring de cada destino según coincidencias con los intereses seleccionados
+    let matchesScored = TODOS_DESTINOS_DB.map(d => {
+        let sc = 0;
+        d.tags.forEach(t => { if (interesesGlobalesSeleccionados.includes(t)) sc++; });
+        return { ...d, score: sc };
+    });
+
+    // Filtramos los que sí tuvieron coincidencias y ordenamos del que mejor cuadre hacia abajo
+    matchesScored = matchesScored.filter(d => d.score > 0).sort((a, b) => b.score - a.score);
+
+    // Mínimo 5 resultados sugeridos (si el filtro dejó muy pocos, rellenamos aleatoriamente la cuota con otros)
+    let topResults = matchesScored.slice(0, Math.max(5, matchesScored.length));
+
+    if (topResults.length === 0) topResults = TODOS_DESTINOS_DB.slice(0, 5); // Fallback invulnerable
+
+    tituloObj.innerText = `¡${topResults.length} Destinos increíbles para tu selección de Vibe!`;
+
+    let renderHtml = `<div class="mt-3">`;
+    topResults.forEach(d => {
+        let pTags = d.tags.map(t => `<span class="badge border border-dark border-1 text-dark me-1 text-uppercase bg-light p-1">${t}</span>`).join('');
+        renderHtml += `
+            <div class="mb-3 border-bottom border-dark position-relative" style="cursor: pointer;" onclick="window.mostrarDetallesDestino(${d.id})">
+                <div class="p-2 transition-all hover-lift" style="background-color: #fcfcfc;" onmouseover="this.style.backgroundColor='#f0f0f0';" onmouseout="this.style.backgroundColor='#fcfcfc';">
+                    <h6 class="fw-black mb-1 d-flex flex-wrap align-items-center"><i class="bi bi-geo-alt-fill text-danger me-2"></i> ${d.ciudad}, ${d.pais} <div class="ms-md-auto mt-2 mt-md-0 d-flex flex-wrap">${pTags}</div></h6>
+                    <p class="small text-muted mb-1 fw-bold border-start border-4 border-primary ps-2">${d.desc}</p>
+                    <div class="text-end"><span class="badge bg-dark rounded-0 px-2 py-1 text-uppercase" style="font-size: 10px;">Explorar Detalles <i class="bi bi-arrow-right fw-bold"></i></span></div>
+                </div>
+            </div>
+        `;
+    });
+    renderHtml += `</div>`;
+    descObj.innerHTML = renderHtml;
 }
+
+window.mostrarDetallesDestino = function(id) {
+    const d = TODOS_DESTINOS_DB.find(x => x.id === id);
+    if (!d) return;
+
+    document.getElementById('modalDestinoTitle').innerHTML = `<i class="bi bi-geo-fill me-2 text-primary"></i>${d.ciudad}, ${d.pais}`;
+
+    // Generar el Carousel con las 10 fotos dinámicas
+    const galeriaEl = document.getElementById('modalDestinoGaleria');
+    if (galeriaEl && d.galeria) {
+        let galeriaHtml = '';
+        d.galeria.forEach((foto, i) => {
+            let active = i === 0 ? 'active' : '';
+            galeriaHtml += `
+                <div class="carousel-item ${active}">
+                    <img src="https://loremflickr.com/800/400/${foto.q}/all?random=${Math.random().toFixed(4)}" class="d-block w-100" style="height: 350px; object-fit: cover; background-color: #eee;" alt="${foto.n}">
+                    <div class="carousel-caption d-none d-md-block p-0 p-2" style="background: rgba(0,0,0,0.7); backdrop-filter: blur(2px); bottom: 20px; border: 2px solid white;">
+                        <h5 class="fw-black mb-0 text-uppercase tracking-wider fs-5">${foto.n}</h5>
+                        <p class="small mb-0 fw-bold">${i+1} / 10</p>
+                    </div>
+                </div>
+            `;
+        });
+        galeriaEl.innerHTML = galeriaHtml;
+    }
+
+    document.getElementById('modalDestinoDesc').innerText = d.desc;
+    document.getElementById('modalDestinoMoneda').innerText = d.moneda || "No disp.";
+    
+    // Convertir el Date actual a la zona horaria del destino
+    try {
+        const options = { timeZone: d.timezone, hour: '2-digit', minute: '2-digit', hour12: true };
+        const localTime = new Intl.DateTimeFormat('es-MX', options).format(new Date());
+        document.getElementById('modalDestinoHora').innerText = localTime;
+    } catch(e) {
+        document.getElementById('modalDestinoHora').innerText = "Horario Local";
+    }
+
+    // Calcular el clima de forma inteligente basado en la media base del país
+    const icon = d.climaBase >= 20 ? 'brightness-high-fill text-warning' : (d.climaBase > 5 ? 'cloud-sun-fill text-info' : 'snow text-primary');
+    const variedTemp = d.climaBase + Math.floor(Math.random() * 5) - 2;
+    document.getElementById('modalDestinoClima').innerHTML = `${variedTemp}°C <i class="bi bi-${icon} ms-1" style="font-size: 1.1rem;"></i>`;
+
+    window._destinoModalActual = d.ciudad;
+
+    if (window.bootstrap) {
+        let myModal = new bootstrap.Modal(document.getElementById('destinoModal'));
+        myModal.show();
+    }
+};
+
+window.seleccionarParaPresupuesto = function() {
+    const dest = window._destinoModalActual;
+    if (dest) {
+        // Enlazar Destino al nuevo generador de ruta Inteligente si está activo en DOM de Constructor
+        const destInput = document.getElementById('rutaDestino');
+        if (destInput) {
+            destInput.value = dest;
+            destInput.style.transition = '0.3s';
+            destInput.style.backgroundColor = '#0dcaf0';
+            setTimeout(() => { destInput.style.backgroundColor = ''; }, 600);
+            destInput.scrollIntoView({behavior: 'smooth', block: 'center'});
+        } else if (window.agregarEventoTimeline) {
+            window.agregarEventoTimeline(`Vuelo a ${dest}`);
+        }
+        
+        let modalEl = document.getElementById('destinoModal');
+        if (window.bootstrap) {
+            let modalInst = bootstrap.Modal.getInstance(modalEl);
+            if (modalInst) modalInst.hide();
+        }
+    }
+};
+
+const PRESUPUESTOS_DESTINOS_GLOBALES = [
+    { nombre: "Alemania (Berlín, Múnich)", budget: 45000 },
+    { nombre: "Argentina (Buenos Aires, Patagonia)", budget: 18000 },
+    { nombre: "Australia (Sídney, Melbourne)", budget: 70000 },
+    { nombre: "Brasil (Río de Janeiro, São Paulo)", budget: 20000 },
+    { nombre: "Canadá (Toronto, Vancouver)", budget: 35000 },
+    { nombre: "Colombia (Bogotá, Medellín)", budget: 12000 },
+    { nombre: "Corea del Sur (Seúl)", budget: 55000 },
+    { nombre: "Costa Rica (San José)", budget: 18000 },
+    { nombre: "Cuba (La Habana)", budget: 15000 },
+    { nombre: "Chile (Santiago, Atacama)", budget: 20000 },
+    { nombre: "China (Pekín, Shanghái)", budget: 60000 },
+    { nombre: "Egipto (El Cairo)", budget: 40000 },
+    { nombre: "Emiratos Árabes (Dubái)", budget: 80000 },
+    { nombre: "España (Madrid, Barcelona)", budget: 40000 },
+    { nombre: "Estados Unidos (Nueva York, LA)", budget: 35000 },
+    { nombre: "Francia (París)", budget: 48000 },
+    { nombre: "Grecia (Atenas, Santorini)", budget: 50000 },
+    { nombre: "India (Nueva Delhi)", budget: 45000 },
+    { nombre: "Indonesia (Bali)", budget: 35000 },
+    { nombre: "Italia (Roma, Venecia)", budget: 46000 },
+    { nombre: "Japón (Tokio, Kioto)", budget: 65000 },
+    { nombre: "Jordania (Petra)", budget: 55000 },
+    { nombre: "Marruecos (Marrakech)", budget: 35000 },
+    { nombre: "México Nacional (Pueblos Mágicos)", budget: 6000 },
+    { nombre: "México Playa (Cancún, Tulum)", budget: 15000 },
+    { nombre: "Nueva Zelanda (Auckland)", budget: 75000 },
+    { nombre: "Países Bajos (Ámsterdam)", budget: 45000 },
+    { nombre: "Perú (Cusco, Machu Picchu)", budget: 14000 },
+    { nombre: "Polinesia Francesa (Bora Bora)", budget: 120000 },
+    { nombre: "Reino Unido (Londres)", budget: 55000 },
+    { nombre: "República Dominicana (Punta Cana)", budget: 18000 },
+    { nombre: "Suiza (Zúrich, Alpes)", budget: 65000 },
+    { nombre: "Tailandia (Bangkok, Phuket)", budget: 38000 },
+    { nombre: "Turquía (Estambul, Capadocia)", budget: 40000 }
+];
+
+document.addEventListener("DOMContentLoaded", () => {
+    const listEl = document.getElementById('destinosDataList');
+    if (listEl) {
+        PRESUPUESTOS_DESTINOS_GLOBALES.forEach(dest => {
+            const opt = document.createElement('option');
+            opt.value = dest.nombre;
+            listEl.appendChild(opt);
+        });
+    }
+});
+
+window.sugerirPresupuestoBuscador = function(valTyped) {
+    const inputViaje = document.getElementById('viajeObjetivo');
+    if (!inputViaje || !valTyped) return;
+    
+    // Buscar si coinciden exactamente de la lista
+    let match = PRESUPUESTOS_DESTINOS_GLOBALES.find(d => d.nombre.toLowerCase() === valTyped.toLowerCase());
+    
+    // Fallback si vino desde OSM Nominatim (ej: "Monterrey, México")
+    if (!match && valTyped.includes(',')) {
+        // Asignamos un presupuesto dinámico estándar basado en lógica de hashes pseudo-random estática
+        let charSum = 0;
+        for (let i = 0; i < valTyped.length; i++) charSum += valTyped.charCodeAt(i);
+        let budgetBase = 10000 + (charSum * 50) + (valTyped.length * 300);
+        // Redondear a centenas (ej 15300)
+        budgetBase = Math.ceil(budgetBase / 100) * 100;
+        match = { budget: budgetBase };
+    }
+
+    if (match) {
+        inputViaje.value = match.budget;
+        // Flash visual para atención inmediata
+        inputViaje.style.transition = "transform 0.1s linear";
+        inputViaje.style.transform = "scale(1.05)";
+        inputViaje.style.backgroundColor = "#ffc107"; // highlight de bootstrap
+        setTimeout(() => {
+            inputViaje.style.transform = "scale(1)";
+            inputViaje.style.backgroundColor = ""; 
+        }, 300);
+        
+        // Disparar cálculos visualmente si procede
+        if (document.getElementById('ingresosMensuales').value && window.calcularDistribucion) {
+            window.calcularDistribucion();
+        }
+    }
+};
+
+/* =========================================================================
+   MÓDULO UNIFICADO: BUSCADOR MUNDIAL (INTEGRACIÓN OPENSTREETMAP - NOMINATIM)
+   Aplica a inputs .global-search-input (Dash, Guía, Constructor)
+========================================================================= */
+let globalSearchTimeout = null;
+function setupGlobalAutocomplete() {
+    const inputs = document.querySelectorAll('.global-search-input');
+    inputs.forEach(input => {
+        let datalistId = input.getAttribute('list');
+        if (!datalistId) {
+            datalistId = input.id + '_datalist';
+            input.setAttribute('list', datalistId);
+            const dl = document.createElement('datalist');
+            dl.id = datalistId;
+            input.parentNode.appendChild(dl);
+        }
+
+        input.addEventListener('input', (e) => {
+            const query = e.target.value.trim();
+            if (query.length < 3) return;
+            
+            // Revisa si es una selección final del autocompletador (está limpia y mapeada)
+            if (query.includes(',')) return;
+
+            clearTimeout(globalSearchTimeout);
+            globalSearchTimeout = setTimeout(async () => {
+                try {
+                    // Carga visual temporal al DOM input derecho opcionalmente si hiciera falta
+                    const call = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&accept-language=es,en&limit=8`);
+                    const data = await call.json();
+                    
+                    const dl = document.getElementById(datalistId);
+                    dl.innerHTML = '';
+                    
+                    let arrMap = new Set();
+                    data.forEach(item => {
+                        let parts = item.display_name.split(', ');
+                        let name = parts[0];
+                        let country = parts[parts.length - 1];
+                        let formatted = `${name}, ${country}`;
+                        
+                        if(!arrMap.has(formatted)) {
+                            const opt = document.createElement('option');
+                            opt.value = formatted;
+                            dl.appendChild(opt);
+                            arrMap.add(formatted);
+                        }
+                    });
+                } catch(err) {
+                    console.warn("Límite APi o desconexión Global de Mapa:", err);
+                }
+            }, 600); // Demora 600ms para cuidar bloqueos de Rate Limit OSM
+        });
+    });
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+    // Al arrancar, anexar el motor universal de listado
+    setupGlobalAutocomplete();
+});
+
+window.exportarDashboardPDF = function() {
+    const btnPDF = document.getElementById('btnExportarDashboardPDF');
+    if (btnPDF) {
+        btnPDF.disabled = true;
+        btnPDF.innerHTML = '<i class="bi bi-hourglass-split me-2"></i>Generando...';
+    }
+
+    const captureEl = document.getElementById('dashboardCaptureZone');
+    if (!captureEl) return;
+
+    // PATCH 1: Quitar fondos problemáticos temporales
+    const cards = captureEl.querySelectorAll('.card-body');
+    const originalBg = [];
+    cards.forEach((c, i) => {
+        originalBg[i] = c.style.backgroundImage;
+        c.style.backgroundImage = 'none'; 
+    });
+
+    // PATCH 2: Sombras pesadas
+    const allNodes = captureEl.querySelectorAll('*');
+    const originalShadows = [];
+    allNodes.forEach((node, i) => {
+        originalShadows[i] = node.style.boxShadow;
+        if(node.style.boxShadow) node.style.boxShadow = 'none'; 
+    });
+
+    // PATCH 3: Prevenir Congelamiento por Canvas (Convertiendo Chart a Img 2D)
+    const canvas = captureEl.querySelector('canvas');
+    let imgFallback;
+    if (canvas) {
+        imgFallback = document.createElement('img');
+        imgFallback.src = canvas.toDataURL("image/png");
+        imgFallback.style.width = canvas.style.width || '100%';
+        imgFallback.style.height = canvas.style.height || 'auto';
+        imgFallback.className = canvas.className;
+        canvas.parentNode.insertBefore(imgFallback, canvas);
+        canvas.parentNode.removeChild(canvas); // Extraer nodo físicamente para evitar lock
+    }
+
+    const opciones = {
+        margin:       [10, 10, 10, 10],
+        filename:     `TravelWishly_Dashboard_Visual_${new Date().getFullYear()}.pdf`,
+        image:        { type: 'jpeg', quality: 1.0 },
+        html2canvas:  { scale: 2, useCORS: true, logging: false, windowWidth: 1200 },
+        jsPDF:        { unit: 'mm', format: 'a3', orientation: 'landscape' }
+    };
+
+    html2pdf().set(opciones).from(captureEl).save().then(() => {
+        if (canvas) { imgFallback.parentNode.insertBefore(canvas, imgFallback); imgFallback.remove(); canvas.style.display = 'block'; }
+        cards.forEach((c, i) => { c.style.backgroundImage = originalBg[i]; });
+        allNodes.forEach((node, i) => { if (originalShadows[i]) node.style.boxShadow = originalShadows[i]; });
+        if (btnPDF) {
+            btnPDF.disabled = false;
+            btnPDF.innerHTML = '<i class="bi bi-file-earmark-pdf-fill me-2"></i>Exportar PDF';
+        }
+    }).catch(err => {
+        if (canvas) { imgFallback.parentNode.insertBefore(canvas, imgFallback); imgFallback.remove(); canvas.style.display = 'block'; }
+        cards.forEach((c, i) => { c.style.backgroundImage = originalBg[i]; });
+        allNodes.forEach((node, i) => { if (originalShadows[i]) node.style.boxShadow = originalShadows[i]; });
+        console.error("PDF generation error: ", err);
+        if (btnPDF) {
+            btnPDF.disabled = false;
+            btnPDF.innerHTML = '<i class="bi bi-file-earmark-pdf-fill me-2"></i>Exportar PDF';
+        }
+    });
+};
 
 /* =========================================================================
    MÓDULO: EXPORTAR PDF DEL CONSTRUCTOR
@@ -517,77 +912,42 @@ function exportarReportePDF() {
         btnPDF.innerHTML = '<i class="bi bi-hourglass-split me-2"></i>Generando...';
     }
 
-    // 1. Fecha actual
-    const fecha = new Date().toLocaleDateString('es-MX', { year: 'numeric', month: 'long', day: 'numeric' });
-    const elFecha = document.getElementById('pdfFecha');
-    if (elFecha) elFecha.innerText = `Generado: ${fecha}`;
+    const captureEl = document.getElementById('constructorCaptureZone');
+    if (!captureEl) { console.error('No se encontró #constructorCaptureZone'); return; }
 
-    // 2. Lista mochila
-    const items = [
-        { id: 'checkPasaporte', label: '🛂 Pasaporte Mexicano 10 Años', valor: '$3,940 MXN' },
-        { id: 'checkSeguro',    label: '🏥 Seguro Médico de Viaje',      valor: '$1,200 MXN' },
-        { id: 'checkVisa',     label: '🗂️ Trámite de Visa',              valor: '$3,400 MXN' },
-        { id: 'checkMaleta',   label: '🧳 Maleta Documentada Extra',     valor: '$900 MXN' },
-    ];
-
-    const seleccionados = items.filter(it => {
-        const el = document.getElementById(it.id);
-        return el && el.checked;
+    const cards = captureEl.querySelectorAll('.card-body');
+    const originalBg = [];
+    cards.forEach((c, i) => {
+        originalBg[i] = c.style.backgroundImage;
+        c.style.backgroundImage = 'none';
     });
 
-    const listaPDF = document.getElementById('pdfListaMochila');
-    if (listaPDF) {
-        if (seleccionados.length === 0) {
-            listaPDF.innerHTML = '<p style="color: #888; font-style: italic;">Ningún preparativo seleccionado.</p>';
-        } else {
-            listaPDF.innerHTML = seleccionados.map(it =>
-                `<div style="display:flex; justify-content: space-between; border-bottom: 1px solid #ddd; padding: 6px 0;">
-                    <span>${it.label}</span>
-                    <strong>${it.valor}</strong>
-                </div>`
-            ).join('');
-        }
-    }
-
-    // 3. Total mochila
-    const totalText = document.getElementById('totalMochila');
-    const pdfTotalEl = document.getElementById('pdfTotal');
-    if (pdfTotalEl && totalText) pdfTotalEl.innerText = totalText.innerText;
-
-    // 4. Destino recomendado
-    const tituloEl = document.getElementById('recomendacionTitulo');
-    const descEl   = document.getElementById('recomendacionDesc');
-    const pdfDest  = document.getElementById('pdfDestino');
-    const pdfDescEl = document.getElementById('pdfDestinoDesc');
-    if (pdfDest && tituloEl) pdfDest.innerText = tituloEl.innerText !== '—' ? tituloEl.innerText : 'Sin selección de interés.';
-    if (pdfDescEl && descEl) pdfDescEl.innerText = descEl.innerText !== '—' ? descEl.innerText : '';
-
-    // 5. Mostrar temporalmente el div oculto y generar
-    const reporteEl = document.getElementById('reportePDF');
-    if (!reporteEl) { console.error('No se encontró #reportePDF'); return; }
-
-    // Sacarlo del escondite momentaneamente para captura
-    const originalStyle = reporteEl.style.cssText;
-    reporteEl.style.position = 'fixed';
-    reporteEl.style.left = '-9999px';
-    reporteEl.style.top = '0';
+    const allNodes = captureEl.querySelectorAll('*');
+    const originalShadows = [];
+    allNodes.forEach((node, i) => {
+        originalShadows[i] = node.style.boxShadow;
+        if(node.style.boxShadow) node.style.boxShadow = 'none'; 
+    });
 
     const opciones = {
         margin:       [10, 10, 10, 10],
-        filename:     `TravelWishly_Reporte_${new Date().getFullYear()}.pdf`,
-        image:        { type: 'jpeg', quality: 0.98 },
-        html2canvas:  { scale: 2, useCORS: true },
-        jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+        filename:     `TravelWishly_Constructor_Visual_${new Date().getFullYear()}.pdf`,
+        image:        { type: 'jpeg', quality: 1.0 },
+        html2canvas:  { scale: 2, useCORS: true, logging: false, windowWidth: 1200 },
+        jsPDF:        { unit: 'mm', format: 'a3', orientation: 'portrait' },
+        pagebreak:    { mode: ['css', 'legacy'], avoid: ['.card', '.packing-item', '.d-flex', '.col-md-6', 'h5', 'h6'] }
     };
 
-    html2pdf().set(opciones).from(reporteEl).save().then(() => {
-        // Restaurar estado original
-        reporteEl.style.cssText = originalStyle;
+    html2pdf().set(opciones).from(captureEl).save().then(() => {
+        cards.forEach((c, i) => { c.style.backgroundImage = originalBg[i]; });
+        allNodes.forEach((node, i) => { if (originalShadows[i]) node.style.boxShadow = originalShadows[i]; });
         if (btnPDF) {
             btnPDF.disabled = false;
             btnPDF.innerHTML = '<i class="bi bi-file-earmark-pdf-fill me-2"></i>Exportar PDF';
         }
     }).catch(err => {
+        cards.forEach((c, i) => { c.style.backgroundImage = originalBg[i]; });
+        allNodes.forEach((node, i) => { if (originalShadows[i]) node.style.boxShadow = originalShadows[i]; });
         console.error('Error al generar PDF:', err);
         if (btnPDF) {
             btnPDF.disabled = false;
@@ -654,19 +1014,106 @@ function actualizarClimaGlobal() {
 
 let travelTimeline = [];
 
-/** @function agregarEventoTimeline Permite añadir pasos al itinerario visual */
-function agregarEventoTimeline() {
-    const input = document.getElementById('timelineInput');
+/** @function generarRutaInteligente Construye la ruta paso a paso detectando distancias */
+window.generarRutaInteligente = function() {
+    const origenInput = document.getElementById('rutaOrigen');
+    const destinoInput = document.getElementById('rutaDestino');
+    const duracionInput = document.getElementById('rutaDuracion');
     const container = document.getElementById('timelineContainer');
     
-    if (!input || !container || input.value.trim() === "") return;
+    if (!origenInput || !destinoInput || !duracionInput || !container) return;
 
-    const eventText = input.value.trim();
-    travelTimeline.push(eventText);
-    input.value = "";
+    const origen = origenInput.value.trim();
+    const destino = destinoInput.value.trim();
+    let duracion = parseInt(duracionInput.value.trim(), 10);
 
-    renderizarTimeline();
-}
+    if (!origen || !destino || isNaN(duracion) || duracion < 1) {
+        container.innerHTML = '<p class="text-danger fw-bold text-center py-4"><i class="bi bi-exclamation-triangle-fill me-2 fs-4 d-block mb-3"></i>Datos insuficientes. Ingresa un Origen, Destino y Días válidos.</p>';
+        return;
+    }
+
+    if (duracion > 90) duracion = 90;
+
+    container.innerHTML = '<div class="text-center py-5"><div class="spinner-border text-dark" role="status"></div><p class="fw-bold mt-3 text-uppercase">Trazando Ruta Logística...</p></div>';
+
+    // Minisleep to feel like AI processing
+    setTimeout(() => {
+        travelTimeline = [];
+
+        // Lógica de heuristicas simple (Detectar País)
+        const paisOrigen = origen.includes(',') ? origen.split(',')[origen.split(',').length-1].trim().toLowerCase() : origen.toLowerCase();
+        const paisDestino = destino.includes(',') ? destino.split(',')[destino.split(',').length-1].trim().toLowerCase() : destino.toLowerCase();
+        const ciudadDestino = destino.includes(',') ? destino.split(',')[0].trim() : destino;
+        
+        // Arrays de zonas
+        const asiapacific = ['japón', 'japon', 'china', 'corea', 'tailandia', 'indonesia', 'vietnam', 'australia', 'nueva zelanda', 'india', 'bali'];
+        const europa = ['españa', 'francia', 'alemania', 'italia', 'reino unido', 'inglaterra', 'holanda', 'países bajos', 'suiza', 'turquía', 'portugal', 'grecia', 'roma', 'paris', 'madrid'];
+        const sudamerica = ['argentina', 'brasil', 'chile', 'perú', 'peru', 'colombia', 'ecuador', 'bolivia', 'uruguay', 'paraguay'];
+        const centroamerica = ['costa rica', 'guatemala', 'nicaragua', 'honduras', 'el salvador', 'panamá', 'panama', 'belice'];
+        
+        travelTimeline.push(`🛫 Salida programada desde <strong class="text-dark">${origen}</strong>`);
+
+        // Detonadores de Layovers (Simulación Geográfica)
+        let textoVueloIda = "";
+        let textoVueloRegreso = "";
+
+        if (paisOrigen === paisDestino) {
+            // Vuelo Nacional
+            textoVueloIda = `✈️ Vuelo Directo (o conexión opcional en capitales/hubs locales de no haber ruta directa)`;
+            textoVueloRegreso = `🔄 Vuelo de retorno directo a casa (opción a conexión)`;
+        } else {
+            let opcionesEscala = "";
+            if (centroamerica.some(z => paisDestino.includes(z) || destino.toLowerCase().includes(z))) {
+                opcionesEscala = paisOrigen.includes('méxico') || paisOrigen.includes('mexico') ? "Cancún (CUN) o Ciudad de México (MEX)" : "Tijuana (TIJ) o Panamá (PTY)";
+            } else if (asiapacific.some(z => paisDestino.includes(z) || destino.toLowerCase().includes(z))) {
+                opcionesEscala = "Los Ángeles (LAX) o San Francisco (SFO)";
+            } else if (europa.some(z => paisDestino.includes(z) || destino.toLowerCase().includes(z))) {
+                opcionesEscala = "Madrid (MAD), Frankfurt (FRA) o París (CDG)";
+            } else if (sudamerica.some(z => paisDestino.includes(z) || destino.toLowerCase().includes(z))) {
+                opcionesEscala = "Bogotá (BOG) o Lima (LIM)";
+            } else {
+                opcionesEscala = "Aeropuertos Hub Centrales Internacionales";
+            }
+            textoVueloIda = `✈️ Vuelo Directo (de existir ruta) o 🔄 Conexión sugerida en <strong class="text-primary">${opcionesEscala}</strong> (~3h-5h de escala)`;
+            textoVueloRegreso = `🔄 Vuelo de retorno cruzando con escala inversa en <strong class="text-primary">${opcionesEscala}</strong> (o Vuelo Directo)`;
+        }
+
+        travelTimeline.push(textoVueloIda);
+
+        const actividadesGenericas = [
+            `Visita a los principales atractivos culturales e históricos de la ciudad.`,
+            `Día de tour gastronómico — cata de platillos típicos en mercados o restaurantes icónicos.`,
+            `Excursión de medio día a áreas naturales, ruinas o atracciones relevantes cercanas.`,
+            `Día enfocado en arte y recreación: monumentos, galerías o museos destacados.`,
+            `Día libre para exploración local, fotografía de calles y relajación sin esquema.`,
+            `Tarde de compras (souvenirs) y recorrido por el distrito comercial principal.`,
+            `Exploración intensa de barrios emblemáticos y detalles de su arquitectura típica.`,
+            `Día de inmersión total en la cultura local (talleres, caminatas de barrio, eventos folclóricos).`
+        ];
+
+        // Generar Itinerario Diario
+        for (let i = 1; i <= duracion; i++) {
+            if (i === 1) {
+                travelTimeline.push(`📍 <strong class="text-success">Día ${i}:</strong> Arribo, Check-in en el hotel y caminata de reconocimiento por ${ciudadDestino}.`);
+            } else if (i === duracion && duracion > 1) {
+                travelTimeline.push(`🛫 <strong class="text-danger">Día ${i}:</strong> Últimas compras de viaje, cierre logístico y traslado al aeropuerto.`);
+            } else {
+                // Seleccionar actividad aleatoria del pool pero predecible con seed falso
+                let randomAct = actividadesGenericas[(ciudadDestino.length + i) % actividadesGenericas.length];
+                travelTimeline.push(`📍 <strong>Día ${i}:</strong> ${randomAct}`);
+            }
+        }
+        
+        // Retorno
+        travelTimeline.push(textoVueloRegreso);
+        travelTimeline.push(`🏠 Regreso y llegada segura a <strong class="text-dark">${origen}</strong>. ¡Fin de la ruta!`);
+
+        renderizarTimeline();
+        
+        // Auto-Vincula al Smart Packing List
+        if (window.cargarPackingList) window.cargarPackingList(destino);
+    }, 600);
+};
 
 /** @function renderizarTimeline Dibuja los nodos del itinerario */
 function renderizarTimeline() {
@@ -679,22 +1126,30 @@ function renderizarTimeline() {
     }
 
     container.innerHTML = travelTimeline.map((step, index) => `
-        <div class="d-flex align-items-start mb-4 position-relative">
+        <div class="d-flex align-items-start mb-4 position-relative" style="animation: fadeSlideIn 0.4s ease-out forwards; opacity:0; animation-delay: ${index * 0.15}s;">
             <div class="bg-dark text-white rounded-circle d-flex align-items-center justify-content-center fw-bold" 
-                 style="width: 32px; height: 32px; min-width: 32px; z-index: 2; border: 2px solid #000;">
+                 style="width: 32px; height: 32px; min-width: 32px; z-index: 2; border: 2px solid #000; box-shadow: 0 0 0 4px #fff;">
                 ${index + 1}
             </div>
-            <div class="ms-3 p-3 border border-dark border-3 bg-white w-100 hover-lift" style="box-shadow: 4px 4px 0 0 #000;">
+            <div class="ms-3 p-3 border border-dark border-3 bg-light w-100" style="box-shadow: 4px 4px 0 0 #000;">
                 <div class="d-flex justify-content-between align-items-center">
-                    <span class="fw-black text-uppercase small" style="letter-spacing: 0.5px;">${step}</span>
+                    <span class="fw-bold text-dark" style="font-size:13px; letter-spacing: 0.3px;">${step}</span>
                     <button class="btn btn-sm btn-outline-danger border-0 rounded-0" onclick="eliminarEventoTimeline(${index})">
                         <i class="bi bi-trash"></i>
                     </button>
                 </div>
             </div>
-            ${index < travelTimeline.length - 1 ? '<div class="position-absolute bg-dark" style="width: 3px; height: 100%; left: 14.5px; top: 32px; z-index: 1;"></div>' : ''}
+            ${index < travelTimeline.length - 1 ? '<div class="position-absolute bg-dark" style="width: 2px; height: 100%; left: 14.5px; top: 32px; z-index: 1;"></div>' : ''}
         </div>
     `).join('');
+
+    // Anexamos el keyframe dinámicamente si no existe
+    if (!document.getElementById('timelineAnimCSS')) {
+        const style = document.createElement('style');
+        style.id = 'timelineAnimCSS';
+        style.innerHTML = "@keyframes fadeSlideIn { from { opacity:0; transform: translateY(15px); } to { opacity:1; transform: translateY(0); } }";
+        document.head.appendChild(style);
+    }
 }
 
 
