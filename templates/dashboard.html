@@ -6,14 +6,15 @@
     <h1 class="h2 fw-black text-dark text-uppercase tracking-wider" style="font-weight: 900;"><i
             class="bi bi-graph-up text-dark me-3"></i>Dashboard y Calculadora</h1>
     <div class="btn-toolbar mb-2 mb-md-0">
-        <div class="btn-group me-2">
-            <button type="button" class="btn btn-sm btn-outline-dark rounded-0 fw-bold border-2 text-uppercase">Exportar
-                PDF <i class="bi bi-file-earmark-pdf"></i></button>
-        </div>
+        <button type="button" id="btnExportarDashboardPDF" class="btn btn-dark fw-bold px-4 rounded-0 border-2 text-uppercase"
+            style="box-shadow: 3px 3px 0 0 #555;" onclick="if(window.exportarDashboardPDF) window.exportarDashboardPDF()">
+            <i class="bi bi-file-earmark-pdf-fill me-2"></i>Exportar PDF
+        </button>
     </div>
 </div>
 
-<div class="row g-4">
+<div id="dashboardCaptureZone" class="overflow-hidden" style="padding: 10px; background: white;">
+<div class="row g-4 m-0">
     <!-- Módulo 1: Calculadora Interactiva de Presupuesto -->
     <div class="col-lg-5">
         <div class="card border-dark border-3 rounded-0 shadow-none hover-lift h-100"
@@ -24,6 +25,16 @@
             </div>
             <div class="card-body p-4 bg-white">
                 <form id="calculatorForm" class="needs-validation" novalidate>
+                    <div class="mb-4">
+                        <label class="form-label fw-bold text-dark text-uppercase">Destino Sugerido (Buscador Inteligente)</label>
+                        <input type="text" id="destinoSugerido" list="destinosDataList" class="form-control global-search-input border-dark border-3 rounded-0 fw-bold text-dark bg-white" 
+                               placeholder="EJ: Argentina, Alemania, Japón..." autocomplete="off"
+                               style="box-shadow: inset 4px 4px 0 0 rgba(0,0,0,0.1);"
+                               oninput="if(window.sugerirPresupuestoBuscador) window.sugerirPresupuestoBuscador(this.value)">
+                        <datalist id="destinosDataList">
+                            <!-- Popularizado automáticamente por js -->
+                        </datalist>
+                    </div>
                     <div class="mb-4">
                         <label for="ingresosMensuales" class="form-label fw-bold text-dark text-uppercase">Tus Ingresos
                             Mensuales ($ MXN)</label>
@@ -169,6 +180,7 @@
         </div>
     </div>
 </div>
+</div> <!-- Final dashboardCapture zone -->
 
 <!-- Módulos Extra: Conversor de Divisas y Clima en Tiempo Real -->
 <div class="row g-4 mt-5">
@@ -245,6 +257,34 @@
             </div>
         </div>
     </div>
+</div>
+
+<!-- ===== Sección Oculta para el PDF del Dashboard ===== -->
+<div id="reporteDashboardPDF"
+    style="position: absolute; left: -9999px; top: 0; width: 800px; background: white; padding: 40px; font-family: 'Segoe UI', sans-serif;"
+    aria-hidden="true">
+    <div
+        style="border-bottom: 4px solid black; margin-bottom: 20px; padding-bottom: 16px; display: flex; justify-content: space-between; align-items: center;">
+        <div>
+            <h1 style="margin: 0; font-size: 26px; font-weight: 900; text-transform: uppercase; letter-spacing: 2px;">✈ TravelWishly</h1>
+            <p style="margin: 4px 0 0; font-size: 12px; text-transform: uppercase; font-weight: bold; color: #555;">Análisis de Presupuesto Automático</p>
+        </div>
+        <p style="font-size: 11px; color: #888; text-align: right;" id="pdfDashFecha">Generado: —</p>
+    </div>
+    
+    <div style="background: #f8f9fa; border: 2px solid #000; padding: 20px; margin-bottom: 20px;">
+        <h3 style="font-size: 14px; text-transform: uppercase; margin-bottom: 15px; border-bottom: 1px solid #ccc; padding-bottom: 8px;">Datos Financieros Proyectados</h3>
+        <p><strong>Ingresos Mensuales:</strong> <span id="pdfDashIngresos">—</span></p>
+        <p><strong>Meta del Viaje:</strong> <span id="pdfDashMeta">—</span></p>
+        <p><strong>Tiempo Estimado:</strong> <span id="pdfDashTiempo">—</span></p>
+    </div>
+
+    <div style="background: #000; color: #fff; padding: 15px 20px;">
+        <h3 style="font-size: 14px; text-transform: uppercase; margin: 0; margin-bottom: 8px;">Recomendación TravelWishly</h3>
+        <p id="pdfDashAsesor" style="margin: 0; font-size: 13px;">—</p>
+    </div>
+    
+    <p style="font-size: 10px; color: #aaa; margin-top: 40px; text-align: center; border-top: 1px solid #ddd; padding-top: 12px;">© 2026 TravelWishly — Planificador Inteligente de Viajes</p>
 </div>
 
 <script>

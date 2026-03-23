@@ -14,15 +14,10 @@
         <div class="input-group p-0 bg-white border-dark border-3 rounded-0" style="box-shadow: 6px 6px 0 0 #000;">
             <span class="input-group-text bg-dark text-white border-0 rounded-0 px-4"><i
                     class="bi bi-geo-alt-fill fs-5"></i></span>
-            <select class="form-select border-0 px-3 py-3 fw-bold text-dark rounded-0 text-uppercase"
-                id="destinosDropdown" aria-label="Elegir Destino Turístico"
-                onchange="if(window.cargarGuiaSegura) window.cargarGuiaSegura()">
-                <option selected disabled>ELIGE TU PRÓXIMO DESTINO SOÑADO...</option>
-                <option value="tokio">TOKIO, JAPÓN</option>
-                <option value="buenos_aires">BUENOS AIRES, ARGENTINA</option>
-                <option value="roma">ROMA, ITALIA</option>
-                <option value="estambul">ESTAMBUL, TURQUÍA</option>
-            </select>
+            <input type="text" list="guiaDestinosList" class="form-control global-search-input border-0 px-3 py-3 fw-bold text-dark rounded-0 text-uppercase"
+                id="destinosDropdown" placeholder="ESCRIBE TU PRÓXIMO DESTINO SOÑADO... EJ: TOKIO" autocomplete="off"
+                oninput="if(window.cargarGuiaSegura) window.cargarGuiaSegura()">
+            <datalist id="guiaDestinosList"></datalist>
         </div>
     </div>
 </div>

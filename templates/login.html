@@ -25,7 +25,7 @@
                         <label for="password"
                             class="form-label d-flex justify-content-between text-dark fw-bold text-uppercase">
                             <span>Contraseña</span>
-                            <a href="#"
+                            <a href="{{ url_for('reset_password') }}"
                                 class="text-dark border-bottom border-dark border-2 text-decoration-none small">¿Olvidaste
                                 tu contraseña?</a>
                         </label>
@@ -34,13 +34,16 @@
                             id="password" name="password" placeholder="••••••••" required>
                     </div>
                     <div class="mb-4 form-check">
-                        <input type="checkbox" class="form-check-input border-dark bg-white rounded-0" id="rememberMe"
-                            style="border-width: 2px;">
-                        <label class="form-check-label text-dark fw-bold small text-uppercase" for="rememberMe">Mantener
+                        <input type="checkbox" class="form-check-input border-dark rounded-0" id="rememberMe" name="rememberMe"
+                            style="border-width: 2px; cursor: pointer;">
+                        <label class="form-check-label text-dark fw-bold small text-uppercase" for="rememberMe" style="cursor: pointer;">Mantener
                             sesión iniciada</label>
                     </div>
                     <button type="submit"
-                        class="btn btn-outline-dark w-100 py-3 fw-bold rounded-0 text-uppercase tracking-wider bg-white">Entrar
+                        class="btn btn-dark w-100 py-3 fw-bold rounded-0 text-uppercase tracking-wider hover-lift border-2 border-dark"
+                        style="transition: all 0.3s ease; box-shadow: 4px 4px 0 0 #000;"
+                        onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='6px 6px 0 0 #000';"
+                        onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='4px 4px 0 0 #000';">Entrar
                         al Tablero</button>
                     <div class="text-center mt-4 fw-bold small text-uppercase text-dark">
                         ¿Nuevo explorador? <a href="{{ url_for('registro') }}"

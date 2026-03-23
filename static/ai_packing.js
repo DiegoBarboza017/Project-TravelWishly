@@ -3,210 +3,7 @@
  * Módulo de experiencia inmersiva para el Constructor de Viajes
  */
 
-/* =========================================================================
-   DATOS: AI ROUTE GENERATOR
-========================================================================= */
-const AI_RUTAS = {
-    tokio: {
-        pasos: [
-            { tipo: "cyan",   texto: "[INIT] Analizando rutas óptimas para Tokio, Japón..." },
-            { tipo: "gray",   texto: "[DATA] Consultando base de datos de vuelos CDMX → NRT..." },
-            { tipo: "green",  texto: "[OK]   Vuelo: CDMX (MEX) → Tokio Narita (NRT) — ~14h con escala en LA" },
-            { tipo: "gray",   texto: "[DATA] Calculando transporte interno..." },
-            { tipo: "green",  texto: "[OK]   Adquirir IC Card (Suica) al llegar — cubre metro y tren completo" },
-            { tipo: "yellow", texto: "[DAY1] Llegada a Narita → Hotel en Shinjuku (zona céntrica recomendada)" },
-            { tipo: "white",  texto: "[DAY2] Templo Senso-ji en Asakusa → Harajuku → Shibuya Crossing de noche" },
-            { tipo: "white",  texto: "[DAY3] Akihabara (tech/anime) → Mercado Tsukiji → Odaiba" },
-            { tipo: "white",  texto: "[DAY4] Excursión a Nikko UNESCO — tren desde Asakusa, ~2h" },
-            { tipo: "white",  texto: "[DAY5] Tokyo DisneySea o Teamlab Planets (reservar 3 semanas antes)" },
-            { tipo: "white",  texto: "[DAY6] Día libre en Shinjuku → Kabukicho de noche con precaución" },
-            { tipo: "white",  texto: "[DAY7] Shinkansen a Kyoto → Fushimi Inari → Gion District" },
-            { tipo: "white",  texto: "[DAY8] Osaka → Dotonbori street food → Osaka Castle" },
-            { tipo: "white",  texto: "[DAY9] Regreso a Tokio → Compras en Shibuya 109" },
-            { tipo: "white",  texto: "[DAY10] Salida desde NRT → MEX" },
-            { tipo: "orange", texto: "[WARN] Llevar Yenes en efectivo — muchos negocios no aceptan tarjeta" },
-            { tipo: "orange", texto: "[WARN] Evita hablar en voz alta en transporte público (norma cultural)" },
-            { tipo: "green",  texto: "[DONE] Ruta generada correctamente. Costo estimado: $35,000–$55,000 MXN" },
-        ]
-    },
-    paris: {
-        pasos: [
-            { tipo: "cyan",   texto: "[INIT] Analizando rutas óptimas para París, Francia..." },
-            { tipo: "gray",   texto: "[DATA] Consultando vuelos CDMX → CDG..." },
-            { tipo: "green",  texto: "[OK]   Vuelo: CDMX → París CDG — ~12h directos (Air France)" },
-            { tipo: "green",  texto: "[OK]   Paris Visite Pass (Metro + RER) — movilidad total" },
-            { tipo: "yellow", texto: "[DAY1] Llegada CDG → Hotel en Marais o Saint-Germain-des-Prés" },
-            { tipo: "white",  texto: "[DAY2] Torre Eiffel (reservar online) → Champs-Élysées → Arc de Triomphe" },
-            { tipo: "white",  texto: "[DAY3] Louvre Museum (mínimo 3h) → Jardín de las Tullerías" },
-            { tipo: "white",  texto: "[DAY4] Montmartre → Sacré-Cœur → Moulin Rouge de noche" },
-            { tipo: "white",  texto: "[DAY5] Versalles todo el día — tren RER C desde Champ de Mars" },
-            { tipo: "white",  texto: "[DAY6] Musée d'Orsay → Seine boat tour → Le Marais artístico" },
-            { tipo: "white",  texto: "[DAY7] Gastronomía: mercados, macarons Pierre Hermé, wine tasting" },
-            { tipo: "white",  texto: "[DAY8] Compras Passeig de Gràcia → Aeropuerto CDG → Regreso" },
-            { tipo: "orange", texto: "[WARN] Alta incidencia de carterismo en Montmartre y Torre Eiffel" },
-            { tipo: "orange", texto: "[WARN] Restaurantes turísticos cobran 3x — busca 'boulangeries' locales" },
-            { tipo: "green",  texto: "[DONE] Ruta generada. Costo estimado: $45,000–$70,000 MXN" },
-        ]
-    },
-    cancun: {
-        pasos: [
-            { tipo: "cyan",   texto: "[INIT] Analizando rutas para Cancún, México..." },
-            { tipo: "green",  texto: "[OK]   Vuelo: CDMX (MEX) → Cancún (CUN) — ~2.5h directos" },
-            { tipo: "green",  texto: "[OK]   Transporte: bus R1/R2 desde aeropuerto ($0.60 USD) o transfer grupal" },
-            { tipo: "yellow", texto: "[DAY1] Llegada → Check-in resort All-Inclusive → Playa Delfines" },
-            { tipo: "white",  texto: "[DAY2] Chichén Itzá tour (salida 7am) → Cenote Ik Kil" },
-            { tipo: "white",  texto: "[DAY3] Isla Mujeres en catamarán → snorkel en arrecife de coral" },
-            { tipo: "white",  texto: "[DAY4] Tulum ruins + Cenote Gran Cenote + Playa Paraíso" },
-            { tipo: "white",  texto: "[DAY5] Xcaret Park (con 15% descuento online)" },
-            { tipo: "white",  texto: "[DAY6] Día libre Zona Hotelera → Mercado 28 souvenirs" },
-            { tipo: "white",  texto: "[DAY7] Checkout → Aeropuerto → Regreso CDMX" },
-            { tipo: "orange", texto: "[WARN] Usar protector solar BIODEGRADABLE (obligatorio en cenotes)" },
-            { tipo: "orange", texto: "[WARN] Temporada de huracanes: jun–nov. Mejor época: dic–abril" },
-            { tipo: "green",  texto: "[DONE] Ruta generada. All-Inclusive estimado: $8,000–$18,000 MXN" },
-        ]
-    },
-    new_york: {
-        pasos: [
-            { tipo: "cyan",   texto: "[INIT] Analizando rutas para Nueva York, EE.UU..." },
-            { tipo: "orange", texto: "[WARN] Visa B1/B2 requerida — gestionarla con 3+ meses de anticipación" },
-            { tipo: "green",  texto: "[OK]   Vuelo: CDMX (MEX) → JFK — ~5h directos (Aeroméxico / United)" },
-            { tipo: "green",  texto: "[OK]   Metro: MetroCard semanal $34 USD cubre toda la ciudad" },
-            { tipo: "yellow", texto: "[DAY1] Llegada JFK → Hotel en Midtown Manhattan o Brooklyn" },
-            { tipo: "white",  texto: "[DAY2] Times Square → Central Park → The Metropolitan Museum" },
-            { tipo: "white",  texto: "[DAY3] Estatua de la Libertad + Ellis Island (ferry con reserva)" },
-            { tipo: "white",  texto: "[DAY4] Brooklyn Bridge → DUMBO → High Line → Chelsea Market" },
-            { tipo: "white",  texto: "[DAY5] One World Observatory → Wall St → 9/11 Memorial" },
-            { tipo: "white",  texto: "[DAY6] Coney Island → Brooklyn Beach → Little Italy" },
-            { tipo: "white",  texto: "[DAY7] MOMA → 5th Avenue → Espectáculo de Broadway ($50–200 USD)" },
-            { tipo: "white",  texto: "[DAY8] Woodbury Commons outlets → Aeropuerto JFK → Regreso" },
-            { tipo: "orange", texto: "[WARN] Propinas obligatorias: 18–22% en restaurantes" },
-            { tipo: "green",  texto: "[DONE] Ruta generada. Costo estimado: $40,000–$65,000 MXN" },
-        ]
-    },
-    ciudad_de_mexico: {
-        pasos: [
-            { tipo: "cyan",   texto: "[INIT] Generando ruta premium para Ciudad de México..." },
-            { tipo: "green",  texto: "[OK]   Sin vuelo requerido. Metro CDMX: $5 MXN por viaje" },
-            { tipo: "yellow", texto: "[DAY1] Zócalo → Catedral Metropolitana → Palacio Nacional (murales Diego Rivera)" },
-            { tipo: "white",  texto: "[DAY2] Teotihuacán — salida 7am, Pirámides del Sol y la Luna" },
-            { tipo: "white",  texto: "[DAY3] Coyoacán → Casa de Frida Kahlo → Mercado de Artesanías" },
-            { tipo: "white",  texto: "[DAY4] Polanco → Museo Nacional de Antropología → Bosque Chapultepec" },
-            { tipo: "white",  texto: "[DAY5] Xochimilco en trajinera → Mercado Jamaica → Roma Norte gastronómica" },
-            { tipo: "orange", texto: "[WARN] No usar celular visible en la vía pública" },
-            { tipo: "orange", texto: "[WARN] Usar Uber/DiDi — evitar taxis de calle" },
-            { tipo: "green",  texto: "[DONE] Ruta local generada. Costo estimado: $2,500–$6,000 MXN" },
-        ]
-    },
-    machu_picchu: {
-        pasos: [
-            { tipo: "cyan",   texto: "[INIT] Calculando ruta de alta montaña para Machu Picchu..." },
-            { tipo: "gray",   texto: "[DATA] Altitud destino: 2,430 msnm. Cusco: 3,400 msnm. Iniciando protocolo..." },
-            { tipo: "orange", texto: "[WARN] Obligatorio: 2 noches en Cusco para aclimatación antes de subir" },
-            { tipo: "green",  texto: "[OK]   Vuelo: CDMX → Lima (LIM) → Cusco (CUZ) con escala en Lima" },
-            { tipo: "yellow", texto: "[DAY1-2] Cusco: Aclimatación → Plaza de Armas → Qorikancha Temple" },
-            { tipo: "white",  texto: "[DAY3] Valle Sagrado: Pisac ruins + mercado artesanal + Ollantaytambo" },
-            { tipo: "white",  texto: "[DAY4] Tren PeruRail: Cusco → Aguas Calientes (pueblo base MP)" },
-            { tipo: "white",  texto: "[DAY5] Machu Picchu — entrada obligatoria a las 6am (RESERVAR 3+ MESES antes)" },
-            { tipo: "white",  texto: "[DAY6] Huayna Picchu opcional — solo 400 personas/día (ticket separado)" },
-            { tipo: "white",  texto: "[DAY7] Regreso a Cusco → mercado San Pedro → Pisco Sour experience" },
-            { tipo: "white",  texto: "[DAY8] Vuelo Cusco → Lima → última noche en Miraflores" },
-            { tipo: "white",  texto: "[DAY9] Lima → CDMX. Comprar ají y pisco en aeropuerto" },
-            { tipo: "orange", texto: "[WARN] Entradas a Machu Picchu se agotan — reservar en machupicchu.gob.pe" },
-            { tipo: "green",  texto: "[DONE] Ruta andina generada. Costo estimado: $38,000–$58,000 MXN" },
-        ]
-    },
-    dubai: {
-        pasos: [
-            { tipo: "cyan",   texto: "[INIT] Analizando ruta de lujo para Dubái, EAU..." },
-            { tipo: "green",  texto: "[OK]   Visa: Mexicanos la reciben GRATIS al aterrizar (visa on arrival 30 días)" },
-            { tipo: "green",  texto: "[OK]   Vuelo: CDMX → Dubái (DXB) — escala en Madrid o Frankfurt (~18h)" },
-            { tipo: "yellow", texto: "[DAY1] Llegada DXB → Hotel en Downtown Dubai o Dubai Marina" },
-            { tipo: "white",  texto: "[DAY2] Burj Khalifa (At the Top) → Dubai Mall → Fountain Show" },
-            { tipo: "white",  texto: "[DAY3] Desert Safari → duna bashing → cena beduina bajo las estrellas" },
-            { tipo: "white",  texto: "[DAY4] Palm Jumeirah → Atlantis The Palm → Aquaventure Waterpark" },
-            { tipo: "white",  texto: "[DAY5] Deira Souks (Gold + Spice Souk) → Creek Abra boat → Old Dubai" },
-            { tipo: "white",  texto: "[DAY6] Burj Al Arab → JBR Beach → Dubai Frame" },
-            { tipo: "white",  texto: "[DAY7] Mall of the Emirates → Ski Dubai → Aeropuerto DXB → CDMX" },
-            { tipo: "orange", texto: "[WARN] Vestimenta cubierta en zonas públicas y mezquitas" },
-            { tipo: "orange", texto: "[WARN] Evitar verano (jun–sep): temperaturas superan 45°C. Mejor époa: nov–mar" },
-            { tipo: "green",  texto: "[DONE] Ruta de lujo generada. Costo estimado: $50,000–$90,000 MXN" },
-        ]
-    },
-    barcelona: {
-        pasos: [
-            { tipo: "cyan",   texto: "[INIT] Analizando ruta cultural para Barcelona, España..." },
-            { tipo: "green",  texto: "[OK]   Vuelo: CDMX → Barcelona (BCN) — directo o vía Madrid (~11h)" },
-            { tipo: "green",  texto: "[OK]   Transporte: T-Casual 10 viajes (€12) cubre metro, bus y cercanías" },
-            { tipo: "yellow", texto: "[DAY1] Llegada BCN → Hotel en Gràcia, Eixample o El Born" },
-            { tipo: "white",  texto: "[DAY2] Sagrada Família (reserva skip-the-line obligatoria) → Casa Batlló" },
-            { tipo: "white",  texto: "[DAY3] Barrio Gótico → Las Ramblas → Mercado de La Boqueria" },
-            { tipo: "white",  texto: "[DAY4] Park Güell → Bunkers del Carmel al atardecer" },
-            { tipo: "white",  texto: "[DAY5] Playa Barceloneta → Paella en El Born → Palau de la Música" },
-            { tipo: "white",  texto: "[DAY6] Camp Nou Tour (FCB) → Poblenou → ruta modernista" },
-            { tipo: "white",  texto: "[DAY7] Excursión Montserrat → monasterio → vistas panorámicas" },
-            { tipo: "white",  texto: "[DAY8] Compras Passeig de Gràcia → Aeropuerto BCN → Regreso CDMX" },
-            { tipo: "orange", texto: "[WARN] Barrio Gótico y Las Ramblas: alta incidencia de carterismo — mochila delantera" },
-            { tipo: "green",  texto: "[DONE] Ruta cultural generada. Costo estimado: $35,000–$60,000 MXN" },
-        ]
-    }
-};
-
-let aiAnimacionActiva = false;
-
-/** Lanza la animación de terminal typewriter */
-async function iniciarGeneradorRuta() {
-    const sel = document.getElementById('aiDestinoSelect');
-    if (!sel || !sel.value) { alert('⚠️ Selecciona un destino primero.'); return; }
-    if (aiAnimacionActiva) return;
-
-    const data = AI_RUTAS[sel.value];
-    if (!data) return;
-
-    aiAnimacionActiva = true;
-    const empty  = document.getElementById('aiEmptyState');
-    const output = document.getElementById('aiTerminalOutput');
-    empty.classList.add('d-none');
-    output.classList.remove('d-none');
-    output.innerHTML = '';
-
-    for (const paso of data.pasos) {
-        await escribirLineaTerminal(output, paso.texto, paso.tipo);
-        await esperar(160);
-    }
-    aiAnimacionActiva = false;
-}
-
-/** Escribe una línea carácter a carácter (typewriter) */
-function escribirLineaTerminal(container, texto, tipo) {
-    return new Promise(resolve => {
-        const div = document.createElement('div');
-        div.className = 't-' + tipo;
-        div.style.cssText = 'min-height:1.6em;';
-        container.appendChild(div);
-        container.scrollTop = container.scrollHeight;
-
-        let idx = 0;
-        const timer = setInterval(() => {
-            div.textContent += texto[idx];
-            idx++;
-            container.scrollTop = container.scrollHeight;
-            if (idx >= texto.length) { clearInterval(timer); resolve(); }
-        }, 16);
-    });
-}
-
-function esperar(ms) { return new Promise(r => setTimeout(r, ms)); }
-
-/** Resetea el terminal */
-function limpiarGeneradorRuta() {
-    aiAnimacionActiva = false;
-    const empty  = document.getElementById('aiEmptyState');
-    const output = document.getElementById('aiTerminalOutput');
-    if (empty)  empty.classList.remove('d-none');
-    if (output) { output.classList.add('d-none'); output.innerHTML = ''; }
-    const sel = document.getElementById('aiDestinoSelect');
-    if (sel) sel.value = '';
-}
+/* Fila de Generador de Rutas Obsoleto Eliminado */
 
 /* =========================================================================
    DATOS: SMART PACKING LIST
@@ -394,15 +191,34 @@ const PACKING_DATA = {
     }
 };
 
-/** Renderiza el Smart Packing List */
-function cargarPackingList() {
-    const sel = document.getElementById('packingDestinoSelect');
-    if (!sel || !sel.value) return;
-    const data = PACKING_DATA[sel.value];
+/** Renderiza el Smart Packing List adaptado Semánticamente */
+window.cargarPackingList = function(destinoRawStr = "") {
+    let destinoStr = "";
+    
+    if (typeof destinoRawStr === 'string' && destinoRawStr.trim() !== "") {
+        destinoStr = destinoRawStr.toLowerCase();
+    } else {
+        const d = document.getElementById('rutaDestino');
+        if (d && d.value) destinoStr = d.value.toLowerCase();
+    }
+
+    if (!destinoStr) return;
+
+    // --- Heurística Semántica de Asignación de Maletas ---
+    let tk = "ciudad_de_mexico"; // Default (Urbano templado/casual)
+    if (destinoStr.includes("japón") || destinoStr.includes("japon") || destinoStr.includes("corea") || destinoStr.includes("china")) tk = "tokio";
+    else if (destinoStr.includes("playa") || destinoStr.includes("cancún") || destinoStr.includes("cancun") || destinoStr.includes("miami") || destinoStr.includes("hawaii") || destinoStr.includes("costa rica") || destinoStr.includes("nicaragua") || destinoStr.includes("panamá") || destinoStr.includes("filipinas") || destinoStr.includes("balí") || destinoStr.includes("bali") || destinoStr.includes("islas")) tk = "cancun";
+    else if (destinoStr.includes("francia") || destinoStr.includes("parís") || destinoStr.includes("paris") || destinoStr.includes("londres") || destinoStr.includes("inglaterra") || destinoStr.includes("suiza") || destinoStr.includes("alemania")) tk = "paris";
+    else if (destinoStr.includes("nueva york") || destinoStr.includes("canadá") || destinoStr.includes("canada") || destinoStr.includes("estados unidos") || destinoStr.includes("rusia") || destinoStr.includes("nieve")) tk = "new_york";
+    else if (destinoStr.includes("andes") || destinoStr.includes("perú") || destinoStr.includes("peru") || destinoStr.includes("machu") || destinoStr.includes("montaña") || destinoStr.includes("bolivia") || destinoStr.includes("chile") || destinoStr.includes("patagonia")) tk = "machu_picchu";
+    else if (destinoStr.includes("emiratos") || destinoStr.includes("dubai") || destinoStr.includes("arabia") || destinoStr.includes("egipto") || destinoStr.includes("desierto") || destinoStr.includes("marruecos") || destinoStr.includes("india")) tk = "dubai";
+    else if (destinoStr.includes("españa") || destinoStr.includes("barcelona") || destinoStr.includes("mediterráneo") || destinoStr.includes("italia") || destinoStr.includes("grecia") || destinoStr.includes("turquía") || destinoStr.includes("mar")) tk = "barcelona";
+
+    const data = PACKING_DATA[tk];
     if (!data) return;
 
     const badge = document.getElementById('packingBadge');
-    if (badge) badge.textContent = data.clima;
+    if (badge) badge.innerHTML = `<i class="bi bi-geo-alt-fill text-danger me-1"></i>${destinoRawStr || destinoStr} — ${data.clima}`;
 
     document.getElementById('packingEmpty').classList.add('d-none');
     document.getElementById('packingGrid').classList.remove('d-none');
