@@ -8,6 +8,7 @@
         Selecciona un destino pre-cargado para nutrir tu cultura de viajero y saber a qué áreas omitir.</p>
 </div>
 
+
 <!-- Barra de Selección y Control -->
 <div class="row justify-content-center mb-5 mt-4">
     <div class="col-md-8 col-lg-6">
@@ -33,7 +34,10 @@
                 <div>
                     <h3 id="panelTitulo" class="mb-1 fw-bold text-dark text-uppercase tracking-wider"
                         style="font-weight: 900;">DESTINO TÍTULO</h3>
-                    <p class="text-dark small text-uppercase fw-bold tracking-wider mb-0">Perfil Cultural</p>
+                    <p class="text-dark small text-uppercase fw-bold tracking-wider mb-2">Perfil Cultural</p>
+                    <div class="d-flex gap-2">
+                        <span id="panelIdiomas" class="badge bg-dark fw-bold border border-2 border-dark text-uppercase p-2 shadow-none"><i class="bi bi-translate me-1"></i> IDIOMAS SE CARGARÁN...</span>
+                    </div>
                 </div>
             </div>
 
@@ -86,4 +90,34 @@
         </div>
     </div>
 </div>
+
+<!-- Modal Galería de Imágenes Dinámica Puntos Turísticos -->
+<div class="modal fade" id="galleryModal" tabindex="-1" aria-hidden="true" style="backdrop-filter: grayscale(100%);">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content rounded-0 border-dark border-5 bg-light" style="box-shadow: 10px 10px 0 0 #000;">
+            <div class="modal-header bg-dark text-white border-bottom border-dark border-3 rounded-0 px-4 py-3">
+                <div>
+                    <h4 class="modal-title fw-black text-uppercase tracking-wider mb-0" id="galleryModalLabel">
+                        <i class="bi bi-images me-2"></i>Galería Visual
+                    </h4>
+                    <p id="galleryLocationSubtitle" class="small fw-bold text-warning mb-0 text-uppercase d-flex align-items-center mt-1"><i class="bi bi-geo-alt-fill me-1"></i> CUALQUIER LUGAR</p>
+                </div>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4 bg-white" id="galleryModalBody">
+                <div id="gallerySpinner" class="text-center py-5">
+                    <div class="spinner-border text-dark" style="width: 3rem; height: 3rem; border-width: 5px;" role="status"></div>
+                    <h5 class="fw-bold text-dark text-uppercase mt-4">Obteniendo espectro visual de 10 recintos...</h5>
+                </div>
+                <div id="galleryGrid" class="row g-3 d-none">
+                    <!-- 10 Imagenes incrustadas dom x JS -->
+                </div>
+            </div>
+            <div class="modal-footer bg-light border-top border-dark border-3 rounded-0">
+                <button type="button" class="btn btn-dark fw-bold text-uppercase rounded-0 px-4" data-bs-dismiss="modal">Cerrar Expediente Temporal</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 {% endblock %}

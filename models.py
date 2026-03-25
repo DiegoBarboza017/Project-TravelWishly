@@ -49,6 +49,19 @@ class DestinationGuide(db.Model):
     things_to_do = db.Column(db.Text)
     areas_to_avoid = db.Column(db.Text)
 
+class SavedRoute(db.Model):
+    __tablename__ = 'saved_routes'
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    origen = db.Column(db.String(100), nullable=False)
+    destino = db.Column(db.String(100), nullable=False)
+    duracion_dias = db.Column(db.Integer, nullable=False)
+    fecha_ideal = db.Column(db.String(50))
+    mochila_state = db.Column(db.Text)
+    vibes_state = db.Column(db.Text)
+    packing_state = db.Column(db.Text)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
 
 
 

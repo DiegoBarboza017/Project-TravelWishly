@@ -9,8 +9,10 @@ from itsdangerous import URLSafeTimedSerializer
 from database import db
 import threading
 import webbrowser
-from models import User, TripBudget, DestinationGuide
+from models import User, TripBudget, DestinationGuide, SavedRoute
 from werkzeug.security import generate_password_hash, check_password_hash
+from datetime import datetime, timedelta
+from flask import jsonify
 
 # Módulo de Inicialización - Contribución inicial por Diego Barboza
 def create_app():
@@ -32,6 +34,23 @@ def create_app():
     # ==========================
     # RUTAS DE LA APLICACIÓN
     # ==========================
+
+    @app.before_request
+    def check_session_expiration():
+        # Validar tiempos inactivos para sesiones no permanentes (evita el bug de navegadores que restauran pestañas cerradas)
+        if 'user_id' in session and 'expires_at' in session:
+            try:
+                expires_at = float(session['expires_at'])
+                if datetime.now().timestamp() > expires_at:
+                    session.clear()
+                    flash('Tu sesión temporal expiró por seguridad. Inicia sesión nuevamente.', 'error')
+                    return redirect(url_for('login'))
+                else:
+                    # Renovar protección de inactividad mientras el usuario navegue
+                    session['expires_at'] = (datetime.now() + timedelta(minutes=30)).timestamp()
+            except:
+                pass
+
 
     @app.route('/')
     def index():
@@ -84,14 +103,18 @@ def create_app():
                     identifier_is_exact_match = True
 
             if user and identifier_is_exact_match and check_password_hash(user.password_hash, password):
-                # Mantener sesión iniciada
-                if request.form.get('rememberMe'):
-                    session.permanent = True
-                else:
-                    session.permanent = False
-                    
                 session['user_id'] = user.id
                 session['username'] = user.username
+                
+                # Gestión Férrea de Persistencia
+                if request.form.get('rememberMe'):
+                    session.permanent = True
+                    session.pop('expires_at', None) # Sesión eterna ligada a cookies permanentes
+                else:
+                    session.permanent = False # Cookie volátil 
+                    # Seguro estricto de back-end: Timeout de 30 mins para burlar la restauración mágica del navegador
+                    session['expires_at'] = (datetime.now() + timedelta(minutes=30)).timestamp()
+                    
                 flash('Bienvenido de nuevo. Sesión iniciada correctamente.', 'success')
                 return redirect(url_for('dashboard'))
             else:
@@ -177,6 +200,80 @@ def create_app():
     def guia():
         """Guía Turística: Visualización de información cultural inteligente"""
         return render_template('guia.html')
+
+    @app.route('/historial')
+    def historial():
+        """Módulo de Historial: Ver Viajes Guardados del Usuario"""
+        if 'user_id' not in session:
+            flash('Debes iniciar sesión para ver tu historial de viajes.', 'error')
+            return redirect(url_for('login'))
+            
+        rutas = SavedRoute.query.filter_by(user_id=session['user_id']).order_by(SavedRoute.created_at.asc()).all()
+        return render_template('historial.html', rutas=rutas)
+
+    @app.route('/api/save_route', methods=['POST'])
+    def save_route():
+        """API: Guardar Itinerario Silenciosamente en Base de Datos"""
+        if 'user_id' not in session:
+            return jsonify({'success': False, 'message': 'No autenticado'}), 401
+            
+        data = request.get_json()
+        if not data or not data.get('origen') or not data.get('destino') or not data.get('duracion_dias'):
+            return jsonify({'success': False, 'message': 'Datos incompletos'}), 400
+            
+        try:
+            nueva_ruta = SavedRoute(
+                user_id=session['user_id'],
+                origen=data.get('origen'),
+                destino=data.get('destino'),
+                duracion_dias=int(data.get('duracion_dias')),
+                fecha_ideal=data.get('fecha_ideal', ''),
+                mochila_state=data.get('mochila_state', '[]'),
+                vibes_state=data.get('vibes_state', '[]'),
+                packing_state=data.get('packing_state', '[]')
+            )
+            db.session.add(nueva_ruta)
+            db.session.commit()
+            return jsonify({'success': True, 'message': 'Viaje guardado exitosamente en tu Historial.'})
+        except Exception as e:
+            db.session.rollback()
+            print(f"Error guardando ruta: {e}")
+            return jsonify({'success': False, 'message': 'Error de servidor SQL al guardar la ruta.'}), 500
+
+    @app.route('/api/delete_route/<int:route_id>', methods=['DELETE'])
+    def delete_route(route_id):
+        """API: Eliminar Itinerario del Historial"""
+        if 'user_id' not in session:
+            return jsonify({'success': False, 'message': 'No autenticado'}), 401
+            
+        ruta = SavedRoute.query.filter_by(id=route_id, user_id=session['user_id']).first()
+        if not ruta:
+            return jsonify({'success': False, 'message': 'Ruta no encontrada o acceso denegado'}), 404
+            
+        db.session.delete(ruta)
+        db.session.commit()
+        return jsonify({'success': True})
+
+    @app.route('/api/get_route/<int:route_id>', methods=['GET'])
+    def get_route(route_id):
+        """API: Recuperar datos profundos de Itinerario para Auto-Hidratación"""
+        if 'user_id' not in session:
+            return jsonify({'success': False, 'message': 'No autenticado'}), 401
+            
+        ruta = SavedRoute.query.filter_by(id=route_id, user_id=session['user_id']).first()
+        if not ruta:
+            return jsonify({'success': False, 'message': 'Ruta no encontrada o acceso denegado'}), 404
+            
+        return jsonify({
+            'success': True,
+            'origen': ruta.origen,
+            'destino': ruta.destino,
+            'duracion_dias': ruta.duracion_dias,
+            'fecha_ideal': ruta.fecha_ideal,
+            'mochila_state': ruta.mochila_state,
+            'vibes_state': ruta.vibes_state,
+            'packing_state': ruta.packing_state
+        })
 
     # Instanciación automática de las tablas para ambiente de desarrollo local
     with app.app_context():

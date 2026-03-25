@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+{% block content %}
+
+<!-- Cabecera -->
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-5 border-bottom border-dark border-3">
+    <div>
+        <h1 class="h2 fw-black text-dark text-uppercase tracking-wider mb-1" style="font-weight:900;">
+            <i class="bi bi-clock-history me-3"></i>Mi Historial de Viajes
+        </h1>
+        <p class="text-dark fw-bold text-uppercase small mb-0">Tus itinerarios planeados y destinos guardados de TravelWishly.</p>
+    </div>
+</div>
+
+{% if rutas %}
+<div class="row g-4">
+    {% for ruta in rutas %}
+    <div class="col-12">
+        <div class="card h-100 border-dark border-3 rounded-0 hover-lift d-flex flex-md-row flex-column" style="box-shadow: 6px 6px 0 0 #000;">
+            <!-- Izquierda: Índice y Destino -->
+            <div class="card-header bg-dark text-white p-4 border-dark border-end border-3 text-center d-flex flex-column justify-content-center align-items-center" style="min-width: 250px;">
+                <h1 class="display-4 fw-black text-warning mb-0">#{{ loop.index }}</h1>
+                <h4 class="mb-0 fw-black text-uppercase tracking-wider text-truncate w-100 mt-2" title="{{ ruta.destino }}">
+                    <i class="bi bi-geo-alt-fill me-2 text-danger"></i>{{ ruta.destino }}
+                </h4>
+                <small class="text-white-50 mt-1" style="font-size: 11px;">Creado: {{ ruta.created_at.strftime('%Y-%m-%d') }}</small>
+            </div>
+            
+            <!-- Centro: Datos e Información -->
+            <div class="card-body p-4 bg-white d-flex flex-column justify-content-center flex-grow-1">
+                <div class="mb-3 d-flex flex-wrap gap-0">
+                    <span class="badge bg-dark text-white rounded-0 fw-bold border border-2 border-dark p-2 fs-6">{{ ruta.duracion_dias }} Días</span>
+                    {% if ruta.fecha_ideal %}
+                    <span class="badge bg-white text-dark rounded-0 fw-bold border border-dark border-2 border-start-0 p-2 fs-6">
+                        <i class="bi bi-calendar3 me-1"></i>{{ ruta.fecha_ideal }}
+                    </span>
+                    {% endif %}
+                </div>
+                <p class="card-text fw-bold text-dark text-uppercase small mb-1" style="opacity: 0.6;">Saliendo de:</p>
+                <p class="card-text fs-5 fw-bold text-truncate mb-0"><i class="bi bi-airplane-engines me-2"></i>{{ ruta.origen }}</p>
+            </div>
+            
+            <!-- Derecha: Botones de Acción -->
+            <div class="card-footer bg-light border-dark border-start border-2 d-flex flex-column gap-2 justify-content-center p-4 rounded-0" style="min-width: 200px;">
+                <a href="{{ url_for('constructor') }}?history_id={{ ruta.id }}" 
+                   class="btn btn-dark fw-black rounded-0 tracking-wider text-uppercase w-100 border-2 border-dark hover-lift flex-grow-1 d-flex align-items-center justify-content-center fs-5" style="box-shadow: 3px 3px 0 0 #555;">
+                   <i class="bi bi-cursor-fill text-warning me-2"></i>Abrir
+                </a>
+                <button class="btn btn-outline-danger fw-bold rounded-0 border-2 w-100 py-2 mt-2" onclick="eliminarRutaHistorial({{ ruta.id }}, this)" title="Eliminar del Historial">
+                    <i class="bi bi-trash-fill me-2"></i>Eliminar
+                </button>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<!-- Estado vacío -->
+<div class="text-center py-5 mt-5">
+    <i class="bi bi-journal-x text-dark mb-4" style="font-size: 6rem; opacity: 0.2;"></i>
+    <h3 class="fw-black text-uppercase tracking-wider">Aún no hay viajes guardados</h3>
+    <p class="fw-bold text-dark mb-4">El historial central de itinerarios está completamente en blanco.</p>
+    <a href="{{ url_for('constructor') }}" class="btn btn-dark px-5 py-3 fw-black text-uppercase rounded-0 border-2 border-dark hover-lift" style="box-shadow: 6px 6px 0 0 #000;">
+        <i class="bi bi-rocket-takeoff-fill me-2 text-warning"></i>Ir al Constructor De Rutas
+    </a>
+</div>
+{% endif %}
+
+<!-- Script Carga Rest Eliminación -->
+<script>
+function eliminarRutaHistorial(id, btnElement) {
+    if(!confirm("¿Seguro que deseas eliminar este viaje permanentemente del Historial?")) return;
+    
+    // UI Loading state
+    const originalHtml = btnElement.innerHTML;
+    btnElement.innerHTML = '<span class="spinner-border spinner-border-sm" role="status"></span>';
+    btnElement.disabled = true;
+
+    fetch(`/api/delete_route/${id}`, { method: 'DELETE' })
+    .then(res => res.json())
+    .then(data => {
+        if(data.success) {
+            const cardElement = btnElement.closest('.col-lg-4');
+            cardElement.style.transition = 'opacity 0.3s ease';
+            cardElement.style.opacity = '0';
+            setTimeout(() => cardElement.remove(), 300);
+            
+            // Si era el ultimo
+            if(document.querySelectorAll('.col-lg-4').length === 1) {
+                setTimeout(() => window.location.reload(), 300);
+            }
+        } else {
+            alert(data.message || "Error al eliminar la ruta.");
+            btnElement.innerHTML = originalHtml;
+            btnElement.disabled = false;
+        }
+    })
+    .catch(err => {
+        console.error(err);
+        alert("Error de red. Revisa tu conexión a internet.");
+        btnElement.innerHTML = originalHtml;
+        btnElement.disabled = false;
+    });
+}
+</script>
+
+{% endblock %}
