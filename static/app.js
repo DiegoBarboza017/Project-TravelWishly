@@ -1105,6 +1105,83 @@ window.exportarDashboardPDF = function() {
 };
 
 /* =========================================================================
+   MÓDULO: EXPORTAR PDF DEL FINANCIAMIENTO
+========================================================================= */
+
+window.exportarFinanciamientoPDF = function() {
+    const btnPDF = document.getElementById('btnExportarFinPDF');
+    if (btnPDF) {
+        btnPDF.disabled = true;
+        btnPDF.innerHTML = '<i class="bi bi-hourglass-split me-2"></i>Generando...';
+    }
+
+    const resultadoPanel = document.getElementById('resultadoPanel');
+    if (resultadoPanel && resultadoPanel.classList.contains('d-none')) {
+        alert('Debes calcular primero el plan de financiamiento antes de exportar el PDF.');
+        if (btnPDF) { btnPDF.disabled = false; btnPDF.innerHTML = '<i class="bi bi-file-earmark-pdf-fill me-2"></i>Exportar PDF'; }
+        return;
+    }
+
+    const captureEl = document.getElementById('finCaptureZone');
+    if (!captureEl) {
+        if (btnPDF) { btnPDF.disabled = false; btnPDF.innerHTML = '<i class="bi bi-file-earmark-pdf-fill me-2"></i>Exportar PDF'; }
+        return;
+    }
+
+    // PATCH 1: Quitar fondos con patrones que rompen html2canvas
+    const cards = captureEl.querySelectorAll('.card-body');
+    const originalBg = [];
+    cards.forEach((c, i) => {
+        originalBg[i] = c.style.backgroundImage;
+        c.style.backgroundImage = 'none';
+    });
+
+    // PATCH 2: Quitar sombras pesadas
+    const allNodes = captureEl.querySelectorAll('*');
+    const originalShadows = [];
+    allNodes.forEach((node, i) => {
+        originalShadows[i] = node.style.boxShadow;
+        if (node.style.boxShadow) node.style.boxShadow = 'none';
+    });
+
+    // PATCH 3: Convertir canvas a imagen estatica
+    const canvas = captureEl.querySelector('canvas');
+    let imgFallback;
+    if (canvas) {
+        imgFallback = document.createElement('img');
+        imgFallback.src = canvas.toDataURL('image/png');
+        imgFallback.style.width = canvas.style.width || '100%';
+        imgFallback.style.height = canvas.style.height || 'auto';
+        imgFallback.className = canvas.className;
+        canvas.parentNode.insertBefore(imgFallback, canvas);
+        canvas.parentNode.removeChild(canvas);
+    }
+
+    const opciones = {
+        margin:       [8, 8, 8, 8],
+        filename:     'TravelWishly_Financiamiento_' + new Date().getFullYear() + '.pdf',
+        image:        { type: 'jpeg', quality: 1.0 },
+        html2canvas:  { scale: 1.5, useCORS: true, logging: false, windowWidth: 900 },
+        jsPDF:        { unit: 'mm', format: 'a3', orientation: 'landscape' }
+    };
+
+    const restore = () => {
+        if (canvas) { imgFallback.parentNode.insertBefore(canvas, imgFallback); imgFallback.remove(); }
+        cards.forEach((c, i) => { c.style.backgroundImage = originalBg[i]; });
+        allNodes.forEach((node, i) => { if (originalShadows[i]) node.style.boxShadow = originalShadows[i]; });
+        if (btnPDF) {
+            btnPDF.disabled = false;
+            btnPDF.innerHTML = '<i class="bi bi-file-earmark-pdf-fill me-2"></i>Exportar PDF';
+        }
+    };
+
+    html2pdf().set(opciones).from(captureEl).save().then(restore).catch(err => {
+        console.error('PDF Financiamiento error:', err);
+        restore();
+    });
+};
+
+/* =========================================================================
    MÓDULO: EXPORTAR PDF DEL CONSTRUCTOR
 ========================================================================= */
 
@@ -1164,53 +1241,232 @@ function exportarReportePDF() {
    MÓDULO: EXTRAS (DIVISAS Y CLIMA)
 ========================================================================= */
 
-/** @function convertCurrency Realiza la conversión entre las divisas seleccionadas en el dashboard */
-async function convertCurrency() {
-    const amount = parseFloat(document.getElementById('currencyAmount').value);
-    const from = document.getElementById('fromCurrency').value;
-    const to = document.getElementById('toCurrency').value;
-    const resultEl = document.getElementById('currencyResult');
+// === CONVERSOR DE DIVISAS CON API EN TIEMPO REAL ===
 
-    if (isNaN(amount) || amount <= 0) {
-        resultEl.innerText = "--";
-        return;
-    }
+let _exchangeAllCurrencies = [];  // lista de códigos
+let _exchangeRatesCache = {};     // { base: { rates, updated } }
 
-    resultEl.innerText = "⏳...";
+// Instancias globales de Choices.js para los selects de moneda
+let _choicesFrom = null;
+let _choicesTo = null;
+
+async function cargarListaMonedas() {
+    const fromSel = document.getElementById('fromCurrency');
+    const toSel = document.getElementById('toCurrency');
+    if (!fromSel || !toSel) return;
 
     try {
-        const response = await fetch(`https://open.er-api.com/v6/latest/${from}`);
-        const data = await response.json();
-        
-        if (data && data.rates && data.rates[to]) {
-            const converted = amount * data.rates[to];
-            resultEl.innerText = `${converted.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} ${to}`;
-        } else {
-            resultEl.innerText = "Error";
+        const resp = await fetch('/api/exchange?base=USD');
+        const data = await resp.json();
+        if (!data.currencies || data.currencies.length === 0) return;
+
+        _exchangeAllCurrencies = data.currencies;
+        _exchangeRatesCache['USD'] = { rates: data.rates, updated: data.updated };
+
+        // Nombres de monedas comunes para mostrar en el option
+        const nombres = {
+            USD:'USD — Dólar Estadounidense', EUR:'EUR — Euro', MXN:'MXN — Peso Mexicano',
+            GBP:'GBP — Libra Esterlina', JPY:'JPY — Yen Japonés', CAD:'CAD — Dólar Canadiense',
+            AUD:'AUD — Dólar Australiano', CHF:'CHF — Franco Suizo', CNY:'CNY — Yuan Chino',
+            BRL:'BRL — Real Brasileño', ARS:'ARS — Peso Argentino', COP:'COP — Peso Colombiano',
+            CLP:'CLP — Peso Chileno', PEN:'PEN — Sol Peruano', INR:'INR — Rupia India',
+            KRW:'KRW — Won Coreano', SGD:'SGD — Dólar Singapurés', HKD:'HKD — Dólar de Hong Kong',
+            NZD:'NZD — Dólar Neozelandés', SEK:'SEK — Corona Sueca', NOK:'NOK — Corona Noruega',
+            DKK:'DKK — Corona Danesa', TRY:'TRY — Lira Turca', RUB:'RUB — Rublo Ruso',
+            ZAR:'ZAR — Rand Sudafricano', AED:'AED — Dírham Emirati', SAR:'SAR — Riyal Saudí',
+            THB:'THB — Baht Tailandés', IDR:'IDR — Rupia Indonesia', MYR:'MYR — Ringgit Malayo',
+            PHP:'PHP — Peso Filipino', VND:'VND — Dong Vietnamita', EGP:'EGP — Libra Egipcia',
+            NGN:'NGN — Naira Nigeriana', KES:'KES — Chelín Keniano', ILS:'ILS — Nuevo Séquel Israelí',
+            PLN:'PLN — Zloty Polaco', CZK:'CZK — Corona Checa', HUF:'HUF — Forinto Húngaro',
+            RON:'RON — Leu Rumano', BGN:'BGN — Lev Búlgaro', HRK:'HRK — Kuna Croata',
+            ISK:'ISK — Corona Islandesa', UAH:'UAH — Grivna Ucraniana', QAR:'QAR — Riyal Catarí',
+            KWD:'KWD — Dinar Kuwaiti', BHD:'BHD — Dinar Bareiní', OMR:'OMR — Rial Omaní',
+            JOD:'JOD — Dinar Jordano', MAD:'MAD — Dírham Marroquí', PKR:'PKR — Rupia Pakistaní',
+            BDT:'BDT — Taka Bangladesí', LKR:'LKR — Rupia Ceilanesa', NPR:'NPR — Rupia Nepalesa',
+            CRC:'CRC — Colón Costarricense', GTQ:'GTQ — Quetzal Guatemalteco', HNL:'HNL — Lempira Hondureño',
+            NIO:'NIO — Córdoba Nicaragüense', DOP:'DOP — Peso Dominicano', CUP:'CUP — Peso Cubano',
+            JMD:'JMD — Dólar Jamaicano', TTD:'TTD — Dólar de Trinidad', UYU:'UYU — Peso Uruguayo',
+            BOB:'BOB — Boliviano', PYG:'PYG — Guaraní Paraguayo', VES:'VES — Bolívar Venezolano'
+        };
+
+        [fromSel, toSel].forEach(sel => {
+            const current = sel.value;
+            sel.innerHTML = '';
+            _exchangeAllCurrencies.forEach(code => {
+                const opt = document.createElement('option');
+                opt.value = code;
+                opt.textContent = nombres[code] || code;
+                sel.appendChild(opt);
+            });
+        });
+        fromSel.value = 'MXN';
+        toSel.value = 'USD';
+
+        // Destruir instancias previas si existen
+        if (_choicesFrom) { try { _choicesFrom.destroy(); } catch(e){} _choicesFrom = null; }
+        if (_choicesTo)   { try { _choicesTo.destroy();   } catch(e){} _choicesTo   = null; }
+
+        // Inicializar Choices.js con búsqueda en ambos selects
+        if (typeof Choices !== 'undefined') {
+            const cfg = {
+                searchEnabled: true,
+                searchPlaceholderValue: 'Buscar moneda...',
+                itemSelectText: '',
+                shouldSort: false,
+                searchResultLimit: 25,
+                noResultsText: 'Moneda no encontrada',
+            };
+            _choicesFrom = new Choices(fromSel, cfg);
+            _choicesTo   = new Choices(toSel,   cfg);
+            fromSel.addEventListener('change', () => { if(window.convertCurrency) window.convertCurrency(); });
+            toSel.addEventListener('change',   () => { if(window.convertCurrency) window.convertCurrency(); });
         }
-    } catch (error) {
-        console.error("Error en conversión:", error);
-        resultEl.innerText = "Offline";
+
+        // Primera conversión automática
+        window.convertCurrency();
+    } catch(e) {
+        console.warn('No se pudo cargar la lista de monedas:', e);
     }
 }
 
-/** @function actualizarClimaGlobal Simula y refresca datos de clima para destinos populares */
-function actualizarClimaGlobal() {
-    const cities = [
-        { id: 'weather-tokyo', base: 12, icon: 'bi-cloud-sun' },
-        { id: 'weather-ny', base: 5, icon: 'bi-snow' },
-        { id: 'weather-paris', base: 10, icon: 'bi-cloud-rain' },
-        { id: 'weather-cancun', base: 28, icon: 'bi-brightness-high' }
-    ];
+/** @function convertCurrency Convierte con tipo de cambio real en tiempo real */
+window.convertCurrency = async function() {
+    const amount = parseFloat(document.getElementById('currencyAmount').value);
+    const from = document.getElementById('fromCurrency')?.value;
+    const to = document.getElementById('toCurrency')?.value;
+    const resultEl = document.getElementById('currencyResult');
+    const rateEl = document.getElementById('currencyRate');
+    const updEl = document.getElementById('currencyUpdated');
+    if (!resultEl || !from || !to) return;
 
-    cities.forEach(city => {
-        const el = document.getElementById(city.id);
-        if (el) {
-            const temp = (city.base + (Math.random() * 4 - 2)).toFixed(1);
-            el.innerHTML = `${temp}°C <i class="bi ${city.icon}"></i>`;
+    if (isNaN(amount) || amount <= 0) { resultEl.innerText = '--'; return; }
+    resultEl.innerText = '⏳...';
+
+    try {
+        // Usar cache si existe para la base
+        if (!_exchangeRatesCache[from]) {
+            const resp = await fetch('/api/exchange?base=' + from);
+            const data = await resp.json();
+            if (!data.rates) throw new Error('Sin datos');
+            _exchangeRatesCache[from] = { rates: data.rates, updated: data.updated };
         }
-    });
+        const cache = _exchangeRatesCache[from];
+        const rate = cache.rates[to];
+        if (!rate) { resultEl.innerText = 'N/A'; return; }
+
+        const converted = amount * rate;
+        resultEl.innerText = converted.toLocaleString('es-MX', {minimumFractionDigits: 2, maximumFractionDigits: 4}) + ' ' + to;
+        if (rateEl) rateEl.innerText = `1 ${from} = ${rate.toLocaleString('es-MX', {minimumFractionDigits: 4, maximumFractionDigits: 6})} ${to}`;
+        if (updEl && cache.updated) {
+            const d = new Date(cache.updated);
+            updEl.innerHTML = `<i class="bi bi-clock me-1"></i>Última actualización: ${cache.updated.replace(' +0000 UTC','').replace(' UTC','')}`;
+        }
+    } catch (error) {
+        console.error('Error en conversión:', error);
+        resultEl.innerText = 'Offline';
+    }
+};
+
+
+// === CLIMA CON OPENWEATHER API ===
+
+const CLIMA_POOL = [
+    'Tokyo,JP', 'New York,US', 'Paris,FR', 'Cancun,MX', 'London,GB',
+    'Sydney,AU', 'Dubai,AE', 'Barcelona,ES', 'Rome,IT', 'Bangkok,TH',
+    'Mexico City,MX', 'Amsterdam,NL', 'Istanbul,TR', 'Cairo,EG', 'Seoul,KR'
+];
+
+let climaCiudadesActivas = [];
+
+function owmIconClass(iconCode) {
+    if (!iconCode) return 'bi-cloud';
+    const code = iconCode.replace('d','').replace('n','');
+    const map = {
+        '01': 'bi-brightness-high', '02': 'bi-cloud-sun', '03': 'bi-cloud',
+        '04': 'bi-clouds', '09': 'bi-cloud-drizzle', '10': 'bi-cloud-rain',
+        '11': 'bi-cloud-lightning-rain', '13': 'bi-snow', '50': 'bi-wind'
+    };
+    return map[code] || 'bi-cloud';
 }
+
+async function fetchCiudadClima(cityQ) {
+    try {
+        const resp = await fetch('/api/weather?city=' + encodeURIComponent(cityQ));
+        if (!resp.ok) return null;
+        return await resp.json();
+    } catch { return null; }
+}
+
+async function actualizarClimaGlobal() {
+    const lista = document.getElementById('climaCiudadesLista');
+    const msg = document.getElementById('climaActualizadoMsg');
+    if (!lista) return;
+
+    // Elegir 5 ciudades aleatorias del pool
+    const shuffled = [...CLIMA_POOL].sort(() => Math.random() - 0.5);
+    climaCiudadesActivas = shuffled.slice(0, 5);
+
+    lista.innerHTML = '<div class="list-group-item text-center py-2 text-muted small">Obteniendo datos reales...</div>';
+
+    const resultados = await Promise.all(climaCiudadesActivas.map(c => fetchCiudadClima(c)));
+
+    lista.innerHTML = '';
+    resultados.forEach((data, i) => {
+        const item = document.createElement('div');
+        const isLast = i === resultados.length - 1;
+        item.className = 'list-group-item d-flex justify-content-between align-items-center bg-white' + (isLast ? '' : ' border-bottom border-dark');
+
+        if (!data || data.error) {
+            item.innerHTML = `<span class="fw-bold text-uppercase text-muted">${climaCiudadesActivas[i]}</span>
+                             <span class="badge bg-secondary rounded-0 px-3 py-2">Sin datos</span>`;
+        } else {
+            const iconCls = owmIconClass(data.icon_code);
+            item.innerHTML = `
+                <div>
+                    <div class="fw-bold text-uppercase">${data.city}, ${data.country}</div>
+                    <div class="small text-muted">${data.description}</div>
+                </div>
+                <span class="badge bg-dark rounded-0 px-3 py-2 fw-bold text-nowrap">
+                    ${data.temp}°C <i class="bi ${iconCls} ms-1"></i>
+                </span>`;
+        }
+        lista.appendChild(item);
+    });
+
+    const now = new Date();
+    if (msg) msg.innerHTML = `<i class="bi bi-check-circle me-1"></i>Actualizado ${now.getHours()}:${String(now.getMinutes()).padStart(2,'0')} · Cambia en 5 min`;
+}
+
+window.buscarClimaManual = async function() {
+    const input = document.getElementById('climaBuscador');
+    const resDiv = document.getElementById('climaBusquedaResult');
+    if (!input || !input.value.trim()) return;
+
+    resDiv.style.display = 'block';
+    document.getElementById('climaBusqCiudad').textContent = 'Buscando...';
+    document.getElementById('climaBusqTemp').textContent = '...';
+    document.getElementById('climaBusqDesc').textContent = '';
+
+    const data = await fetchCiudadClima(input.value.trim());
+    if (!data || data.error) {
+        document.getElementById('climaBusqCiudad').textContent = '⚠ Ciudad no encontrada';
+        document.getElementById('climaBusqTemp').textContent = '—';
+        document.getElementById('climaBusqDesc').textContent = 'Intenta con otro nombre o en inglés';
+        return;
+    }
+    document.getElementById('climaBusqCiudad').textContent = `${data.city}, ${data.country}`;
+    document.getElementById('climaBusqDesc').textContent = data.description;
+    document.getElementById('climaBusqTemp').textContent = data.temp + '°C';
+    document.getElementById('climaBusqSensacion').textContent = data.feels_like;
+    document.getElementById('climaBusqHumedad').textContent = data.humidity;
+    document.getElementById('climaBusqViento').textContent = data.wind;
+};
+
+// Permitir buscar con Enter
+document.addEventListener('DOMContentLoaded', () => {
+    const buscInput = document.getElementById('climaBuscador');
+    if (buscInput) buscInput.addEventListener('keydown', e => { if (e.key === 'Enter') buscarClimaManual(); });
+});
 
 /* =========================================================================
    MÓDULO: LÍNEA DE TIEMPO INTERACTIVA (CONSTRUCTOR)
@@ -1365,10 +1621,10 @@ function eliminarEventoTimeline(index) {
 
 // Inicializadores Extra para Dashboard
 document.addEventListener("DOMContentLoaded", () => {
-    if (document.getElementById('weather-tokyo')) {
+    if (document.getElementById('climaCiudadesLista')) {
         actualizarClimaGlobal();
-        // Simulación de actualización de clima cada 15 segundos
-        setInterval(actualizarClimaGlobal, 15000);
+        // Rotar 5 ciudades aleatorias cada 5 minutos
+        setInterval(actualizarClimaGlobal, 300000);
     }
 });
 
@@ -1531,4 +1787,9 @@ document.addEventListener("DOMContentLoaded", () => {
     document.querySelectorAll('.scroll-animate').forEach(el => {
         observer.observe(el);
     });
+
+    // Cargar lista de monedas dinamicamente si estamos en el dashboard
+    if (document.getElementById('fromCurrency')) {
+        cargarListaMonedas();
+    }
 });

@@ -1,6 +1,25 @@
 {% extends "base.html" %}
 {% block content %}
 
+<!-- CSS para impresion/PDF limpio -->
+<style>
+@media print {
+    nav, .navbar, header, footer { display: none !important; }
+    #btnExportarPDF, .btn-toolbar { display: none !important; }
+    .d-flex.border-bottom { display: none !important; height: 0 !important; margin: 0 !important; padding: 0 !important; }
+    body, .card, .card-body { background: white !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .card-header.bg-dark { background: #000 !important; color: white !important; }
+    * { box-shadow: none !important; }
+    #constructorCaptureZone {
+        overflow: visible !important;
+        zoom: 0.55;
+        width: 100% !important;
+    }
+    .card, .row { page-break-inside: avoid !important; }
+    @page { size: A3 landscape; margin: 5mm; }
+}
+</style>
+
 <div
     class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-5 border-bottom border-dark border-3">
     <h1 class="h2 fw-black text-dark text-uppercase tracking-wider" style="font-weight: 900;">
@@ -8,7 +27,7 @@
     </h1>
     <div class="btn-toolbar mb-2 mb-md-0">
         <button type="button" id="btnExportarPDF" class="btn btn-dark fw-bold px-4 rounded-0 border-2 text-uppercase"
-            style="box-shadow: 3px 3px 0 0 #555;" onclick="exportarReportePDF()">
+            style="box-shadow: 3px 3px 0 0 #555;" onclick="window.print()">
             <i class="bi bi-file-earmark-pdf-fill me-2"></i>Exportar PDF
         </button>
     </div>

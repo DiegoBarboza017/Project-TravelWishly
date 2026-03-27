@@ -49,16 +49,16 @@
                         <a class="nav-link px-2 fw-bold nav-page-link text-nowrap" href="{{ url_for('index') }}">INICIO</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link px-2 fw-bold nav-page-link text-nowrap" href="{{ url_for('guia') }}">GUÍA TURÍSTICA</a>
+                        <a class="nav-link px-2 fw-bold nav-page-link text-nowrap" href="{{ url_for('guia') }}">EXPLORAR DESTINOS</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link px-2 fw-bold nav-page-link text-nowrap" href="{{ url_for('dashboard') }}">DASHBOARD</a>
+                        <a class="nav-link px-2 fw-bold nav-page-link text-nowrap" href="{{ url_for('dashboard') }}">PRESUPUESTO</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link px-2 fw-bold nav-page-link text-nowrap" href="{{ url_for('constructor') }}">CONSTRUCTOR</a>
+                        <a class="nav-link px-2 fw-bold nav-page-link text-nowrap" href="{{ url_for('constructor') }}">ITINERARIO</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link px-2 fw-bold nav-page-link text-nowrap" href="{{ url_for('financiamiento') }}">FINANCIAMIENTO</a>
+                        <a class="nav-link px-2 fw-bold nav-page-link text-nowrap" href="{{ url_for('financiamiento') }}">SIMULADOR DE CRÉDITO</a>
                     </li>
                     {% if session.get('user_id') %}
                     <li class="nav-item">
@@ -122,8 +122,14 @@
     </footer>
 
     <!-- Floating AI Chat Bot -->
-    <div class="chat-bot-bubble" id="chatBotBubble" title="¡Habla con Leia, tu IA!">
-        <img src="{{ url_for('static', filename='cat_bot.png') }}" alt="Leia Cat Bot">
+    <div class="chat-bot-wrapper" id="chatBotWrapper">
+        <!-- Tooltip "¿Necesitas ayuda?" -->
+        <div class="chat-tooltip" id="chatTooltip">
+            <span>¿Necesitas ayuda? 🐾</span>
+        </div>
+        <div class="chat-bot-bubble" id="chatBotBubble" title="¡Habla con Leia, tu asistente!">
+            <img src="{{ url_for('static', filename='cat_bot.png') }}" alt="Leia Cat Bot">
+        </div>
     </div>
 
     <div class="chat-window shadow-lg border border-3 border-dark" id="chatWindow">

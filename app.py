@@ -4,6 +4,7 @@ Estructura según lineamientos de calidad para mantenibilidad (ISO/IEC 25010)
 """
 import os
 import uuid
+import requests
 from flask import Flask, render_template, request, redirect, url_for, flash, session
 from itsdangerous import URLSafeTimedSerializer
 from database import db
@@ -13,6 +14,9 @@ from models import User, TripBudget, DestinationGuide, SavedRoute
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime, timedelta
 from flask import jsonify
+
+# === OpenWeather API Key (cambiar por la tuya en openweathermap.org) ===
+OPENWEATHER_API_KEY = os.environ.get('OPENWEATHER_API_KEY', '7bc4ccdffadb356912aeb175eb943099')
 
 # Módulo de Inicialización - Contribución inicial por Diego Barboza
 def create_app():
@@ -281,6 +285,59 @@ def create_app():
             db.create_all()
         except Exception as e:
             print(f"Aviso de BD: {e}")
+
+    # ===== WEATHER PROXY ENDPOINT =====
+    @app.route('/api/weather')
+    def api_weather():
+        city = request.args.get('city', '').strip()
+        if not city:
+            return jsonify({'error': 'Ciudad requerida'}), 400
+        try:
+            url = 'https://api.openweathermap.org/data/2.5/weather'
+            params = {'q': city, 'appid': OPENWEATHER_API_KEY, 'units': 'metric', 'lang': 'es'}
+            resp = requests.get(url, params=params, timeout=5)
+            if resp.status_code != 200:
+                return jsonify({'error': f'Ciudad no encontrada: {city}'}), 404
+            data = resp.json()
+            return jsonify({
+                'city': data['name'],
+                'country': data['sys']['country'],
+                'temp': round(data['main']['temp'], 1),
+                'feels_like': round(data['main']['feels_like'], 1),
+                'description': data['weather'][0]['description'].capitalize(),
+                'icon_code': data['weather'][0]['icon'],
+                'humidity': data['main']['humidity'],
+                'wind': round(data['wind']['speed'], 1)
+            })
+        except Exception as e:
+            return jsonify({'error': str(e)}), 500
+
+    # ===== EXCHANGE RATE PROXY ENDPOINT =====
+    _exchange_cache = {}  # { base: {data, timestamp} }
+
+    @app.route('/api/exchange')
+    def api_exchange():
+        import time
+        base = request.args.get('base', 'USD').strip().upper()
+        now = time.time()
+        # Cache por 30 minutos para no abusar la API
+        if base in _exchange_cache and now - _exchange_cache[base]['ts'] < 1800:
+            return jsonify(_exchange_cache[base]['data'])
+        try:
+            resp = requests.get(f'https://open.er-api.com/v6/latest/{base}', timeout=6)
+            if resp.status_code != 200:
+                return jsonify({'error': 'Base no soportada'}), 400
+            data = resp.json()
+            result = {
+                'base': base,
+                'rates': data.get('rates', {}),
+                'updated': data.get('time_last_update_utc', ''),
+                'currencies': sorted(data.get('rates', {}).keys())
+            }
+            _exchange_cache[base] = {'data': result, 'ts': now}
+            return jsonify(result)
+        except Exception as e:
+            return jsonify({'error': str(e)}), 500
 
     return app
 
