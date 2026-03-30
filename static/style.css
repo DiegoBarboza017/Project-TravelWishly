@@ -106,6 +106,22 @@ body {
     color: #fff;
 }
 
+/* Flujo de Viaje Botones Principales */
+.btn-primary-flow {
+    background-color: #ffffff !important;
+    color: #0d6efd !important;
+    border: 3px solid #000 !important;
+    border-radius: 0 !important;
+    font-weight: 800 !important;
+    transition: all 0.2s ease;
+}
+
+.btn-primary-flow:hover {
+    background-color: #0d6efd !important;
+    color: #ffffff !important;
+    box-shadow: inset 0 0 0 3px #000000;
+}
+
 .main-min-height {
     min-height: 60vh;
 }
@@ -148,10 +164,46 @@ ul>li>i.bi {
 }
 
 /* AI Chat Bot Styles */
-.chat-bot-bubble {
+.chat-bot-wrapper {
     position: fixed;
     bottom: 30px;
     right: 30px;
+    z-index: 1050;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.chat-tooltip {
+    background: #000;
+    color: #fff;
+    padding: 8px 16px;
+    border-radius: 20px 20px 0 20px;
+    font-weight: 800;
+    font-size: 0.9rem;
+    box-shadow: 4px 4px 0 0 rgba(0,0,0,0.2);
+    opacity: 0;
+    transform: translateX(20px);
+    animation: slideInTooltip 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards 2s;
+    transition: opacity 0.3s ease, transform 0.3s ease;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.chat-tooltip.hide {
+    opacity: 0 !important;
+    transform: translateX(20px) !important;
+    pointer-events: none;
+}
+
+@keyframes slideInTooltip {
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+.chat-bot-bubble {
     width: 70px;
     height: 70px;
     border-radius: 50%;
@@ -159,7 +211,6 @@ ul>li>i.bi {
     border: 3px solid #000;
     box-shadow: 6px 6px 0 0 #000;
     cursor: pointer;
-    z-index: 1050;
     display: flex;
     align-items: center;
     justify-content: center;

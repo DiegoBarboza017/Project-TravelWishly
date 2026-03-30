@@ -23,7 +23,7 @@
 <div
     class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-5 border-bottom border-dark border-3">
     <h1 class="h2 fw-black text-dark text-uppercase tracking-wider" style="font-weight: 900;">
-        <i class="bi bi-tools text-dark me-3"></i>Constructor de Viajes
+        <i class="bi bi-tools text-dark me-3"></i>Itinerario
     </h1>
     <div class="btn-toolbar mb-2 mb-md-0">
         <button type="button" id="btnExportarPDF" class="btn btn-dark fw-bold px-4 rounded-0 border-2 text-uppercase"
@@ -49,15 +49,61 @@
                 <p class="small fw-bold text-dark text-uppercase mb-4">Selecciona los preparativos que necesitas. El
                     total se sumará a tu presupuesto base.</p>
                 <form id="mochilaForm">
-                    <div class="form-check form-switch mb-3 p-3 border border-2 border-dark"
-                        style="box-shadow: 2px 2px 0 0 #000;">
-                        <input class="form-check-input border-dark" type="checkbox" id="checkPasaporte" value="3940"
-                            onchange="calcularMochila()">
-                        <label class="form-check-label fw-bold text-dark" for="checkPasaporte">
-                            🛂 Pasaporte Mexicano 10 Años
-                            <span class="badge bg-dark rounded-0 ms-2">+ $3,940 MXN</span>
-                        </label>
+                    <!-- NUEVO: Selector de Nacionalidad Inteligente -->
+                    <div class="mb-4 p-3 bg-light border border-2 border-dark" style="box-shadow: 2px 2px 0 0 #000;">
+                        <label class="form-label fw-bold text-dark text-uppercase small mb-2"><i class="bi bi-person-vcard-fill me-2"></i>¿Cuál es tu Nacionalidad?</label>
+                        <select id="nacionalidadUsuario" class="form-select border-dark border-2 rounded-0 fw-bold bg-white" onchange="evaluarDocumentacion()">
+                            <option value="MX" selected>🇲🇽 México / Mexicano</option>
+                            <option value="US">🇺🇸 Estados Unidos / Americano</option>
+                            <option value="ES">🇪🇸 España / Comunitario Europeo</option>
+                            <option value="CO">🇨🇴 Colombia / Colombiano</option>
+                            <option value="AR">🇦🇷 Argentina / Argentino</option>
+                            <option value="OTRO">🌍 Otra Nacionalidad</option>
+                        </select>
+                        <small class="text-muted d-block mt-2" style="font-size: 11px; line-height: 1.2;">
+                            <i class="bi bi-info-circle-fill me-1"></i>Analizaremos tu nacionalidad frente a tu <strong class="text-dark">Origen/Destino</strong> seleccionado para sugerir los documentos obligatorios.
+                        </small>
                     </div>
+
+                    <h6 class="fw-black text-uppercase mb-3 mt-2 border-bottom border-2 border-dark pb-2">📦 Documentación y Equipaje</h6>
+                    
+                    <!-- Contenedor Dinámico para Documentos -->
+                    <div id="contenedorDocumentos">
+                        <!-- Identificación Local (Aparece en viaje nacional) -->
+                        <div class="form-check form-switch mb-3 p-3 border border-2 border-primary bg-primary bg-opacity-10 d-none" id="divCheckINE"
+                            style="box-shadow: 2px 2px 0 0 var(--bs-primary);">
+                            <input class="form-check-input border-primary" type="checkbox" id="checkINE" value="0"
+                                onchange="calcularMochila()" checked>
+                            <label class="form-check-label fw-bold text-primary" for="checkINE" style="font-size: 14px;">
+                                🪪 Identificación Oficial Local (INE/ID)
+                                <span class="badge bg-primary rounded-0 ms-2">Requerido (Gratis)</span>
+                            </label>
+                        </div>
+
+                        <!-- Pasaporte (Aparece en viaje internacional) -->
+                        <div class="form-check form-switch mb-3 p-3 border border-2 border-dark" id="divCheckPasaporte"
+                            style="box-shadow: 2px 2px 0 0 #000;">
+                            <input class="form-check-input border-dark" type="checkbox" id="checkPasaporte" value="3940"
+                                onchange="calcularMochila()">
+                            <label class="form-check-label fw-bold text-dark" for="checkPasaporte">
+                                🛂 Pasaporte (Renovación/Trámite)
+                                <span class="badge bg-dark rounded-0 ms-2" id="badgePasaporte">+ $3,940 MXN</span>
+                            </label>
+                        </div>
+                        
+                        <!-- Visa (Aparece condicionalmente ej. Destino USA) -->
+                        <div class="form-check form-switch mb-3 p-3 border border-2 border-dark" id="divCheckVisa"
+                            style="box-shadow: 2px 2px 0 0 #000;">
+                            <input class="form-check-input border-dark" type="checkbox" id="checkVisa" value="3400"
+                                onchange="calcularMochila()">
+                            <label class="form-check-label fw-bold text-dark" for="checkVisa">
+                                🗂️ Trámite de Visa (Sugerido)
+                                <span class="badge bg-dark rounded-0 ms-2" id="badgeVisa">+ $3,400 MXN</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Items comunes de viaje -->
                     <div class="form-check form-switch mb-3 p-3 border border-2 border-dark"
                         style="box-shadow: 2px 2px 0 0 #000;">
                         <input class="form-check-input border-dark" type="checkbox" id="checkSeguro" value="1200"
@@ -67,15 +113,7 @@
                             <span class="badge bg-dark rounded-0 ms-2">+ $1,200 MXN</span>
                         </label>
                     </div>
-                    <div class="form-check form-switch mb-3 p-3 border border-2 border-dark"
-                        style="box-shadow: 2px 2px 0 0 #000;">
-                        <input class="form-check-input border-dark" type="checkbox" id="checkVisa" value="3400"
-                            onchange="calcularMochila()">
-                        <label class="form-check-label fw-bold text-dark" for="checkVisa">
-                            🗂️ Trámite de Visa
-                            <span class="badge bg-dark rounded-0 ms-2">+ $3,400 MXN</span>
-                        </label>
-                    </div>
+                    
                     <div class="form-check form-switch mb-4 p-3 border border-2 border-dark"
                         style="box-shadow: 2px 2px 0 0 #000;">
                         <input class="form-check-input border-dark" type="checkbox" id="checkMaleta" value="900"
@@ -107,7 +145,8 @@
             <div class="card-body p-4 bg-light"
                 style="background-image: radial-gradient(#aaa 1px, transparent 0); background-size: 20px 20px;">
                 <h6 class="fw-bold text-dark text-uppercase bg-white p-2 border border-dark border-2 d-inline-block">
-                    ¿Cuál es tu ambiente (Vibe) ideal?</h6>
+                    ¿No sabes a donde viajar? Mira estas opciones <i class="bi bi-emoji-smile"></i>
+                </h6>
                 <div class="d-flex flex-wrap gap-2 mt-3 mb-4">
                     <button class="btn btn-outline-dark fw-bold rounded-0 border-2 btn-interes"
                         style="box-shadow: 2px 2px 0 0 #000;" onclick="recomendarDestino('fiesta', this)">
@@ -215,7 +254,7 @@
                                 <i class="bi bi-floppy-fill me-2"></i>Guardar en Historial
                             </button>
                         </div>
-                        <p class="small fw-bold text-muted mt-3" style="font-size: 11px;"><i
+                        <p class="small fw-bold text-muted mt-3 mb-0" style="font-size: 11px;"><i
                                 class="bi bi-cpu me-1"></i>El motor detectará regiones y calculará escalas si generas la ruta temporal.</p>
                     </div>
                     <div class="col-md-8 px-md-5 px-4">
@@ -236,7 +275,7 @@
         <div class="card border-dark border-3 rounded-0" style="box-shadow: 6px 6px 0 0 #000;">
             <div class="card-header bg-white py-3 border-dark border-bottom border-3 rounded-0 d-flex flex-wrap justify-content-between align-items-center gap-2">
                 <h5 class="mb-0 fw-bold text-dark text-uppercase tracking-wider">
-                    <i class="bi bi-bag-check-fill me-2"></i>Smart Packing List
+                    <i class="bi bi-bag-check-fill me-2"></i>Lista de Empaque (Recordatorio)
                     <span class="badge border border-dark border-2 text-dark bg-white ms-2 fw-bold small rounded-0 text-uppercase" id="packingBadge">Sin destino</span>
                 </h5>
                 <div class="d-flex align-items-center gap-3">
@@ -246,7 +285,10 @@
                     <!-- Selector Eliminado: Vinculación Semántica Automática -->
                 </div>
             </div>
-            <div id="packingEmpty" class="card-body p-5 bg-light text-center">
+            <div class="card-body p-2 bg-light border-bottom border-dark border-2 text-center">
+                <p class="small fw-bold text-dark mb-0"><i class="bi bi-info-circle-fill me-1"></i> Usa esta lista interactiva para marcar lo que ya tienes listo en tu maleta antes de viajar.</p>
+            </div>
+            <div id="packingEmpty" class="card-body p-5 bg-white text-center">
                 <i class="bi bi-bag-plus-fill text-dark mb-3" style="font-size:4rem; opacity:0.15;"></i>
                 <p class="fw-black text-uppercase text-dark mb-1" style="opacity:0.45;">Genera tu Ruta Inteligente arriba</p>
                 <p class="small fw-bold text-dark" style="opacity:0.35;">El sistema analizará geográficamente tu destino para generar tu lista de equipaje automáticamente.</p>

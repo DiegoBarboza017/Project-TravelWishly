@@ -39,7 +39,7 @@
 <div
     class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-5 border-bottom border-dark border-3">
     <h1 class="h2 fw-black text-dark text-uppercase tracking-wider" style="font-weight: 900;"><i
-            class="bi bi-graph-up text-dark me-3"></i>Dashboard y Calculadora</h1>
+            class="bi bi-graph-up text-dark me-3"></i>Calcula Tu Presupuesto</h1>
     <div class="btn-toolbar mb-2 mb-md-0">
         <button type="button" id="btnExportarDashboardPDF" class="btn btn-dark fw-bold px-4 rounded-0 border-2 text-uppercase"
             style="box-shadow: 3px 3px 0 0 #555;" onclick="window.print()">
@@ -210,6 +210,24 @@
                 <div id="asesorInteligente" class="w-100 mt-4 p-3 bg-white border border-dark border-3 d-none" style="box-shadow: 4px 4px 0 0 #000;">
                     <h6 class="fw-black text-dark text-uppercase tracking-wider mb-2"><i class="bi bi-robot me-2 text-primary"></i>TravelWishly Advisor</h6>
                     <p id="asesorMensaje" class="small fw-bold text-dark mb-0">Analizando rutas óptimas...</p>
+                </div>
+
+                <!-- Botón de Flujo: Continuar a Itinerario -->
+                <div id="btnContinuarItinerario" class="w-100 mt-4 d-none">
+                    <button class="btn btn-primary-flow w-100 py-3 text-uppercase rounded-0 tracking-wider border-2 border-dark hover-lift"
+                            style="box-shadow: 6px 6px 0 0 rgba(0,0,0,0.5);"
+                            onclick="window.continuarAItinerario()">
+                        Continuar a Itinerario <i class="bi bi-arrow-right-circle-fill ms-2"></i>
+                    </button>
+                    
+                    <!-- Módulo movido desde Itinerario -->
+                    <div class="mt-4 pt-4 border-top border-dark border-3 text-center">
+                        <p class="small fw-bold text-dark text-uppercase mb-2"><i class="bi bi-cash-stack me-1 text-danger"></i>¿Presupuesto muy ajustado?</p>
+                        <a href="/financiamiento" class="btn btn-warning rounded-0 fw-black px-4 py-2 w-100 border-dark border-2 text-uppercase hover-lift text-dark"
+                           style="box-shadow: 3px 3px 0 0 rgba(0,0,0,0.8); transition: all 0.2s;">
+                            Simular Crédito <i class="bi bi-arrow-right-circle-fill ms-2"></i>
+                        </a>
+                    </div>
                 </div>
             </div>
         </div>

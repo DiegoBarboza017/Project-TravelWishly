@@ -2,7 +2,7 @@
 {% block content %}
 
 <!-- Cabecera -->
-<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-5 border-bottom border-dark border-3">
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-4 border-bottom border-dark border-3">
     <div>
         <h1 class="h2 fw-black text-dark text-uppercase tracking-wider mb-1" style="font-weight:900;">
             <i class="bi bi-clock-history me-3"></i>Mi Historial de Viajes
@@ -12,7 +12,17 @@
 </div>
 
 {% if rutas %}
-<div class="row g-4">
+<!-- Controles de Filtro -->
+<div class="row mb-4">
+    <div class="col-md-6 col-lg-4">
+        <div class="input-group" style="box-shadow: 4px 4px 0 0 #000;">
+            <span class="input-group-text bg-dark text-white border-dark border-2 rounded-0"><i class="bi bi-search"></i></span>
+            <input type="text" id="historialSearch" class="form-control border-dark border-2 rounded-0 fw-bold" placeholder="Buscar por destino o fecha..." onkeyup="filtrarHistorial()">
+        </div>
+    </div>
+</div>
+
+<div class="row g-4" id="historialGrid">
     {% for ruta in rutas %}
     <div class="col-12">
         <div class="card h-100 border-dark border-3 rounded-0 hover-lift d-flex flex-md-row flex-column" style="box-shadow: 6px 6px 0 0 #000;">
@@ -45,11 +55,12 @@
                    class="btn btn-dark fw-black rounded-0 tracking-wider text-uppercase w-100 border-2 border-dark hover-lift flex-grow-1 d-flex align-items-center justify-content-center fs-5" style="box-shadow: 3px 3px 0 0 #555;">
                    <i class="bi bi-cursor-fill text-warning me-2"></i>Abrir
                 </a>
-                <button class="btn btn-outline-danger fw-bold rounded-0 border-2 w-100 py-2 mt-2" onclick="eliminarRutaHistorial({{ ruta.id }}, this)" title="Eliminar del Historial">
+                <button class="btn btn-outline-danger fw-bold rounded-0 border-2 w-100 py-2 mt-2" onclick="mostrarModalEliminar({{ ruta.id }}, '{{ ruta.destino }}', this)" title="Eliminar del Historial">
                     <i class="bi bi-trash-fill me-2"></i>Eliminar
                 </button>
             </div>
         </div>
+
     </div>
     {% endfor %}
 </div>
@@ -65,42 +76,109 @@
 </div>
 {% endif %}
 
-<!-- Script Carga Rest Eliminación -->
-<script>
-function eliminarRutaHistorial(id, btnElement) {
-    if(!confirm("¿Seguro que deseas eliminar este viaje permanentemente del Historial?")) return;
-    
-    // UI Loading state
-    const originalHtml = btnElement.innerHTML;
-    btnElement.innerHTML = '<span class="spinner-border spinner-border-sm" role="status"></span>';
-    btnElement.disabled = true;
+<!-- Modal de Confirmación de Eliminación -->
+<div class="modal fade" id="deleteConfirmModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content rounded-0 border-dark border-3" style="box-shadow: 8px 8px 0 0 #000;">
+            <div class="modal-header bg-dark text-white border-0 rounded-0">
+                <h5 class="modal-title fw-black tracking-wider text-uppercase"><i class="bi bi-exclamation-triangle-fill text-warning me-2"></i>Confirmar Eliminación</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body p-4 text-center">
+                <p class="fs-5 fw-bold mb-1">¿Estás seguro que deseas eliminar permanentemente el viaje a:</p>
+                <h3 class="fw-black text-danger text-uppercase tracking-wider my-3" id="deleteModalDestino">Destino</h3>
+                <p class="text-muted small fw-bold mt-2">Esta acción no se puede deshacer.</p>
+            </div>
+            <div class="modal-footer border-dark border-top border-2 p-3 bg-light">
+                <button type="button" class="btn btn-outline-dark fw-bold rounded-0 px-4" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-danger fw-black rounded-0 tracking-wider uppercase px-4" id="confirmDeleteBtn">SÍ, ELIMINAR</button>
+            </div>
+        </div>
+    </div>
+</div>
 
-    fetch(`/api/delete_route/${id}`, { method: 'DELETE' })
-    .then(res => res.json())
-    .then(data => {
-        if(data.success) {
-            const cardElement = btnElement.closest('.col-lg-4');
-            cardElement.style.transition = 'opacity 0.3s ease';
-            cardElement.style.opacity = '0';
-            setTimeout(() => cardElement.remove(), 300);
-            
-            // Si era el ultimo
-            if(document.querySelectorAll('.col-lg-4').length === 1) {
-                setTimeout(() => window.location.reload(), 300);
-            }
+<!-- Script Carga Rest Eliminación y Filtros -->
+<script>
+// --- Lógica del Buscador/Filtro ---
+function filtrarHistorial() {
+    const input = document.getElementById('historialSearch').value.toLowerCase();
+    const grid = document.getElementById('historialGrid');
+    if(!grid) return;
+    
+    // Obtenemos directamente las tarjetas dentro del grid (col-12)
+    const cards = grid.children;
+    
+    for (let i = 0; i < cards.length; i++) {
+        // Obtenemos el texto visible de toda la tarjeta
+        const cardText = cards[i].innerText.toLowerCase();
+        
+        if (cardText.includes(input)) {
+            cards[i].style.display = "";
         } else {
-            alert(data.message || "Error al eliminar la ruta.");
-            btnElement.innerHTML = originalHtml;
-            btnElement.disabled = false;
+            cards[i].style.display = "none";
         }
-    })
-    .catch(err => {
-        console.error(err);
-        alert("Error de red. Revisa tu conexión a internet.");
-        btnElement.innerHTML = originalHtml;
-        btnElement.disabled = false;
-    });
+    }
 }
+
+// --- Lógica de Eliminación con Modal ---
+let routeToDeleteId = null;
+let buttonToLoading = null;
+let deleteModalInstance = null;
+
+function mostrarModalEliminar(id, destino, btnElement) {
+    routeToDeleteId = id;
+    buttonToLoading = btnElement;
+    
+    document.getElementById('deleteModalDestino').innerText = destino;
+    
+    if (!deleteModalInstance) {
+        deleteModalInstance = new bootstrap.Modal(document.getElementById('deleteConfirmModal'));
+    }
+    deleteModalInstance.show();
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+    document.getElementById('confirmDeleteBtn')?.addEventListener('click', function() {
+        if (!routeToDeleteId || !buttonToLoading) return;
+        
+        deleteModalInstance.hide();
+        
+        // UI Loading state en el botón original
+        const originalHtml = buttonToLoading.innerHTML;
+        buttonToLoading.innerHTML = '<span class="spinner-border spinner-border-sm" role="status"></span>';
+        buttonToLoading.disabled = true;
+
+        fetch(`/api/delete_route/${routeToDeleteId}`, { method: 'DELETE' })
+        .then(res => res.json())
+        .then(data => {
+            if(data.success) {
+                const colElement = buttonToLoading.closest('.col-12');
+                colElement.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+                colElement.style.opacity = '0';
+                colElement.style.transform = 'scale(0.95)';
+                setTimeout(() => colElement.remove(), 300);
+                
+                // Si era el ultimo visible, recargamos la página para mostrar el empty state
+                setTimeout(() => {
+                    const grid = document.getElementById('historialGrid');
+                    if(grid && grid.children.length === 0) {
+                        window.location.reload();
+                    }
+                }, 350);
+            } else {
+                alert(data.message || "Error al eliminar la ruta.");
+                buttonToLoading.innerHTML = originalHtml;
+                buttonToLoading.disabled = false;
+            }
+        })
+        .catch(err => {
+            console.error(err);
+            alert("Error de red. Revisa tu conexión a internet.");
+            buttonToLoading.innerHTML = originalHtml;
+            buttonToLoading.disabled = false;
+        });
+    });
+});
 </script>
 
 {% endblock %}

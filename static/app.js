@@ -17,6 +17,33 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     });
 
+    // Flujo Global Lineal (Auto-Cargas por URL)
+    if (currentPath === '/dashboard') {
+        const p = new URLSearchParams(window.location.search);
+        if (p.has('destino')) {
+            const dest = p.get('destino');
+            const destInput = document.getElementById('destinoSugerido');
+            if (destInput) {
+                destInput.value = dest;
+                if (window.sugerirPresupuestoBuscador) {
+                    window.sugerirPresupuestoBuscador(dest);
+                }
+                setTimeout(() => { destInput.scrollIntoView({behavior: 'smooth', block: 'center'}); }, 500);
+            }
+        }
+    } else if (currentPath === '/constructor') {
+        const p = new URLSearchParams(window.location.search);
+        if (p.has('destino')) {
+            const dest = p.get('destino');
+            const rutaDest = document.getElementById('rutaDestino');
+            if (rutaDest) rutaDest.value = dest;
+            if (p.has('budget')) {
+                // Info that they came from budget
+                console.log("Presupuesto proyectado:", p.get('budget'));
+            }
+        }
+    }
+
     // Auto-Rehidratación del Constructor desde la BD de Historial
     if (currentPath === '/constructor') {
         const params = new URLSearchParams(window.location.search);
@@ -201,7 +228,28 @@ function calcularDistribucion() {
 
     renderizarPanelGraficas(distribucion);
     actualizarTextosDeInsights(ahorroConvertido, mesesParaAhorrarAprox, distribucion, ingreso, capitalViajeEst);
+
+    // Activar Botón de Flujo Continuo a Itinerario
+    const btnFlujo = document.getElementById('btnContinuarItinerario');
+    if (btnFlujo) btnFlujo.classList.remove('d-none');
 }
+
+/** @function continuarAItinerario Extrae variables y redirige al constructor */
+window.continuarAItinerario = function() {
+    const destinoEl = document.getElementById('destinoSugerido');
+    const budgetEl = document.getElementById('viajeObjetivo');
+    let url = '/constructor';
+    let params = new URLSearchParams();
+    
+    if (destinoEl && destinoEl.value) params.append('destino', destinoEl.value);
+    if (budgetEl && budgetEl.value) params.append('budget', budgetEl.value);
+    
+    if(params.toString()) {
+        window.location.href = url + '?' + params.toString();
+    } else {
+        window.location.href = url;
+    }
+};
 
 /** 
  * Actualiza el Canvas Chart.js del Frontend con transiciones animadas 
@@ -577,6 +625,9 @@ function cargarGuiaSegura() {
             });
     }
 
+    // Save for Flow
+    window._guiaDestinoActual = `${destinoObj.ciudad}, ${destinoObj.pais}`;
+
     // Poblamiento Dinámico Iterativo de Checklist Beneficiosa
     const listaHtmlUl = document.getElementById('panelRecomendaciones');
     listaHtmlUl.innerHTML = ''; // Reset
@@ -613,6 +664,13 @@ function cargarGuiaSegura() {
         }, 30 + (i * 100));
     });
 }
+
+/** @function continuarAPresupuesto redirige de Guía a Presupuesto usando el flujo global lineal */
+window.continuarAPresupuesto = function() {
+    if (window._guiaDestinoActual) {
+        window.location.href = `/dashboard?destino=${encodeURIComponent(window._guiaDestinoActual)}`;
+    }
+};
 
 /** @function abrirGaleria ejecuta el renderizado visual de 10 imagenes de LoremFlickr de cualquier parte */
 window.abrirGaleria = function(puntoInteres, ciudadContexto) {
@@ -1474,6 +1532,81 @@ document.addEventListener('DOMContentLoaded', () => {
 
 let travelTimeline = [];
 
+/** @function evaluarDocumentacion Verifica si es vuelo nacional/internacional */
+window.evaluarDocumentacion = function() {
+    const origenInput = document.getElementById('rutaOrigen');
+    const destinoInput = document.getElementById('rutaDestino');
+    const nacSelect = document.getElementById('nacionalidadUsuario');
+    
+    // Contenedores
+    const divINE = document.getElementById('divCheckINE');
+    const divPasaporte = document.getElementById('divCheckPasaporte');
+    const divVisa = document.getElementById('divCheckVisa');
+    // Checkboxes
+    const chkPasaporte = document.getElementById('checkPasaporte');
+    const chkVisa = document.getElementById('checkVisa');
+
+    if (!origenInput || !destinoInput || !nacSelect) return;
+
+    const origen = origenInput.value.trim().toLowerCase();
+    const destino = destinoInput.value.trim().toLowerCase();
+    const nacCode = nacSelect.value;
+    
+    // Diccionario extendido para mapear el código de nacionalidad con palabras clave de país
+    const countryMap = {
+        'MX': ['méxico', 'mexico', 'cancún', 'cancun', 'tijuana', 'cdmx', 'monterrey', 'guadalajara', 'puerto vallarta'],
+        'US': ['estados unidos', 'usa', 'ee.uu.', 'eeuu', 'new york', 'los angeles', 'miami', 'chicago', 'las vegas'],
+        'ES': ['españa', 'espana', 'madrid', 'barcelona', 'valencia', 'sevilla', 'ibiza'],
+        'CO': ['colombia', 'bogotá', 'bogota', 'medellín', 'medellin', 'cartagena', 'cali'],
+        'AR': ['argentina', 'buenos aires', 'córdoba', 'cordoba', 'mendoza', 'bariloche']
+    };
+
+    let destinoEsNacional = false;
+    let origenEsNacional = false;
+
+    // Detectar si el lugar coincide con la nacionalidad
+    if (nacCode !== 'OTRO' && countryMap[nacCode]) {
+        destinoEsNacional = countryMap[nacCode].some(kw => destino.includes(kw));
+        origenEsNacional = countryMap[nacCode].some(kw => origen.includes(kw));
+    }
+
+    // 1. Mostrar/Ocultar y forzar estados
+    if (destino === "" || origen === "") {
+        // Estado por defecto: mostrar pasaporte
+        divINE.classList.add('d-none');
+        divPasaporte.classList.remove('d-none');
+        divVisa.classList.remove('d-none');
+    } else if (destinoEsNacional) {
+        // ES VUELO NACIONAL/DOMESTICO (Destino de su mismo país)
+        divINE.classList.remove('d-none'); // Mostrar INE/ID
+        
+        divPasaporte.classList.add('d-none'); // Ocultar Pasaporte
+        chkPasaporte.checked = false;
+        
+        divVisa.classList.add('d-none'); // Ocultar Visa
+        chkVisa.checked = false;
+    } else {
+        // ES VUELO INTERNACIONAL
+        divINE.classList.add('d-none'); 
+        divPasaporte.classList.remove('d-none'); 
+        chkPasaporte.checked = true; // El pasaporte es casi siempre obligatorio
+
+        // Visa Check (Solo para destinos gringos si NO eres gringo ni europeo o de libre visado total)
+        const isDestinoGringo = ['estados unidos', 'usa', 'ee.uu.', 'eeuu', 'new york', 'los angeles', 'miami', 'chicago', 'las vegas', 'canadá', 'canada', 'toronto', 'vancouver'].some(k => destino.includes(k));
+        
+        if (isDestinoGringo && nacCode !== 'US') {
+            divVisa.classList.remove('d-none');
+            // Sugerencia: chequear visa si es MEX/CO/AR
+            chkVisa.checked = ['MX','CO','AR','OTRO'].includes(nacCode);
+        } else {
+            divVisa.classList.add('d-none');
+            chkVisa.checked = false;
+        }
+    }
+
+    window.calcularMochila();
+};
+
 /** @function generarRutaInteligente Construye la ruta paso a paso detectando distancias */
 window.generarRutaInteligente = function() {
     const origenInput = document.getElementById('rutaOrigen');
@@ -1499,6 +1632,9 @@ window.generarRutaInteligente = function() {
     // Minisleep to feel like AI processing
     setTimeout(() => {
         travelTimeline = [];
+        
+        // Ejecutar evaluación de documentación antes de trazar
+        window.evaluarDocumentacion();
 
         // Lógica de heuristicas simple (Detectar País)
         const paisOrigen = origen.includes(',') ? origen.split(',')[origen.split(',').length-1].trim().toLowerCase() : origen.toLowerCase();
@@ -1641,10 +1777,13 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (!bubbleBtn || !chatWindow) return;
 
+    const chatTooltip = document.getElementById('chatTooltip');
+
     // Toggle Chat Window
     bubbleBtn.addEventListener('click', () => {
         chatWindow.classList.add('active');
         bubbleBtn.style.transform = "scale(0)";
+        if(chatTooltip) chatTooltip.classList.add('hide'); // Ocultar tooltip permanente al abrir
     });
 
     closeChatBtn.addEventListener('click', () => {
@@ -1652,7 +1791,7 @@ document.addEventListener("DOMContentLoaded", () => {
         bubbleBtn.style.transform = "scale(1)";
     });
 
-    // Handle Send Message
+    // Respuestas predefinidas por palabras clave
     const procesarMensaje = () => {
         const text = chatInput.value.trim();
         if (text === "") return;
@@ -1666,14 +1805,114 @@ document.addEventListener("DOMContentLoaded", () => {
         
         chatBody.scrollTop = chatBody.scrollHeight;
 
-        // Mock Bot Reply
+        // Mostrar indicador de "escribiendo..."
+        const typingMsg = document.createElement('div');
+        typingMsg.className = "chat-message bot shadow-sm text-muted fst-italic";
+        typingMsg.innerText = "Escribiendo...";
+        typingMsg.id = "typingIndicator";
+        chatBody.appendChild(typingMsg);
+        chatBody.scrollTop = chatBody.scrollHeight;
+
         setTimeout(() => {
+            const ind = document.getElementById("typingIndicator");
+            if (ind) ind.remove();
+
             const botMsg = document.createElement('div');
             botMsg.className = "chat-message bot shadow-sm";
-            botMsg.innerText = "¡Miau! Soy Leia. Todavía estoy entrenándome para conocer los secretos del mundo de TravelWishly, pronto podré responderte todo. 🐾";
+            
+            const txtLower = text.toLowerCase();
+            let respuesta = "¡Miau! 🐾 Aún estoy aprendiendo, pero puedo guiarte paso a paso. Prueba preguntarme '¿Qué hago aquí?', 'ayuda', o 'siguiente'.";
+
+            // 1. Obtener contexto actual
+            const currentPath = window.location.pathname;
+            const destinoActual = window._guiaDestinoActual || "tu destino";
+            
+            // 2. Intenciones Universales
+            if (txtLower.includes("hola") || txtLower.includes("saludos") || txtLower.includes("hey")) {
+                respuesta = "¡Hola viajero! 👋 Soy Leia. ¿En qué parte del proceso te puedo ayudar hoy? Di 'ayuda' si estás perdido.";
+            } else if (txtLower.includes("gracias") || txtLower.includes("ok") || txtLower.includes("perfecto")) {
+                respuesta = "¡De nada! Aquí sigo por si necesitas más ayuda. 🐱✈️";
+            } else if (txtLower.includes("historial") || txtLower.includes("guardado") || txtLower.includes("pdf")) {
+                respuesta = "📂 Todos tus viajes se guardan en el **Historial**. Ve allá para revisarlos, imprimirlos en PDF o borrarlos.";
+            } else if (txtLower.includes("prestamo") || txtLower.includes("credito") || txtLower.includes("financiamiento") || txtLower.includes("pagar")) {
+                respuesta = "💳 ¿Presupuesto ajustado? Usa nuestro **Simulador de Crédito** (en el menú superior) para calcular pagos parciales transparentes.";
+            } 
+            // 3. Intenciones de Redirección Cruzada
+            else if ((txtLower.includes("clima") || txtLower.includes("tiempo") || txtLower.includes("llover")) && !currentPath.includes('/dashboard')) {
+                respuesta = "⛅ El widget de clima en vivo se encuentra en la pantalla de **Presupuesto**. ¡Inicia tu viaje buscando un destino para llegar ahí!";
+            } else if ((txtLower.includes("moneda") || txtLower.includes("dinero") || txtLower.includes("cambio") || txtLower.includes("divisa") || txtLower.includes("presupuesto") || txtLower.includes("costo") || txtLower.includes("costar")) && !currentPath.includes('/dashboard')) {
+                respuesta = "💰 El Conversor de Divisas global y la calculadora de viáticos se encuentran en la sección **Presupuesto**. ¡Busca un destino en Inicio y sigue el flujo para llegar ahí!";
+            } else if ((txtLower.includes("equipaje") || txtLower.includes("maleta") || txtLower.includes("visa") || txtLower.includes("pasaporte")) && !currentPath.includes('/constructor')) {
+                respuesta = "🎒 La Lista Inteligente de Empaque (Smart Packing List) y avisos de VISA te aparecerán automáticamente en el paso final: el **Itinerario (Constructor)**.";
+            }
+            // 4. Intenciones Contextuales
+            else {
+                if (currentPath === '/' || currentPath === '/inicio' || currentPath === '') {
+                    // CONTEXTO: INICIO
+                    if (txtLower.includes("ayuda") || txtLower.includes("hago") || txtLower.includes("empezar") || txtLower.includes("aqui")) {
+                        respuesta = "📍 **Estás en el Inicio.** Escribe un país en la barra de búsqueda central, o presiona **Explorar Destinos** arriba para buscar opciones.";
+                    } else if (txtLower.includes("destino") || txtLower.includes("viajar") || txtLower.includes("donde")) {
+                         respuesta = "🌍 Ingresa el país en el buscador de esta pantalla para ver su Guía Preventiva de seguridad.";
+                    } else {
+                        respuesta = "🐾 Desde aquí arranca tu viaje. Escribe un país en el gran buscador del centro o ve a **Explorar Destinos**.";
+                    }
+                } 
+                else if (currentPath === '/explorar') {
+                    // CONTEXTO: EXPLORAR DESTINOS
+                    if (txtLower.includes("ayuda") || txtLower.includes("hago") || txtLower.includes("empezar") || txtLower.includes("aqui")) {
+                        respuesta = "📍 **Estás en Explorar.** Dale clic a cualquier tarjeta con foto para comenzar a planear un viaje hacia allí.";
+                    } else if (txtLower.includes("filtr") || txtLower.includes("presupuesto") || txtLower.includes("buscar")) {
+                        respuesta = "Usa los botones de categorías (amarillos, azules, verdes) arriba para filtrar la lista según tu estilo y dinero.";
+                    } else {
+                        respuesta = "🐾 Navega entre países. Cuando uno te llame la atención, dale clic al botón 'Ver Destino/Continuar' para evaluarlo.";
+                    }
+                }
+                else if (currentPath === '/guia') {
+                    // CONTEXTO: GUIA PREVENTIVA
+                    if (txtLower.includes("ayuda") || txtLower.includes("hago") || txtLower.includes("siguiente") || txtLower.includes("continuar")) {
+                        respuesta = `📍 **Estás evaluando ${destinoActual}.** Revisa los lugares típicos y el riesgo. ¡Si te gusta, haz clic en el gran botón azul **Continuar a Presupuesto** al fondo!`;
+                    } else if (txtLower.includes("seguridad") || txtLower.includes("peligro") || txtLower.includes("riesgo")) {
+                        respuesta = `🛡️ Hemos analizado a ${destinoActual}. Revisa la tarjeta de "Nivel de Riesgo" que encontrarás bajando por la página.`;
+                    } else {
+                        respuesta = `🐾 Estudiemos juntos ${destinoActual}. ¿Te convence? Si es así, presiona "Continuar a Presupuesto" al final de la página.`;
+                    }
+                }
+                else if (currentPath.includes('/dashboard')) {
+                    // CONTEXTO: PRESUPUESTO
+                    if (txtLower.includes("ayuda") || txtLower.includes("hago") || txtLower.includes("siguiente") || txtLower.includes("aqui") || txtLower.includes("continuar")) {
+                        respuesta = `📍 **Presupuestando ${destinoActual}.** Juega con los botones de MODO DE VIAJE. ¡Cuando estés feliz con el total, dale al botón azul **Continuar a Itinerario** en el lado izquierdo!`;
+                    } else if (txtLower.includes("clima") || txtLower.includes("tiempo") || txtLower.includes("llover")) {
+                        respuesta = `⛅ ¡Ahí lo tienes! El clima para ${destinoActual} se encuentra en el **Widget satelital abierto** a la derecha.`;
+                    } else if (txtLower.includes("moneda") || txtLower.includes("dinero") || txtLower.includes("cambio") || txtLower.includes("divisa")) {
+                        respuesta = `💸 ¡Baja un poco más en la pantalla! Hay un Conversor de Divisas en vivo funcionando ahora mismo debajo de ti.`;
+                    } else {
+                         respuesta = `🐾 Aquí hablamos de dinero. Modifica los días (arriba a la izquierda) para ajustar tu cálculo para ${destinoActual} en tiempo real.`;
+                    }
+                }
+                else if (currentPath.includes('/constructor')) {
+                    // CONTEXTO: ITINERARIO
+                    if (txtLower.includes("ayuda") || txtLower.includes("hago") || txtLower.includes("aqui") || txtLower.includes("ruta") || txtLower.includes("escala")) {
+                        respuesta = `📍 **Armando ruta para ${destinoActual}.** Define tus días y **vibes**. Luego haz clic en el botón negro de **Generar Ruta Temporal**. Finalmente, usa "Guardar en Historial".`;
+                    } else if (txtLower.includes("equipaje") || txtLower.includes("maleta") || txtLower.includes("visa") || txtLower.includes("pasaporte") || txtLower.includes("documento")) {
+                        respuesta = `🎒 Si marcas tu país de Origen en la izquierda, la Lista Inteligente abajo te avisará si requieres Pasaporte, VISA o solo INE (DNI) para viajar a ${destinoActual}.`;
+                    } else if (txtLower.includes("guardar")) {
+                        respuesta = `📝 Llena tus días y dale clic a **Guardar en Historial** arriba del mapa. ¡Te daremos una confirmación en toda la pantalla!`;
+                    } else {
+                        respuesta = "🐾 Puedes jugar con los elementos de equipo de tu Mochila virtual para ver cómo se añade a tus cálculos.";
+                    }
+                }
+                else {
+                    // FALLBACK
+                    if (txtLower.includes("clima")) respuesta = "⛅ En la pantalla de Presupuesto podrás ver un clima ultra-local en tiempo real.";
+                    else if (txtLower.includes("presupuesto")) respuesta = "💰 Sigue nuestro flujo (Guía -> Presupuesto -> Itinerario) para hacer cálculos.";
+                    else if (txtLower.includes("equipaje") || txtLower.includes("maleta")) respuesta = "🎒 La lista de maleta automática aparece en el módulo de Itinerario final.";
+                }
+            }
+
+            botMsg.innerHTML = respuesta.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
             chatBody.appendChild(botMsg);
             chatBody.scrollTop = chatBody.scrollHeight;
-        }, 800);
+        }, 1200);
     };
 
     if(sendBtn) sendBtn.addEventListener('click', procesarMensaje);
@@ -1743,13 +1982,39 @@ window.guardarViajeHistorial = function(btnElement) {
         if (data && data.success) {
             btnElement.classList.remove('btn-outline-dark', 'bg-white', 'text-dark');
             btnElement.classList.add('btn-success', 'text-white');
-            btnElement.innerHTML = '<i class="bi bi-check-circle-fill me-2"></i>¡Viaje Registrado!';
+            btnElement.innerHTML = '<i class="bi bi-check-circle-fill me-2"></i>Guardado en Historial';
+            
+            // Ventana flotante centralizada
+            const notif = document.createElement('div');
+            notif.innerHTML = `
+                <div style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.6); z-index: 9999; display: flex; justify-content: center; align-items: center; transition: opacity 0.5s ease;" id="overlayGuardado">
+                    <div style="background: white; border: 4px solid #000; box-shadow: 12px 12px 0 0 #000; padding: 40px; text-align: center; max-width: 500px; transform: scale(0.8); animation: popScale 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;">
+                        <i class="bi bi-floppy-fill text-dark mb-3 d-block" style="font-size: 3.5rem;"></i>
+                        <h2 class="fw-black text-uppercase text-dark mb-3">¡Listo, tu viaje está guardado!</h2>
+                        <p class="fw-bold text-muted mb-0">Lo hemos respaldado en tu Historial en la nube.</p>
+                    </div>
+                </div>
+            `;
+            if (!document.getElementById('animPopScale')) {
+                const style = document.createElement('style');
+                style.id = 'animPopScale';
+                style.innerHTML = '@keyframes popScale { to { transform: scale(1); } }';
+                document.head.appendChild(style);
+            }
+            document.body.appendChild(notif);
+            
+            setTimeout(() => { 
+                const overlay = document.getElementById('overlayGuardado');
+                if(overlay) overlay.style.opacity = '0';
+                setTimeout(() => notif.remove(), 500);
+            }, 3500);
+
             setTimeout(() => {
                 btnElement.classList.remove('btn-success', 'text-white');
                 btnElement.classList.add('btn-outline-dark', 'bg-white', 'text-dark');
                 btnElement.innerHTML = originalText;
                 btnElement.disabled = false;
-            }, 2500);
+            }, 3000);
         } else {
             alert("❌ Error: " + (data.message || 'Error guardando en PostgreSQL.'));
             btnElement.innerHTML = originalText;
