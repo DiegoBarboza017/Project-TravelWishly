@@ -27,8 +27,8 @@ def create_app():
     app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'secr3t_travelwishly_k3y_for_dev')
 
     # Use SQLite by default for easy local execution without needing PostgreSQL setup
-  # Configuración para MySQL Local
-    app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://root:DBserver.17!@localhost/TravelWishly_db'
+  # Configuración para MySQL en la Nube (Clever Cloud)
+    app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://u6wvnic50rzyhxn1:tjsmM6Y9O0ZLfTfnU49M@buatnltezoxagpbswdbx-mysql.services.clever-cloud.com:3306/buatnltezoxagpbswdbx'
 
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
