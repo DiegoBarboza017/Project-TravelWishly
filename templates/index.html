@@ -24,23 +24,40 @@
                 <div id="globeViz" style="width: 100%; height: 100%;"></div>
             </div>
 
-            <!-- Leyenda de Niveles de Peligro -->
-            <div class="d-flex flex-wrap justify-content-center gap-4 mt-4 mb-3">
-                <div class="d-flex align-items-center">
-                    <span class="d-inline-block border border-2 border-dark rounded-circle me-2" style="width: 16px; height: 16px; background-color: #28a745;"></span>
-                    <span class="small fw-bold text-uppercase tracking-wider">Bajo Riesgo</span>
-                </div>
-                <div class="d-flex align-items-center">
-                    <span class="d-inline-block border border-2 border-dark rounded-circle me-2" style="width: 16px; height: 16px; background-color: #ffc107;"></span>
-                    <span class="small fw-bold text-uppercase tracking-wider">Precaución</span>
-                </div>
-                <div class="d-flex align-items-center">
-                    <span class="d-inline-block border border-2 border-dark rounded-circle me-2" style="width: 16px; height: 16px; background-color: #fd7e14;"></span>
-                    <span class="small fw-bold text-uppercase tracking-wider">Riesgo Alto</span>
-                </div>
-                <div class="d-flex align-items-center">
-                    <span class="d-inline-block border border-2 border-dark rounded-circle me-2" style="width: 16px; height: 16px; background-color: #dc3545;"></span>
-                    <span class="small fw-bold text-uppercase tracking-wider">Extremo</span>
+            <!-- Leyenda de Niveles de Riesgo del Mapa -->
+            <div class="mt-4 mb-3">
+                <p class="small fw-black text-uppercase text-muted text-center mb-2" style="font-size:11px; letter-spacing:1px;">
+                    <i class="bi bi-info-circle-fill me-1"></i>Colores del mapa según «nivel de riesgo de viaje» (basado en alertas oficiales de cancillerías)
+                </p>
+                <div class="d-flex flex-wrap justify-content-center gap-4">
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="d-inline-block border border-2 border-dark rounded-circle" style="width: 16px; height: 16px; background-color: #28a745; flex-shrink:0;"></span>
+                        <div>
+                            <span class="small fw-black text-uppercase d-block" style="font-size:11px;">Bajo Riesgo</span>
+                            <span class="text-muted" style="font-size:10px;">Destino seguro, sin restricciones</span>
+                        </div>
+                    </div>
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="d-inline-block border border-2 border-dark rounded-circle" style="width: 16px; height: 16px; background-color: #ffc107; flex-shrink:0;"></span>
+                        <div>
+                            <span class="small fw-black text-uppercase d-block" style="font-size:11px;">Precaución</span>
+                            <span class="text-muted" style="font-size:10px;">Viajar con cuidado extra</span>
+                        </div>
+                    </div>
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="d-inline-block border border-2 border-dark rounded-circle" style="width: 16px; height: 16px; background-color: #fd7e14; flex-shrink:0;"></span>
+                        <div>
+                            <span class="small fw-black text-uppercase d-block" style="font-size:11px;">Riesgo Alto</span>
+                            <span class="text-muted" style="font-size:10px;">Alerta activa, evaluar antes de viajar</span>
+                        </div>
+                    </div>
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="d-inline-block border border-2 border-dark rounded-circle" style="width: 16px; height: 16px; background-color: #dc3545; flex-shrink:0;"></span>
+                        <div>
+                            <span class="small fw-black text-uppercase d-block" style="font-size:11px;">Extremo / No Viajar</span>
+                            <span class="text-muted" style="font-size:10px;">Conflicto activo o riesgo extremo</span>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -60,11 +77,11 @@
         <div class="d-grid gap-3 d-sm-flex justify-content-sm-center mb-5">
             <a class="btn btn-dark btn-lg px-5 gap-3 fw-bold rounded-0 text-uppercase tracking-wider"
                 href="{{ url_for('registro') }}">
-                Empezar Ahora
+                Registrarse para Empezar
             </a>
             <a class="btn btn-outline-dark btn-lg px-5 rounded-0 fw-bold text-uppercase tracking-wider"
                 href="{{ url_for('dashboard') }}">
-                Calculadora
+                Calcula tu Presupuesto
             </a>
         </div>
     </div>

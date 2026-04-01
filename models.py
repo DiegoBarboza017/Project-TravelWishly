@@ -63,6 +63,23 @@ class SavedRoute(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 
+class SavingsReminder(db.Model):
+    """Plan de ahorro mensual con recordatorios por correo electrónico"""
+    __tablename__ = 'savings_reminders'
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    destination = db.Column(db.String(100), nullable=False)
+    monthly_amount = db.Column(db.Float, nullable=False)
+    total_months = db.Column(db.Integer, nullable=False)
+    currency = db.Column(db.String(10), nullable=False, default='MXN')
+    currency_symbol = db.Column(db.String(10), nullable=False, default='$')
+    start_date = db.Column(db.DateTime, default=datetime.utcnow)
+    next_reminder = db.Column(db.DateTime, nullable=False)
+    reminders_sent = db.Column(db.Integer, default=0)
+    is_active = db.Column(db.Boolean, default=True)
+    user = db.relationship('User', backref=db.backref('savings_reminders', lazy=True))
+
+
 
 
 

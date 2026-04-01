@@ -42,10 +42,29 @@ document.addEventListener("DOMContentLoaded", () => {
                 console.log("Presupuesto proyectado:", p.get('budget'));
             }
         }
-    }
 
-    // Auto-Rehidratación del Constructor desde la BD de Historial
-    if (currentPath === '/constructor') {
+        // === VALIDACIÓN: Fecha mínima = hoy (no se puede elegir fecha pasada) ===
+        const rutaFechaInput = document.getElementById('rutaFecha');
+        if (rutaFechaInput) {
+            const hoy = new Date();
+            const yyyy = hoy.getFullYear();
+            const mm   = String(hoy.getMonth() + 1).padStart(2, '0');
+            const dd   = String(hoy.getDate()).padStart(2, '0');
+            rutaFechaInput.setAttribute('min', `${yyyy}-${mm}-${dd}`);
+
+            // Prevenir escritura manual de fechas anteriores
+            rutaFechaInput.addEventListener('change', function() {
+                const seleccionada = new Date(this.value + 'T00:00:00');
+                const hoyCheck    = new Date();
+                hoyCheck.setHours(0, 0, 0, 0);
+                if (seleccionada < hoyCheck) {
+                    this.value = `${yyyy}-${mm}-${dd}`;
+                    alert('⚠️ La fecha de salida no puede ser anterior a hoy. Se ha restablecido a la fecha actual.');
+                }
+            });
+        }
+
+        // Auto-Rehidratación del Constructor desde la BD de Historial
         const params = new URLSearchParams(window.location.search);
         if (params.has('history_id')) {
             const historyId = params.get('history_id');
@@ -228,6 +247,16 @@ function calcularDistribucion() {
 
     renderizarPanelGraficas(distribucion);
     actualizarTextosDeInsights(ahorroConvertido, mesesParaAhorrarAprox, distribucion, ingreso, capitalViajeEst);
+
+    // Guardar estado de la proyección para el modal de recordatorios de ahorro
+    const destinoEl2 = document.getElementById('destinoSugerido');
+    window._lastSavingsCalc = {
+        destination:    destinoEl2 ? destinoEl2.value.trim() : '',
+        monthlyAmount:  parseFloat(capacidadMonetariaAhorro.toFixed(2)),
+        totalMonths:    mesesParaAhorrarAprox,
+        currency:       divisaSelec,
+        currencySymbol: conversion.simbolo
+    };
 
     // Activar Botón de Flujo Continuo a Itinerario
     const btnFlujo = document.getElementById('btnContinuarItinerario');
@@ -875,6 +904,51 @@ window.recomendarDestino = function(interesStr, btnElement) {
     });
     renderHtml += `</div>`;
     descObj.innerHTML = renderHtml;
+}
+
+// ===== Selector de Intereses en Explorar Destinos (Guía) =====
+let _guiaInteresesSeleccionados = [];
+let _guiaDestinoSeleccionado = null;
+
+window.recomendarDestinoGuia = function(interesStr, btnElement) {
+    const idx = _guiaInteresesSeleccionados.indexOf(interesStr);
+    if (idx > -1) {
+        _guiaInteresesSeleccionados.splice(idx, 1);
+        if (btnElement) { btnElement.classList.remove('btn-dark','text-white'); btnElement.classList.add('btn-outline-dark'); }
+    } else {
+        _guiaInteresesSeleccionados.push(interesStr);
+        if (btnElement) { btnElement.classList.remove('btn-outline-dark'); btnElement.classList.add('btn-dark','text-white'); }
+    }
+
+    const panel = document.getElementById('guiaPanelRecomendado');
+    const titulo = document.getElementById('guiaRecomendacionTitulo');
+    const desc = document.getElementById('guiaRecomendacionDesc');
+    if (!panel || !titulo || !desc) return;
+
+    if (_guiaInteresesSeleccionados.length === 0) { panel.classList.add('d-none'); return; }
+
+    let matches = TODOS_DESTINOS_DB.map(d => {
+        let sc = 0;
+        d.tags.forEach(t => { if (_guiaInteresesSeleccionados.includes(t)) sc++; });
+        return { ...d, score: sc };
+    }).filter(d => d.score > 0).sort((a, b) => b.score - a.score);
+
+    if (matches.length === 0) matches = TODOS_DESTINOS_DB.slice(0, 3);
+
+    _guiaDestinoSeleccionado = matches[0];
+    titulo.innerText = `${matches[0].ciudad}, ${matches[0].pais}`;
+    desc.innerText = matches[0].desc;
+    panel.classList.remove('d-none');
+}
+
+window.enviarDestinoAlBuscador = function() {
+    if (!_guiaDestinoSeleccionado) return;
+    const input = document.getElementById('destinosDropdown');
+    if (input) {
+        input.value = _guiaDestinoSeleccionado.ciudad;
+        input.dispatchEvent(new Event('input'));
+        input.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
 }
 
 window.mostrarDetallesDestino = function(id) {

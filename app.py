@@ -11,10 +11,11 @@ from flask_mail import Mail, Message
 from database import db
 import threading
 import webbrowser
-from models import User, TripBudget, DestinationGuide, SavedRoute
+from models import User, TripBudget, DestinationGuide, SavedRoute, SavingsReminder
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime, timedelta
 from flask import jsonify
+from apscheduler.schedulers.background import BackgroundScheduler
 
 # === OpenWeather API Key (cambiar por la tuya en openweathermap.org) ===
 OPENWEATHER_API_KEY = os.environ.get('OPENWEATHER_API_KEY', '7bc4ccdffadb356912aeb175eb943099')
@@ -35,6 +36,66 @@ def create_app():
     app.config['MAIL_PASSWORD'] = 'crdudnuprbwngito'
     app.config['MAIL_DEFAULT_SENDER'] = 'travelwishly.bot@gmail.com'
     mail = Mail(app)
+
+    # ============================================================
+    # SCHEDULER DE RECORDATORIOS DE AHORRO EN SEGUNDO PLANO
+    # ============================================================
+    def enviar_recordatorios_ahorro():
+        """Job que revisa y envía recordatorios de ahorro mensuales pendientes"""
+        with app.app_context():
+            try:
+                ahora = datetime.utcnow()
+                planes = SavingsReminder.query.filter(
+                    SavingsReminder.is_active == True,
+                    SavingsReminder.next_reminder <= ahora,
+                    SavingsReminder.reminders_sent < SavingsReminder.total_months
+                ).all()
+
+                for plan in planes:
+                    usuario = User.query.get(plan.user_id)
+                    if not usuario:
+                        continue
+
+                    mes_actual = plan.reminders_sent + 1
+                    monto_fmt = f"{plan.currency_symbol}{plan.monthly_amount:,.2f} {plan.currency}"
+
+                    cuerpo = (
+                        f"Hola {usuario.username} ✈️\n\n"
+                        f"Este es tu recordatorio #{mes_actual} de {plan.total_months} "
+                        f"para tu viaje a {plan.destination}.\n\n"
+                        f"💰 No olvides tu ahorro mensual de {monto_fmt}\n\n"
+                        f"¡Vas muy bien! Sigue así y pronto estarás haciendo las maletas 🧳\n\n"
+                        f"— El equipo de TravelWishly"
+                    )
+
+                    try:
+                        msg = Message(
+                            subject=f"✈️ Recordatorio de ahorro #{mes_actual}: {monto_fmt} para {plan.destination}",
+                            recipients=[usuario.email],
+                            body=cuerpo
+                        )
+                        mail.send(msg)
+                        print(f"[SCHEDULER] Correo enviado a {usuario.email} (plan #{plan.id}, mes {mes_actual})")
+                    except Exception as mail_err:
+                        print(f"[SCHEDULER] Error enviando correo a {usuario.email}: {mail_err}")
+
+                    plan.reminders_sent += 1
+                    plan.next_reminder = ahora + timedelta(days=30)
+
+                    if plan.reminders_sent >= plan.total_months:
+                        plan.is_active = False
+                        print(f"[SCHEDULER] Plan #{plan.id} completado. Marcado como inactivo.")
+
+                db.session.commit()
+            except Exception as e:
+                print(f"[SCHEDULER] Error general: {e}")
+
+    # Iniciar scheduler (solo una vez, evitando doble arranque en modo debug)
+    if not app.debug or os.environ.get('WERKZEUG_RUN_MAIN') == 'true':
+        scheduler = BackgroundScheduler()
+        scheduler.add_job(enviar_recordatorios_ahorro, 'interval', hours=1, id='savings_reminder_job')
+        scheduler.start()
+        print("[SCHEDULER] APScheduler iniciado — revisando recordatorios cada hora.")
 
     # Use SQLite by default for easy local execution without needing PostgreSQL setup
   # Configuración para MySQL en la Nube (Clever Cloud)
@@ -129,6 +190,7 @@ def create_app():
             if user and identifier_is_exact_match and check_password_hash(user.password_hash, password):
                 session['user_id'] = user.id
                 session['username'] = user.username
+                session['user_email'] = user.email
                 
                 # Gestión Férrea de Persistencia
                 if request.form.get('rememberMe'):
@@ -195,6 +257,7 @@ def create_app():
             
         session['user_id'] = user.id
         session['username'] = user.username
+        session['user_email'] = user.email
         session.permanent = False
         session['expires_at'] = (datetime.now() + timedelta(minutes=60)).timestamp()
         
@@ -349,6 +412,112 @@ def create_app():
         db.session.delete(ruta)
         db.session.commit()
         return jsonify({'success': True})
+
+    # ============================================================
+    # RUTAS API: PLANES DE AHORRO CON RECORDATORIOS POR EMAIL
+    # ============================================================
+
+    @app.route('/api/save_savings_plan', methods=['POST'])
+    def save_savings_plan():
+        """API: Registrar un nuevo plan de ahorro y enviar el primer correo inmediatamente"""
+        if 'user_id' not in session:
+            return jsonify({'success': False, 'message': 'Debes iniciar sesión para activar recordatorios.'}), 401
+
+        data = request.get_json()
+        if not data:
+            return jsonify({'success': False, 'message': 'Datos inválidos.'}), 400
+
+        destination   = data.get('destination', '').strip()
+        monthly_amount = float(data.get('monthly_amount', 0))
+        total_months  = int(data.get('total_months', 1))
+        currency      = data.get('currency', 'MXN').upper()
+        currency_symbol = data.get('currency_symbol', '$')
+
+        if not destination or monthly_amount <= 0 or total_months < 1:
+            return jsonify({'success': False, 'message': 'Datos del plan incompletos o inválidos.'}), 400
+
+        ahora = datetime.utcnow()
+        # El PRIMER recordatorio se envía ahora mismo; el siguiente en 30 días
+        nuevo_plan = SavingsReminder(
+            user_id        = session['user_id'],
+            destination    = destination,
+            monthly_amount = monthly_amount,
+            total_months   = total_months,
+            currency       = currency,
+            currency_symbol= currency_symbol,
+            start_date     = ahora,
+            next_reminder  = ahora,   # inmediatamente disponible para el scheduler
+            reminders_sent = 0,
+            is_active      = True
+        )
+        db.session.add(nuevo_plan)
+        db.session.commit()
+
+        # Enviar el PRIMER correo de forma inmediata (sin esperar el scheduler)
+        usuario = User.query.get(session['user_id'])
+        monto_fmt = f"{currency_symbol}{monthly_amount:,.2f} {currency}"
+        cuerpo_inicial = (
+            f"Hola {usuario.username} ✈️\n\n"
+            f"¡Tu plan de ahorro para {destination} ha sido activado con éxito!\n\n"
+            f"💰 Tu cuota mensual es de {monto_fmt} durante {total_months} mes{'es' if total_months > 1 else ''}.\n\n"
+            f"Recibirás un recordatorio cada mes para mantenerte en el camino correcto.\n"
+            f"¡Empieza a ahorrar desde hoy y pronto estarás en {destination}! 🌍\n\n"
+            f"— El equipo de TravelWishly"
+        )
+        try:
+            msg = Message(
+                subject=f"✈️ Plan de ahorro activado: {monto_fmt}/mes para {destination}",
+                recipients=[usuario.email],
+                body=cuerpo_inicial
+            )
+            mail.send(msg)
+            # Marcar el primer envío hecho y programar el siguiente en 30 días
+            nuevo_plan.reminders_sent = 1
+            nuevo_plan.next_reminder  = ahora + timedelta(days=30)
+            if nuevo_plan.reminders_sent >= nuevo_plan.total_months:
+                nuevo_plan.is_active = False
+            db.session.commit()
+            print(f"[SAVINGS] Primer correo enviado a {usuario.email} para plan #{nuevo_plan.id}")
+        except Exception as e:
+            print(f"[SAVINGS] Error enviando correo inicial: {e}")
+
+        return jsonify({'success': True, 'message': f'Plan de ahorro activado. ¡Revisá tu correo {usuario.email}!', 'plan_id': nuevo_plan.id})
+
+    @app.route('/api/savings_plans', methods=['GET'])
+    def get_savings_plans():
+        """API: Ver planes de ahorro activos del usuario"""
+        if 'user_id' not in session:
+            return jsonify({'success': False, 'message': 'No autenticado'}), 401
+
+        planes = SavingsReminder.query.filter_by(user_id=session['user_id']).order_by(SavingsReminder.start_date.desc()).all()
+        resultado = []
+        for p in planes:
+            resultado.append({
+                'id': p.id,
+                'destination': p.destination,
+                'monthly_amount': p.monthly_amount,
+                'total_months': p.total_months,
+                'currency': p.currency,
+                'currency_symbol': p.currency_symbol,
+                'reminders_sent': p.reminders_sent,
+                'is_active': p.is_active,
+                'next_reminder': p.next_reminder.strftime('%Y-%m-%d %H:%M') if p.next_reminder else None
+            })
+        return jsonify({'success': True, 'plans': resultado})
+
+    @app.route('/api/savings_plans/<int:plan_id>', methods=['DELETE'])
+    def delete_savings_plan(plan_id):
+        """API: Cancelar un plan de ahorro activo"""
+        if 'user_id' not in session:
+            return jsonify({'success': False, 'message': 'No autenticado'}), 401
+
+        plan = SavingsReminder.query.filter_by(id=plan_id, user_id=session['user_id']).first()
+        if not plan:
+            return jsonify({'success': False, 'message': 'Plan no encontrado.'}), 404
+
+        plan.is_active = False
+        db.session.commit()
+        return jsonify({'success': True, 'message': 'Plan de ahorro cancelado.'})
 
     @app.route('/api/get_route/<int:route_id>', methods=['GET'])
     def get_route(route_id):

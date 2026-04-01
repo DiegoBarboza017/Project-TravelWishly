@@ -9,6 +9,73 @@
 </div>
 
 
+<!-- Selector de Intereses — ¿No sabes a dónde ir? -->
+<div class="p-4 mb-4 bg-light border border-dark border-3" style="box-shadow: 6px 6px 0 0 #000;">
+    <h6 class="fw-black text-uppercase mb-3 border-bottom border-dark border-2 pb-2">
+        <i class="bi bi-compass-fill me-2"></i>¿No sabes a dónde viajar? Elige tus intereses
+    </h6>
+    <div class="d-flex flex-wrap gap-2 mb-3">
+        <button class="btn btn-outline-dark fw-bold rounded-0 border-2 btn-interes"
+            style="box-shadow: 2px 2px 0 0 #000;" onclick="recomendarDestinoGuia('fiesta', this)">
+            🍹 Fiesta / Vida Nocturna
+        </button>
+        <button class="btn btn-outline-dark fw-bold rounded-0 border-2 btn-interes"
+            style="box-shadow: 2px 2px 0 0 #000;" onclick="recomendarDestinoGuia('cultura', this)">
+            🏛️ Museos / Historia
+        </button>
+        <button class="btn btn-outline-dark fw-bold rounded-0 border-2 btn-interes"
+            style="box-shadow: 2px 2px 0 0 #000;" onclick="recomendarDestinoGuia('naturaleza', this)">
+            🌲 Naturaleza / Aventura
+        </button>
+        <button class="btn btn-outline-dark fw-bold rounded-0 border-2 btn-interes"
+            style="box-shadow: 2px 2px 0 0 #000;" onclick="recomendarDestinoGuia('relax', this)">
+            ☀️ Relajación / Playa
+        </button>
+        <button class="btn btn-outline-dark fw-bold rounded-0 border-2 btn-interes"
+            style="box-shadow: 2px 2px 0 0 #000;" onclick="recomendarDestinoGuia('gastronomia', this)">
+            🌮 Gastronomía Local
+        </button>
+        <button class="btn btn-outline-dark fw-bold rounded-0 border-2 btn-interes"
+            style="box-shadow: 2px 2px 0 0 #000;" onclick="recomendarDestinoGuia('compras', this)">
+            🛍️ Compras y Moda
+        </button>
+        <button class="btn btn-outline-dark fw-bold rounded-0 border-2 btn-interes"
+            style="box-shadow: 2px 2px 0 0 #000;" onclick="recomendarDestinoGuia('nieve', this)">
+            🏔️ Nieve e Invierno
+        </button>
+        <button class="btn btn-outline-dark fw-bold rounded-0 border-2 btn-interes"
+            style="box-shadow: 2px 2px 0 0 #000;" onclick="recomendarDestinoGuia('arquitectura', this)">
+            🏰 Arquitectura &amp; Arte
+        </button>
+        <button class="btn btn-outline-dark fw-bold rounded-0 border-2 btn-interes"
+            style="box-shadow: 2px 2px 0 0 #000;" onclick="recomendarDestinoGuia('espiritual', this)">
+            🧘 Retiro Espiritual
+        </button>
+        <button class="btn btn-outline-dark fw-bold rounded-0 border-2 btn-interes"
+            style="box-shadow: 2px 2px 0 0 #000;" onclick="recomendarDestinoGuia('mochilero', this)">
+            🎒 Ruta de Mochilero
+        </button>
+    </div>
+    <!-- Panel de recomendación con botón de envío al buscador -->
+    <div id="guiaPanelRecomendado" class="d-none p-3 bg-white border border-dark border-2" style="box-shadow: 3px 3px 0 0 #000;">
+        <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
+            <div class="d-flex align-items-center gap-3">
+                <i class="bi bi-geo-alt-fill fs-3 text-danger"></i>
+                <div>
+                    <p class="text-muted fw-bold text-uppercase mb-0 small">Mejor coincidencia:</p>
+                    <h5 id="guiaRecomendacionTitulo" class="fw-black text-dark text-uppercase mb-0">—</h5>
+                    <p id="guiaRecomendacionDesc" class="small fw-bold text-muted mb-0">—</p>
+                </div>
+            </div>
+            <button class="btn btn-dark fw-black rounded-0 border-2 px-4 py-2 text-uppercase border-dark hover-lift"
+                    style="box-shadow: 3px 3px 0 0 rgba(0,0,0,0.4);"
+                    onclick="enviarDestinoAlBuscador()">
+                <i class="bi bi-search me-2"></i>Ver Guía de este Destino
+            </button>
+        </div>
+    </div>
+</div>
+
 <!-- Barra de Selección y Control -->
 <div class="row justify-content-center mb-5 mt-4">
     <div class="col-md-8 col-lg-6">
