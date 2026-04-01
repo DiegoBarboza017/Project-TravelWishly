@@ -7,6 +7,7 @@ import uuid
 import requests
 from flask import Flask, render_template, request, redirect, url_for, flash, session
 from itsdangerous import URLSafeTimedSerializer
+from flask_mail import Mail, Message
 from database import db
 import threading
 import webbrowser
@@ -25,6 +26,15 @@ def create_app():
     # Configuración de seguridad y base de datos (PostgreSQL)
     # Recomendación: Utilizar variables de entorno en producción.
     app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'secr3t_travelwishly_k3y_for_dev')
+
+    # Configuración de Flask-Mail
+    app.config['MAIL_SERVER'] = 'smtp.gmail.com'
+    app.config['MAIL_PORT'] = 587
+    app.config['MAIL_USE_TLS'] = True
+    app.config['MAIL_USERNAME'] = 'travelwishly.bot@gmail.com'
+    app.config['MAIL_PASSWORD'] = 'crdudnuprbwngito'
+    app.config['MAIL_DEFAULT_SENDER'] = 'travelwishly.bot@gmail.com'
+    mail = Mail(app)
 
     # Use SQLite by default for easy local execution without needing PostgreSQL setup
   # Configuración para MySQL en la Nube (Clever Cloud)
@@ -83,7 +93,17 @@ def create_app():
             db.session.add(new_user)
             db.session.commit()
             
-            flash('Usuario registrado exitosamente. 🚀 ¡Bienvenido!', 'success')
+            try:
+                msg = Message(
+                    subject='¡Bienvenido a TravelWishly! 🌍',
+                    recipients=[email],
+                    body=f'Hola {username},\n\nGracias por registrarte en TravelWishly. ¡Estamos muy emocionados de ayudarte a planear tu próxima aventura!\n\nSaludos,\nEl equipo de TravelWishly'
+                )
+                mail.send(msg)
+            except Exception as e:
+                print(f"Error enviando correo de bienvenida: {e}")
+
+            flash('Usuario registrado exitosamente. Se ha enviado un correo a tu cuenta.', 'success')
             return redirect(url_for('login'))
         return render_template('registro.html')
 
@@ -120,12 +140,72 @@ def create_app():
                     session['expires_at'] = (datetime.now() + timedelta(minutes=30)).timestamp()
                     
                 flash('Bienvenido de nuevo. Sesión iniciada correctamente.', 'success')
-                return redirect(url_for('dashboard'))
+                return redirect(url_for('index'))
             else:
                 flash('Credenciales incorrectas.', 'error')
                 return redirect(url_for('login'))
                 
         return render_template('login.html')
+
+    @app.route('/magic-login', methods=['POST'])
+    def magic_login():
+        """Módulo de Autenticación sin contraseña (Vía Email Seguro)"""
+        email = request.form.get('google_email')
+        if not email or '@' not in email:
+            flash('Por favor, ingresa un correo válido.', 'error')
+            return redirect(url_for('login'))
+        
+        s = get_reset_serializer()
+        token = s.dumps(email, salt='magic-link-salt')
+        magic_link = url_for('magic_auth', token=token, _external=True)
+        
+        try:
+            msg = Message(
+                subject='Tu enlace de acceso seguro a TravelWishly 🌍',
+                recipients=[email],
+                body=f'Hola viajero,\n\nHaz clic en el siguiente enlace para entrar a TravelWishly al instante:\n{magic_link}\n\nEste enlace expira pronto y solo puede usarse una vez.\n\nSaludos,\nEl equipo de TravelWishly'
+            )
+            mail.send(msg)
+            flash('Te hemos enviado un enlace de un solo clic a tu correo. ¡Revísalo para entrar al instante!', 'success')
+        except Exception as e:
+            print(f"Error enviando magic link: {e}")
+            flash('Hubo un error enviando tu enlace de acceso. Intenta de nuevo más tarde.', 'error')
+            
+        return redirect(url_for('login'))
+
+    @app.route('/magic-auth/<token>')
+    def magic_auth(token):
+        """Valida el enlace e inicia sesión (o registra) automáticamente"""
+        s = get_reset_serializer()
+        try:
+            email = s.loads(token, salt='magic-link-salt', max_age=900) # Expira en 15 mins
+        except:
+            flash('El enlace de acceso es inválido o ha expirado.', 'error')
+            return redirect(url_for('login'))
+            
+        user = User.query.filter_by(email=email).first()
+        is_new_user = False
+        if not user:
+            # Registro automático
+            username_base = email.split('@')[0]
+            user = User(username=username_base, email=email, password_hash=generate_password_hash(uuid.uuid4().hex))
+            db.session.add(user)
+            db.session.commit()
+            is_new_user = True
+            
+        session['user_id'] = user.id
+        session['username'] = user.username
+        session.permanent = False
+        session['expires_at'] = (datetime.now() + timedelta(minutes=60)).timestamp()
+        
+        if is_new_user:
+            flash('¡Cuenta creada exitosamente! Bienvenido/a a TravelWishly.', 'success')
+        else:
+            flash(f'¡Bienvenido de nuevo, {user.username}!', 'success')
+        
+        # En vez de llevarnos al Dashboard en esta nueva pestaña molesta, 
+        # mostramos una página limplia de éxito que se auto-cerrará.
+        return render_template('magic_success.html')
 
     def get_reset_serializer():
         return URLSafeTimedSerializer(app.config['SECRET_KEY'])
@@ -142,7 +222,19 @@ def create_app():
                 token = s.dumps(user.email, salt='reset-password-salt')
                 reset_link = url_for('reset_with_token', token=token, _external=True)
                 print(f"LINK DE RECUPERACIÓN PARA {email}: {reset_link}")
-                flash('Enlace de recuperación generado. Revisa la terminal para continuar.', 'success')
+                
+                try:
+                    msg = Message(
+                        subject='Recuperación de contraseña en TravelWishly',
+                        recipients=[email],
+                        body=f'Hola {user.username},\n\nHas solicitado restablecer tu contraseña. Haz clic en el siguiente enlace para crear una nueva:\n{reset_link}\n\nSi no fuiste tú quien solicitó esto, ignora este mensaje.\n\nSaludos,\nEl equipo de TravelWishly'
+                    )
+                    mail.send(msg)
+                    flash('Se ha enviado un correo con el enlace de recuperación a tu cuenta.', 'success')
+                except Exception as e:
+                    print(f"Error enviando correo de recuperación: {e}")
+                    flash('Error interno al intentar enviar el correo. Por favor contacta soporte.', 'error')
+                
                 return redirect(url_for('login'))
             else:
                 flash('No se encontró una cuenta con ese correo.', 'error')
@@ -339,12 +431,54 @@ def create_app():
         except Exception as e:
             return jsonify({'error': str(e)}), 500
 
+    @app.route('/api/check_session')
+    def api_check_session():
+        """Polling route para que el JS sepa si el usuario fue autenticado exitosamente en otra pestaña"""
+        if 'user_id' in session and 'username' in session:
+            return jsonify({'logged_in': True, 'username': session['username']})
+        return jsonify({'logged_in': False})
+
     return app
 
-def open_browser():
-    webbrowser.open_new("http://127.0.0.1:5000/")
+def get_local_ip():
+    import socket
+    try:
+        # Crea un socket UDP temporal para descubrir la ruta IP local preferida
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("8.8.8.8", 80))
+        ip = s.getsockname()[0]
+        s.close()
+        return ip
+    except Exception:
+        return "127.0.0.1"
+
+def open_browser(local_url):
+    webbrowser.open_new(local_url)
 
 if __name__ == '__main__':
     aplicacion = create_app()
-    threading.Timer(1.25, open_browser).start()
-    aplicacion.run(debug=True, port=5000, use_reloader=False)
+    
+    # Obtener IP local para acceso desde celular
+    local_ip = get_local_ip()
+    local_url = f"http://{local_ip}:5000/"
+    
+    # Generar e imprimir QR Code en la terminal para fácil escaneo
+    try:
+        import qrcode
+        qr = qrcode.QRCode(border=2)
+        qr.add_data(local_url)
+        qr.make(fit=True)
+        print("\n" + "="*50)
+        print(f"🌍 TRAVELWISHLY DISPONIBLE EN TU RED LOCAL 🌍")
+        print(f"👉 Escanea el QR para entrar desde tu celular:")
+        print("="*50 + "\n")
+        qr.print_ascii(invert=True)
+        print(f"\nO teclea esto en el navegador de tu celular: {local_url}\n")
+    except ImportError:
+        pass
+
+    # Abre la PC directamente con la IP de RED para que el Magic Link se genere bien
+    threading.Timer(1.5, open_browser, args=[local_url]).start()
+    
+    # Correr servidor escuchando en todas las interfaces (0.0.0.0)
+    aplicacion.run(host='0.0.0.0', debug=True, port=5000, use_reloader=False)
