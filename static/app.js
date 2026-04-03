@@ -128,27 +128,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
-    // Auto-Rehidratación de la Guía Interactiva desde el Globo 3D
-    if (currentPath === '/guia') {
-        const params = new URLSearchParams(window.location.search);
-        if (params.has('q')) {
-            const queryDestino = params.get('q');
-            const dropdown = document.getElementById('destinosDropdown');
-            if (dropdown) {
-                dropdown.value = queryDestino;
-                dropdown.classList.add('bg-warning');
-                setTimeout(() => {
-                    dropdown.style.transition = 'background-color 1.5s ease';
-                    dropdown.classList.remove('bg-warning');
-                }, 800);
-                
-                // Auto-trigger de la enciclopedia
-                setTimeout(() => {
-                    if(window.cargarGuiaSegura) window.cargarGuiaSegura();
-                }, 400);
-            }
-        }
-    }
+
 });
 
 /* =========================================================================
@@ -571,7 +551,7 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 /** @function cargarGuiaSegura busca dentro del array y reemplaza/anima elementos DOM */
-function cargarGuiaSegura() {
+window.cargarGuiaSegura = function cargarGuiaSegura() {
     const selectorObj = document.getElementById('destinosDropdown');
     const panelUI = document.getElementById('panelDestino');
     
@@ -659,6 +639,10 @@ function cargarGuiaSegura() {
 
     // Poblamiento Dinámico Iterativo de Checklist Beneficiosa
     const listaHtmlUl = document.getElementById('panelRecomendaciones');
+    if (!listaHtmlUl) {
+        console.warn('[cargarGuiaSegura] #panelRecomendaciones no encontrado en el DOM');
+        return;
+    }
     listaHtmlUl.innerHTML = ''; // Reset
 
     destinoObj.puntosInteres.forEach((punto, i) => {
@@ -701,7 +685,7 @@ window.continuarAPresupuesto = function() {
     }
 };
 
-/** @function abrirGaleria ejecuta el renderizado visual de 10 imagenes de LoremFlickr de cualquier parte */
+/** @function abrirGaleria ejecuta el renderizado visual de 10 imagenes de Unsplash de cualquier parte */
 window.abrirGaleria = function(puntoInteres, ciudadContexto) {
     const modalEl = document.getElementById('galleryModal');
     if(!modalEl) return;
@@ -711,7 +695,7 @@ window.abrirGaleria = function(puntoInteres, ciudadContexto) {
     document.getElementById('galleryLocationSubtitle').innerHTML = `<i class="bi bi-geo-alt-fill me-1"></i> ${ciudadContexto.toUpperCase()}`;
     
     const spinner = document.getElementById('gallerySpinner');
-    const grid = document.getElementById('galleryGrid');
+    const grid    = document.getElementById('galleryGrid');
     
     spinner.classList.remove('d-none');
     grid.classList.add('d-none');
@@ -719,23 +703,39 @@ window.abrirGaleria = function(puntoInteres, ciudadContexto) {
     
     modal.show();
 
-    // Query optimizado: Extrae palabras clave puras (sin acentos o demasiada longitud)
-    // Evita el infame "Gato de Fallo" de LoremFlickr cuando la búsqueda es muy estricta
-    const normCity = ciudadContexto.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^\w\s]/gi, '').split(' ')[0] || 'city';
-    const normPOI = puntoInteres.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^\w\s]/gi, '').split(' ').filter(word => word.length >= 3)[0] || 'travel';
-    const searchQuery = encodeURIComponent(`${normCity},${normPOI}`);
-    
+    // Limpiar texto (quitar acentos y caracteres especiales)
+    const clean = (str) => str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^\w\s]/gi, '').trim();
+    const cityKw = clean(ciudadContexto).split(' ')[0] || 'travel';
+    const poiKw  = clean(puntoInteres).split(' ').filter(w => w.length >= 3)[0] || 'landmark';
+
+    // Hash determinista de CIUDAD + POI — garantiza seed único por cada combinación de país + punto de interés
+    const fullKey = `${ciudadContexto}::${puntoInteres}`;
+    let combinedHash = 0;
+    for (let c = 0; c < fullKey.length; c++) {
+        combinedHash = ((combinedHash << 5) - combinedHash + fullKey.charCodeAt(c)) | 0;
+    }
+    combinedHash = Math.abs(combinedHash) % 900000 + 100000;  // número 6 dígitos, siempre positivo
+
+    // Contextos rotativos: cada slot dentro del POI busca un tema diferente
+    const ctxWords = ['architecture', 'street photography', 'landscape', 'culture', 'tourism',
+                      'history', 'market', 'monument', 'nature scenery', 'travel'];
+
     let imgHTML = '';
-    const freezeTime = Date.now();
-    for(let i=1; i<=10; i++) {
-        // Usa timestamp variable y query corto (ej. Paris,Torre) para destruir cachés e indexar correctamente
-        const urlReq = `https://loremflickr.com/800/600/${searchQuery}/all?random=${i}&t=${freezeTime + i}`;
-        const colSize = i % 3 === 0 ? "col-md-12 col-lg-8" : "col-md-6 col-lg-4"; 
-        
+    for (let i = 1; i <= 10; i++) {
+        const ctx      = ctxWords[i - 1];
+        const keyword  = encodeURIComponent(`${poiKw} ${cityKw} ${ctx}`);
+        const sig      = combinedHash * 10 + i;                       // único por país+POI+slot
+        const urlReq   = `https://source.unsplash.com/800x600/?${keyword}&sig=${sig}`;
+        const fallback = `https://picsum.photos/seed/${combinedHash + i * 13}/800/600`;
+        const colSize  = i % 3 === 0 ? 'col-md-12 col-lg-8' : 'col-md-6 col-lg-4';
+
         imgHTML += `
             <div class="${colSize}">
                 <div class="card h-100 border-dark border-3 rounded-0" style="box-shadow: 4px 4px 0 0 #000; overflow:hidden;">
-                    <img src="${urlReq}" class="img-fluid w-100 h-100 object-fit-cover" alt="Vista del recinto visual ${i}" loading="lazy" style="min-height: 200px;">
+                    <img src="${urlReq}"
+                         onerror="this.onerror=null;this.src='${fallback}';"
+                         class="img-fluid w-100 object-fit-cover" alt="Vista ${i}: ${ctx} en ${ciudadContexto}"
+                         loading="lazy" style="min-height: 220px; max-height: 280px;">
                     <div class="card-footer bg-dark text-white border-top border-3 border-dark py-2 px-3 rounded-0 d-flex justify-content-between align-items-center">
                         <small class="fw-bold tracking-wider text-uppercase" style="font-size: 10px;"><i class="bi bi-camera me-1"></i>VISTA ${i}/10</small>
                         <span class="badge bg-white text-dark rounded-0 fw-black px-2 py-1"><i class="bi bi-check-circle-fill text-success me-1"></i>VERIFICADA</span>
@@ -744,14 +744,14 @@ window.abrirGaleria = function(puntoInteres, ciudadContexto) {
             </div>
         `;
     }
-    
-    // Retraso para que el loader sirva de capa visual mientras flickr inicia el stream de JPGs brutos
+
     setTimeout(() => {
         grid.innerHTML = imgHTML;
         spinner.classList.add('d-none');
         grid.classList.remove('d-none');
-    }, 1200);
+    }, 600);
 };
+
 
 /* =========================================================================
    MÓDULO: CONSTRUCTOR DE VIAJES (PREPARATIVOS E INTERESES)
@@ -1785,7 +1785,7 @@ window.generarRutaInteligente = function() {
     }, 600);
 };
 
-/** @function renderizarTimeline Dibuja los nodos del itinerario */
+/** @function renderizarTimeline — Drag & Drop inline editable */
 function renderizarTimeline() {
     const container = document.getElementById('timelineContainer');
     if (!container) return;
@@ -1795,39 +1795,180 @@ function renderizarTimeline() {
         return;
     }
 
-    container.innerHTML = travelTimeline.map((step, index) => `
-        <div class="d-flex align-items-start mb-4 position-relative" style="animation: fadeSlideIn 0.4s ease-out forwards; opacity:0; animation-delay: ${index * 0.15}s;">
-            <div class="bg-dark text-white rounded-circle d-flex align-items-center justify-content-center fw-bold" 
-                 style="width: 32px; height: 32px; min-width: 32px; z-index: 2; border: 2px solid #000; box-shadow: 0 0 0 4px #fff;">
-                ${index + 1}
-            </div>
-            <div class="ms-3 p-3 border border-dark border-3 bg-light w-100" style="box-shadow: 4px 4px 0 0 #000;">
-                <div class="d-flex justify-content-between align-items-center">
-                    <span class="fw-bold text-dark" style="font-size:13px; letter-spacing: 0.3px;">${step}</span>
-                    <button class="btn btn-sm btn-outline-danger border-0 rounded-0" onclick="eliminarEventoTimeline(${index})">
-                        <i class="bi bi-trash"></i>
-                    </button>
-                </div>
-            </div>
-            ${index < travelTimeline.length - 1 ? '<div class="position-absolute bg-dark" style="width: 2px; height: 100%; left: 14.5px; top: 32px; z-index: 1;"></div>' : ''}
-        </div>
-    `).join('');
-
-    // Anexamos el keyframe dinámicamente si no existe
+    // Inyectar CSS una sola vez
     if (!document.getElementById('timelineAnimCSS')) {
         const style = document.createElement('style');
         style.id = 'timelineAnimCSS';
-        style.innerHTML = "@keyframes fadeSlideIn { from { opacity:0; transform: translateY(15px); } to { opacity:1; transform: translateY(0); } }";
+        style.innerHTML = `
+            @keyframes fadeSlideIn { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:translateY(0); } }
+            .tl-node { animation: fadeSlideIn 0.35s ease-out forwards; opacity:0; }
+            .tl-card { transition: box-shadow 0.15s, transform 0.15s; cursor: grab; user-select: none; }
+            .tl-card:active { cursor: grabbing; }
+            .tl-card.dragging { opacity: 0.35; transform: scale(0.97); box-shadow: 2px 2px 0 0 #000 !important; }
+            .tl-card.drag-over { border-color: #0d6efd !important; box-shadow: 0 0 0 3px rgba(13,110,253,0.35) !important; }
+            .tl-edit-panel { display:none; border-top: 2px solid #000; margin-top:10px; padding-top:10px; }
+            .tl-edit-panel.open { display:block; }
+            .tl-action-btn { border:none; background:transparent; padding:4px 7px; cursor:pointer; border-radius:0; transition:background 0.15s; }
+            .tl-action-btn:hover { background:#f0f0f0; }
+            .tl-textarea { resize:vertical; font-size:13px; font-weight:600; border:2px solid #000; border-radius:0; padding:8px; width:100%; min-height:56px; font-family:inherit; box-shadow:2px 2px 0 0 #000; }
+            .tl-textarea:focus { outline:none; border-color:#0d6efd; box-shadow:3px 3px 0 0 #0d6efd; }
+            .tl-add-zone { background:#f8f9fa; border:2px dashed #000; padding:16px; text-align:center; margin-top:12px; }
+            .drag-hint { font-size:10px; color:#888; font-weight:600; text-transform:uppercase; margin-top:4px; }
+        `;
         document.head.appendChild(style);
+    }
+
+    container.innerHTML = travelTimeline.map((step, index) => `
+        <div class="d-flex align-items-start mb-4 position-relative tl-node" id="tn-${index}"
+             style="animation-delay:${index * 0.07}s;">
+            <div class="bg-dark text-white rounded-circle d-flex align-items-center justify-content-center fw-bold flex-shrink-0"
+                 style="width:32px;height:32px;z-index:2;border:2px solid #000;box-shadow:0 0 0 4px #fff;font-size:12px;pointer-events:none;">
+                ${index + 1}
+            </div>
+            <div class="ms-3 p-3 border border-dark border-3 bg-light w-100 tl-card"
+                 style="box-shadow:4px 4px 0 0 #000;"
+                 draggable="true"
+                 data-idx="${index}"
+                 ondragstart="tlDragStart(event,${index})"
+                 ondragover="tlDragOver(event)"
+                 ondrop="tlDrop(event,${index})"
+                 ondragend="tlDragEnd(event)">
+
+                <div class="d-flex justify-content-between align-items-start gap-2">
+                    <div style="flex:1;">
+                        <span class="fw-bold text-dark" style="font-size:13px;letter-spacing:0.3px;">${step}</span>
+                        <div class="drag-hint"><i class="bi bi-grip-horizontal me-1"></i>Arrastra para reacomodar</div>
+                    </div>
+                    <div class="d-flex gap-1 flex-shrink-0">
+                        <button class="tl-action-btn" title="Editar actividad" onclick="tlToggleEdit(${index})">
+                            <i class="bi bi-pencil-fill text-primary"></i>
+                        </button>
+                        <button class="tl-action-btn" title="Eliminar paso" onclick="eliminarEventoTimeline(${index})">
+                            <i class="bi bi-trash text-danger"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="tl-edit-panel" id="tl-edit-${index}">
+                    <textarea class="tl-textarea mt-2" id="tl-ta-${index}" rows="3">${step.replace(/<[^>]*>/g,'')}</textarea>
+                    <div class="d-flex gap-2 mt-2">
+                        <button class="btn btn-dark btn-sm rounded-0 fw-bold border-2 border-dark px-3"
+                                onclick="tlSaveEdit(${index})">
+                            <i class="bi bi-check-lg me-1"></i>Guardar
+                        </button>
+                        <button class="btn btn-outline-secondary btn-sm rounded-0 fw-bold border-2 px-3"
+                                onclick="tlToggleEdit(${index})">Cancelar</button>
+                    </div>
+                </div>
+            </div>
+            ${index < travelTimeline.length - 1 ?
+                '<div class="position-absolute bg-dark" style="width:2px;height:calc(100% + 8px);left:14.5px;top:32px;z-index:1;"></div>' : ''}
+        </div>
+    `).join('') + `
+        <div class="tl-add-zone mt-2" id="addActivityZone">
+            <button class="btn btn-outline-dark fw-bold rounded-0 border-2 px-4 py-2 w-100 hover-lift"
+                    style="box-shadow:2px 2px 0 0 #000;" onclick="mostrarAgregarActividad()">
+                <i class="bi bi-plus-circle-fill me-2 text-primary"></i>Agregar actividad personalizada
+            </button>
+            <div id="newActivityForm" class="d-none mt-3 text-start">
+                <textarea class="tl-textarea mb-2" id="newActivityInput"
+                    placeholder="Ej: 🎭 Día 4: Visita al teatro de la ópera y cena romántica en restaurante local..."></textarea>
+                <div class="d-flex gap-2">
+                    <button class="btn btn-dark btn-sm rounded-0 fw-bold border-2 border-dark px-3"
+                            onclick="agregarActividadCustom()">
+                        <i class="bi bi-plus-lg me-1"></i>Añadir al itinerario
+                    </button>
+                    <button class="btn btn-outline-secondary btn-sm rounded-0 fw-bold border-2 px-3"
+                            onclick="document.getElementById('newActivityForm').classList.add('d-none')">
+                        Cancelar
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+// ──── Drag & Drop handlers ────────────────────────────────────────────────────
+let _tlDragSrcIdx = null;
+
+function tlDragStart(e, index) {
+    _tlDragSrcIdx = index;
+    e.dataTransfer.effectAllowed = 'move';
+    // pequeño delay para que el ghost se vea antes de aplicar estilo
+    setTimeout(() => e.target.closest('.tl-card').classList.add('dragging'), 0);
+}
+
+function tlDragOver(e) {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    const card = e.target.closest('.tl-card');
+    if (card) {
+        document.querySelectorAll('.tl-card.drag-over').forEach(c => c.classList.remove('drag-over'));
+        card.classList.add('drag-over');
     }
 }
 
+function tlDrop(e, targetIdx) {
+    e.preventDefault();
+    if (_tlDragSrcIdx === null || _tlDragSrcIdx === targetIdx) return;
+    // Swap en el array
+    const temp = travelTimeline[_tlDragSrcIdx];
+    travelTimeline[_tlDragSrcIdx] = travelTimeline[targetIdx];
+    travelTimeline[targetIdx] = temp;
+    _tlDragSrcIdx = null;
+    renderizarTimeline();
+}
 
-/** @function eliminarEventoTimeline */
+function tlDragEnd(e) {
+    document.querySelectorAll('.tl-card.dragging, .tl-card.drag-over')
+        .forEach(c => c.classList.remove('dragging', 'drag-over'));
+    _tlDragSrcIdx = null;
+}
+
+// ──── Edición inline ──────────────────────────────────────────────────────────
+function tlToggleEdit(index) {
+    const panel = document.getElementById(`tl-edit-${index}`);
+    if (!panel) return;
+    const isOpen = panel.classList.contains('open');
+    document.querySelectorAll('.tl-edit-panel.open').forEach(p => p.classList.remove('open'));
+    if (!isOpen) { panel.classList.add('open'); document.getElementById(`tl-ta-${index}`)?.focus(); }
+}
+
+function tlSaveEdit(index) {
+    const ta = document.getElementById(`tl-ta-${index}`);
+    if (!ta || !ta.value.trim()) return;
+    travelTimeline[index] = ta.value.trim();
+    renderizarTimeline();
+}
+
 function eliminarEventoTimeline(index) {
     travelTimeline.splice(index, 1);
     renderizarTimeline();
 }
+
+function moverTimeline(index, dir) { /* mantenido por compatibilidad — ya no se usa en UI */
+    const ni = index + dir;
+    if (ni < 0 || ni >= travelTimeline.length) return;
+    [travelTimeline[index], travelTimeline[ni]] = [travelTimeline[ni], travelTimeline[index]];
+    renderizarTimeline();
+}
+
+function toggleEditTimeline(i)    { tlToggleEdit(i); }
+function guardarEdicionTimeline(i){ tlSaveEdit(i);   }
+
+function mostrarAgregarActividad() {
+    const f = document.getElementById('newActivityForm');
+    if (f) { f.classList.remove('d-none'); document.getElementById('newActivityInput')?.focus(); }
+}
+
+function agregarActividadCustom() {
+    const inp = document.getElementById('newActivityInput');
+    if (!inp || !inp.value.trim()) return;
+    travelTimeline.splice(Math.max(0, travelTimeline.length - 1), 0, inp.value.trim());
+    inp.value = '';
+    renderizarTimeline();
+}
+
 
 // Inicializadores Extra para Dashboard
 document.addEventListener("DOMContentLoaded", () => {
@@ -2008,13 +2149,26 @@ window.guardarViajeHistorial = function(btnElement) {
     const duracion = document.getElementById('rutaDuracion')?.value.trim();
     const fecha = document.getElementById('rutaFecha')?.value.trim();
 
-    // 1. Recolectar Mochila (IDs checkbox)
+    // 1. Recolectar Mochila: IDs + detalle de costos de cada ítem marcado
     let mochilaIDs = [];
+    let mochilaDetalle = [];
+    const mapaItems = {
+        checkSeguro:    { nombre: '🏥 Seguro Médico de Viaje',         costo: 1200 },
+        checkMaleta:    { nombre: '🧳 Maleta Documentada Extra',        costo: 900  },
+        checkINE:       { nombre: '🧯 Identificación Oficial (INE/ID)', costo: 0    },
+        checkPasaporte: { nombre: '🛂 Pasaporte (Renovación/Trámite)', costo: 3940 },
+        checkVisa:      { nombre: '🗂️ Trámite de Visa',               costo: 3400 },
+    };
     document.querySelectorAll('#mochilaForm .form-check-input').forEach(cb => {
-        if(cb.checked) mochilaIDs.push(cb.id);
+        if (cb.checked) {
+            mochilaIDs.push(cb.id);
+            const info = mapaItems[cb.id];
+            if (info) mochilaDetalle.push(info);
+        }
     });
+    const totalMochila = mochilaDetalle.reduce((s, i) => s + i.costo, 0);
 
-    // 2. Recolectar Vibes (Ya viven en window variable)
+    // 2. Recolectar Vibes
     let vibesState = window.interesesGlobalesSeleccionados || [];
 
     // 3. Recolectar Smart Packing List (IDs marcados)
@@ -2022,6 +2176,13 @@ window.guardarViajeHistorial = function(btnElement) {
     document.querySelectorAll('.packing-item.checked').forEach(it => {
         packingIDs.push(it.id);
     });
+
+    // 4. Presupuesto original (viene de la URL si se llegó del presupuesto)
+    const urlParams = new URLSearchParams(window.location.search);
+    const presupuestoViaje = urlParams.get('budget') ? parseInt(urlParams.get('budget'), 10) : null;
+
+    // 5. Pasos del itinerario personalizados
+    const itinerarioSteps = (window.travelTimeline || []).map(s => s.replace(/<[^>]*>/g, ''));
 
     if (!origen || !destino || !duracion || isNaN(duracion) || duracion < 1) {
         alert("⚠️ Por favor ingresa al menos el Origen, Destino Principal y los Días Totales antes de intentar guardar el viaje.");
@@ -2045,9 +2206,15 @@ window.guardarViajeHistorial = function(btnElement) {
             fecha_ideal: fecha || '',
             mochila_state: JSON.stringify(mochilaIDs),
             vibes_state: JSON.stringify(vibesState),
-            packing_state: JSON.stringify(packingIDs)
+            packing_state: JSON.stringify(packingIDs),
+            // Datos para el email de resumen
+            mochila_detalle: mochilaDetalle,
+            total_mochila: totalMochila,
+            presupuesto_viaje: presupuestoViaje,
+            itinerario_steps: itinerarioSteps
         })
     })
+
     .then(response => {
         if (!response.ok && response.status === 401) throw new Error('Inicia sesión para poder acceder a la BD central.');
         return response.json();

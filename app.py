@@ -358,7 +358,8 @@ def create_app():
     @app.route('/guia')
     def guia():
         """Guía Turística: Visualización de información cultural inteligente"""
-        return render_template('guia.html')
+        destino_inicial = request.args.get('q', '').strip()
+        return render_template('guia.html', destino_inicial=destino_inicial)
 
     @app.route('/historial')
     def historial():
@@ -393,7 +394,115 @@ def create_app():
             )
             db.session.add(nueva_ruta)
             db.session.commit()
+
+            # ── Enviar email de resumen del viaje ────────────────────────────
+            try:
+                from flask_mail import Message
+                usuario = User.query.get(session['user_id'])
+                if usuario and usuario.email:
+                    origen_txt      = data.get('origen', '—')
+                    destino_txt     = data.get('destino', '—')
+                    duracion_txt    = data.get('duracion_dias', '—')
+                    fecha_txt       = data.get('fecha_ideal', '') or 'Sin fecha definida'
+                    mochila_items   = data.get('mochila_detalle', [])   # list[{nombre, costo}]
+                    total_mochila   = data.get('total_mochila', 0)
+                    presupuesto     = data.get('presupuesto_viaje', None)
+                    itinerario_pasos= data.get('itinerary_steps') or data.get('itinerario_steps', [])
+
+                    # Construir filas de gastos de mochila
+                    filas_mochila = ''
+                    if mochila_items:
+                        for item in mochila_items:
+                            costo_fmt = f"${item['costo']:,} MXN" if item['costo'] > 0 else 'Gratis'
+                            filas_mochila += f"""
+                            <tr>
+                                <td style="padding:8px 12px;border-bottom:1px solid #eee;">{item['nombre']}</td>
+                                <td style="padding:8px 12px;border-bottom:1px solid #eee;text-align:right;font-weight:700;">{costo_fmt}</td>
+                            </tr>"""
+                    else:
+                        filas_mochila = '<tr><td colspan="2" style="padding:8px 12px;color:#888;">Sin extras seleccionados</td></tr>'
+
+                    # Construir lista de itinerario
+                    pasos_html = ''
+                    for i, paso in enumerate(itinerario_pasos, 1):
+                        pasos_html += f'<li style="padding:6px 0;border-bottom:1px solid #f0f0f0;font-size:13px;">{paso}</li>'
+                    if not pasos_html:
+                        pasos_html = '<li style="color:#888;">Ruta generada automáticamente</li>'
+
+                    # Gran total
+                    resumen_presupuesto = ''
+                    if presupuesto:
+                        gran_total = (presupuesto or 0) + (total_mochila or 0)
+                        resumen_presupuesto = f"""
+                        <tr style="background:#f8f9fa;">
+                            <td style="padding:8px 12px;font-weight:700;">💰 Presupuesto del Viaje</td>
+                            <td style="padding:8px 12px;text-align:right;font-weight:700;">${presupuesto:,} MXN</td>
+                        </tr>
+                        <tr style="background:#e8f4fd;">
+                            <td style="padding:8px 12px;font-weight:700;">🧳 Gastos Extras (Mochila)</td>
+                            <td style="padding:8px 12px;text-align:right;font-weight:700;">${total_mochila:,} MXN</td>
+                        </tr>
+                        <tr style="background:#000;color:#fff;">
+                            <td style="padding:10px 12px;font-weight:900;font-size:15px;">GRAN TOTAL ESTIMADO</td>
+                            <td style="padding:10px 12px;text-align:right;font-weight:900;font-size:15px;">${gran_total:,} MXN</td>
+                        </tr>"""
+
+                    html_body = f"""
+                    <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;">
+                        <div style="background:#000;color:#fff;padding:28px 32px;">
+                            <h1 style="margin:0;font-size:22px;font-weight:900;letter-spacing:2px;">✈️ TRAVELWISHLY</h1>
+                            <p style="margin:6px 0 0;font-size:14px;opacity:0.7;">Resumen de tu Viaje Planeado</p>
+                        </div>
+                        <div style="padding:24px 32px;background:#fff;border:1px solid #eee;">
+                            <h2 style="font-size:20px;font-weight:900;margin-top:0;">
+                                ¡Tu viaje a <span style="border-bottom:3px solid #000;">{destino_txt}</span> está guardado! 🎉
+                            </h2>
+                            <table style="width:100%;border-collapse:collapse;margin-bottom:24px;background:#f8f9fa;border:2px solid #000;">
+                                <tr><td style="padding:8px 12px;font-weight:700;">📍 Origen</td><td style="padding:8px 12px;">{origen_txt}</td></tr>
+                                <tr><td style="padding:8px 12px;font-weight:700;">🏁 Destino</td><td style="padding:8px 12px;">{destino_txt}</td></tr>
+                                <tr><td style="padding:8px 12px;font-weight:700;">📅 Días de Estadía</td><td style="padding:8px 12px;">{duracion_txt} días</td></tr>
+                                <tr><td style="padding:8px 12px;font-weight:700;">🗓️ Fecha Tentativa</td><td style="padding:8px 12px;">{fecha_txt}</td></tr>
+                            </table>
+
+                            <h3 style="font-weight:900;font-size:15px;text-transform:uppercase;border-bottom:3px solid #000;padding-bottom:6px;">
+                                🗺️ Tu Itinerario Personalizado
+                            </h3>
+                            <ol style="padding-left:20px;margin-bottom:24px;">{pasos_html}</ol>
+
+                            <h3 style="font-weight:900;font-size:15px;text-transform:uppercase;border-bottom:3px solid #000;padding-bottom:6px;">
+                                💼 Gastos Extras — Mochila & Documentos
+                            </h3>
+                            <table style="width:100%;border-collapse:collapse;margin-bottom:24px;border:2px solid #000;">
+                                {filas_mochila}
+                                <tr style="background:#000;color:#fff;">
+                                    <td style="padding:8px 12px;font-weight:900;">TOTAL EXTRAS</td>
+                                    <td style="padding:8px 12px;text-align:right;font-weight:900;">${total_mochila:,} MXN</td>
+                                </tr>
+                            </table>
+
+                            {'<h3 style="font-weight:900;font-size:15px;text-transform:uppercase;border-bottom:3px solid #000;padding-bottom:6px;">💰 Resumen Financiero</h3><table style="width:100%;border-collapse:collapse;border:2px solid #000;">' + resumen_presupuesto + '</table>' if resumen_presupuesto else ''}
+
+                            <p style="color:#666;font-size:12px;margin-top:32px;border-top:1px solid #eee;padding-top:16px;">
+                                Puedes ver y editar este viaje en cualquier momento desde tu 
+                                <a href="{request.host_url}historial" style="color:#000;font-weight:700;text-decoration:underline;">Historial de Viajes</a> en TravelWishly.
+                            </p>
+                        </div>
+                        <div style="background:#f0f0f0;padding:12px 32px;text-align:center;font-size:11px;color:#888;">
+                            TravelWishly — Tu planificador de viajes inteligente
+                        </div>
+                    </div>"""
+
+                    msg = Message(
+                        subject=f"✈️ Tu viaje a {destino_txt} está guardado — TravelWishly",
+                        recipients=[usuario.email],
+                        html=html_body
+                    )
+                    mail.send(msg)
+            except Exception as mail_err:
+                print(f"[SAVE_ROUTE] Email de resumen no enviado: {mail_err}")
+
             return jsonify({'success': True, 'message': 'Viaje guardado exitosamente en tu Historial.'})
+
         except Exception as e:
             db.session.rollback()
             print(f"Error guardando ruta: {e}")
@@ -609,17 +718,86 @@ def create_app():
 
     return app
 
-def get_local_ip():
-    import socket
+def get_all_local_ips_with_names():
+    """
+    Obtiene todas las IPs locales activas con el nombre de red WiFi (SSID) o alias de interfaz.
+    Usa PowerShell + netsh wlan en Windows para identificar la red de cada IP.
+    """
+    import socket, subprocess, re, json
+
+    ip_to_label = {}
+
+    # ─── Paso 1: PowerShell → alias de interfaz por IP ───────────────────────
     try:
-        # Crea un socket UDP temporal para descubrir la ruta IP local preferida
-        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        s.connect(("8.8.8.8", 80))
-        ip = s.getsockname()[0]
-        s.close()
-        return ip
+        ps_cmd = (
+            'Get-NetIPAddress -AddressFamily IPv4 | '
+            'Where-Object { $_.IPAddress -notlike "127.*" -and $_.IPAddress -notlike "169.254.*" } | '
+            'Select-Object InterfaceAlias, IPAddress | ConvertTo-Json'
+        )
+        raw = subprocess.check_output(
+            ['powershell', '-NoProfile', '-Command', ps_cmd],
+            encoding='utf-8', errors='replace',
+            creationflags=0x08000000  # CREATE_NO_WINDOW
+        )
+        data = json.loads(raw.strip())
+        if isinstance(data, dict):
+            data = [data]
+        for item in data:
+            ip    = (item.get('IPAddress')     or '').strip()
+            alias = (item.get('InterfaceAlias') or 'Red').strip()
+            if ip:
+                ip_to_label[ip] = alias
     except Exception:
-        return "127.0.0.1"
+        pass
+
+    # ─── Paso 2: netsh wlan → SSID por alias de adaptador WiFi ───────────────
+    alias_to_ssid = {}
+    try:
+        wlan_raw = subprocess.check_output(
+            ['netsh', 'wlan', 'show', 'interfaces'],
+            encoding='utf-8', errors='replace',
+            creationflags=0x08000000
+        )
+        cur_name = None
+        for line in wlan_raw.splitlines():
+            # Detectar nombre del adaptador (ej: "Wi-Fi", "Wi-Fi 2")
+            m_name = re.search(r'^\s+(?:Nombre|Name)\s*:\s*(.+)', line)
+            if m_name:
+                cur_name = m_name.group(1).strip()
+            # Detectar SSID (línea "SSID", no "BSSID")
+            m_ssid = re.match(r'^\s+SSID\s+:\s+(.+)', line)
+            if m_ssid and cur_name:
+                ssid = m_ssid.group(1).strip()
+                if ssid:
+                    alias_to_ssid[cur_name] = ssid
+                    cur_name = None          # reset para el siguiente adaptador
+    except Exception:
+        pass
+
+    # ─── Paso 3: enriquecer labels con el SSID cuando coincidan ──────────────
+    for ip, alias in list(ip_to_label.items()):
+        # Coincidencia exacta de alias
+        if alias in alias_to_ssid:
+            ip_to_label[ip] = f'📶 WiFi: {alias_to_ssid[alias]}'
+        else:
+            # Coincidencia parcial (ej: "Wi-Fi 2" contiene "Wi-Fi")
+            for k, ssid in alias_to_ssid.items():
+                if k.lower() in alias.lower() or alias.lower() in k.lower():
+                    ip_to_label[ip] = f'📶 WiFi: {ssid}'
+                    break
+
+    # ─── Paso 4: fallback si PowerShell no funcionó ──────────────────────────
+    if not ip_to_label:
+        try:
+            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            s.connect(("8.8.8.8", 80))
+            ip = s.getsockname()[0]
+            s.close()
+            ip_to_label[ip] = 'Red principal'
+        except Exception:
+            ip_to_label['127.0.0.1'] = 'Localhost'
+
+    return [(ip, label) for ip, label in sorted(ip_to_label.items())]
 
 def open_browser(local_url):
     webbrowser.open_new(local_url)
@@ -627,27 +805,48 @@ def open_browser(local_url):
 if __name__ == '__main__':
     aplicacion = create_app()
     
-    # Obtener IP local para acceso desde celular
-    local_ip = get_local_ip()
-    local_url = f"http://{local_ip}:5000/"
+    # Obtener todas las IPs locales activas con nombre de red
+    redes = get_all_local_ips_with_names()
+    primary_url = f"http://{redes[0][0]}:5000/"
     
-    # Generar e imprimir QR Code en la terminal para fácil escaneo
+    # Generar un QR por cada red encontrada
     try:
         import qrcode
-        qr = qrcode.QRCode(border=2)
-        qr.add_data(local_url)
-        qr.make(fit=True)
-        print("\n" + "="*50)
-        print(f"🌍 TRAVELWISHLY DISPONIBLE EN TU RED LOCAL 🌍")
-        print(f"👉 Escanea el QR para entrar desde tu celular:")
-        print("="*50 + "\n")
-        qr.print_ascii(invert=True)
-        print(f"\nO teclea esto en el navegador de tu celular: {local_url}\n")
-    except ImportError:
-        pass
+        print("\n" + "="*58)
+        print(f"🌍   TRAVELWISHLY DISPONIBLE EN TU RED LOCAL   🌍")
+        print("="*58)
+        if len(redes) > 1:
+            print(f"   ✅ Se detectaron {len(redes)} interfaces de red activas.")
+            print("   👉 Usa el QR de la red a la que está conectado tu celular.\n")
+        else:
+            print("   👉 Escanea el QR para entrar desde tu celular:\n")
 
-    # Abre la PC directamente con la IP de RED para que el Magic Link se genere bien
-    threading.Timer(1.5, open_browser, args=[local_url]).start()
+        for ip, label in redes:
+            url = f"http://{ip}:5000/"
+            qr = qrcode.QRCode(border=2)
+            qr.add_data(url)
+            qr.make(fit=True)
+            print(f"  {label}")
+            print(f"  IP: {ip}  →  {url}")
+            print("-"*48)
+            qr.print_ascii(invert=True)
+            print()
+        
+        print("="*58)
+        print("💡 CONSEJO — Si tu celular está en una red distinta:")
+        print("   Intenta escanear el QR de otra red de la lista.")
+        print("   Las redes NETGEAR y el módem pueden ser subredes")
+        print("   distintas — el celular solo accede a la misma.")
+        print("="*58 + "\n")
+    except ImportError:
+        print(f"\n🌍 TravelWishly disponible en:")
+        for ip, label in redes:
+            print(f"   → http://{ip}:5000/  ({label})")
+        print()
+
+    # Abre la PC directamente con la primera IP encontrada
+    threading.Timer(1.5, open_browser, args=[primary_url]).start()
     
     # Correr servidor escuchando en todas las interfaces (0.0.0.0)
     aplicacion.run(host='0.0.0.0', debug=True, port=5000, use_reloader=False)
+

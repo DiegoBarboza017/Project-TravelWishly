@@ -158,11 +158,11 @@
     <!-- html2pdf.js para la generacion de reportes PDF -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <!-- Script de lógica Frontend (Calculadora / Guía Turística) -->
-    <script src="{{ url_for('static', filename='app.js') }}"></script>
+    <script src="{{ url_for('static', filename='app.js') }}?v={{ range(1, 999999) | random }}"></script>
     <!-- Lógica del Globo Interactivo -->
-    <script src="{{ url_for('static', filename='globe_logic.js') }}"></script>
+    <script src="{{ url_for('static', filename='globe_logic.js') }}?v={{ range(1, 999999) | random }}"></script>
     <!-- AI Route Generator + Smart Packing List -->
-    <script src="{{ url_for('static', filename='ai_packing.js') }}"></script>
+    <script src="{{ url_for('static', filename='ai_packing.js') }}?v={{ range(1, 999999) | random }}"></script>
     <!-- Motor de Traducciones (Google UI Oculto) -->
     <div id="google_translate_element" style="display:none;"></div>
     <script type="text/javascript">

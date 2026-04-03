@@ -84,6 +84,7 @@
                     class="bi bi-geo-alt-fill fs-5"></i></span>
             <input type="text" list="guiaDestinosList" class="form-control global-search-input border-0 px-3 py-3 fw-bold text-dark rounded-0 text-uppercase"
                 id="destinosDropdown" placeholder="ESCRIBE TU PRÓXIMO DESTINO SOÑADO... EJ: TOKIO" autocomplete="off"
+                value="{{ destino_inicial | upper }}"
                 oninput="if(window.cargarGuiaSegura) window.cargarGuiaSegura()">
             <datalist id="guiaDestinosList"></datalist>
         </div>
@@ -196,4 +197,38 @@
     </div>
 </div>
 
+{% if destino_inicial %}
+<script>
+// app.js se carga DESPUÉS del block content pero antes del cierre del body.
+// Este script corre cuando acaba el block — app.js aún no ejecutó.
+// Usamos un poll periódico para esperar a que window.cargarGuiaSegura esté lista.
+(function() {
+    var _intentos = 0;
+    function tryLoad() {
+        var inp = document.getElementById('destinosDropdown');
+        if (!inp) return;
+        // Flash visual la primera vez
+        if (_intentos === 0) {
+            inp.style.backgroundColor = '#fff3cd';
+            setTimeout(function() { inp.style.backgroundColor = ''; }, 900);
+        }
+        if (typeof window.cargarGuiaSegura === 'function') {
+            window.cargarGuiaSegura();
+        } else if (_intentos < 20) {
+            _intentos++;
+            setTimeout(tryLoad, 150);  // reintenta cada 150ms hasta ~3s
+        }
+    }
+    // Arrancar cuando el DOM esté completo y los scripts externos hayan cargado
+    if (document.readyState === 'complete') {
+        tryLoad();
+    } else {
+        window.addEventListener('load', tryLoad);    // todos los recursos listos
+        document.addEventListener('DOMContentLoaded', function() {
+            setTimeout(tryLoad, 400);  // fallback por si load ya pasó
+        });
+    }
+})();
+</script>
+{% endif %}
 {% endblock %}
