@@ -1111,6 +1111,11 @@ window.sugerirPresupuestoBuscador = function(valTyped) {
 /* =========================================================================
    MÓDULO UNIFICADO: BUSCADOR MUNDIAL (INTEGRACIÓN OPENSTREETMAP - NOMINATIM)
    Aplica a inputs .global-search-input (Dash, Guía, Constructor)
+};
+
+/* =========================================================================
+   MÓDULO UNIFICADO: BUSCADOR MUNDIAL (INTEGRACIÓN OPENSTREETMAP - NOMINATIM)
+   Aplica a inputs .global-search-input (Dash, Guía, Constructor)
 ========================================================================= */
 let globalSearchTimeout = null;
 function setupGlobalAutocomplete() {
@@ -1171,155 +1176,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
 window.exportarDashboardPDF = function() {
     const btnPDF = document.getElementById('btnExportarDashboardPDF');
-    if (btnPDF) {
-        btnPDF.disabled = true;
-        btnPDF.innerHTML = '<i class="bi bi-hourglass-split me-2"></i>Generando...';
-    }
-
-    const captureEl = document.getElementById('dashboardCaptureZone');
-    if (!captureEl) return;
-
-    // PATCH 1: Quitar fondos problemáticos temporales
-    const cards = captureEl.querySelectorAll('.card-body');
-    const originalBg = [];
-    cards.forEach((c, i) => {
-        originalBg[i] = c.style.backgroundImage;
-        c.style.backgroundImage = 'none'; 
-    });
-
-    // PATCH 2: Sombras pesadas
-    const allNodes = captureEl.querySelectorAll('*');
-    const originalShadows = [];
-    allNodes.forEach((node, i) => {
-        originalShadows[i] = node.style.boxShadow;
-        if(node.style.boxShadow) node.style.boxShadow = 'none'; 
-    });
-
-    // PATCH 3: Prevenir Congelamiento por Canvas (Convertiendo Chart a Img 2D)
-    const canvas = captureEl.querySelector('canvas');
-    let imgFallback;
-    if (canvas) {
-        imgFallback = document.createElement('img');
-        imgFallback.src = canvas.toDataURL("image/png");
-        imgFallback.style.width = canvas.style.width || '100%';
-        imgFallback.style.height = canvas.style.height || 'auto';
-        imgFallback.className = canvas.className;
-        canvas.parentNode.insertBefore(imgFallback, canvas);
-        canvas.parentNode.removeChild(canvas); // Extraer nodo físicamente para evitar lock
-    }
-
-    const opciones = {
-        margin:       [10, 10, 10, 10],
-        filename:     `TravelWishly_Dashboard_Visual_${new Date().getFullYear()}.pdf`,
-        image:        { type: 'jpeg', quality: 1.0 },
-        html2canvas:  { scale: 2, useCORS: true, logging: false, windowWidth: 1200 },
-        jsPDF:        { unit: 'mm', format: 'a3', orientation: 'landscape' }
-    };
-
-    html2pdf().set(opciones).from(captureEl).save().then(() => {
-        if (canvas) { imgFallback.parentNode.insertBefore(canvas, imgFallback); imgFallback.remove(); canvas.style.display = 'block'; }
-        cards.forEach((c, i) => { c.style.backgroundImage = originalBg[i]; });
-        allNodes.forEach((node, i) => { if (originalShadows[i]) node.style.boxShadow = originalShadows[i]; });
-        if (btnPDF) {
-            btnPDF.disabled = false;
-            btnPDF.innerHTML = '<i class="bi bi-file-earmark-pdf-fill me-2"></i>Exportar PDF';
-        }
-    }).catch(err => {
-        if (canvas) { imgFallback.parentNode.insertBefore(canvas, imgFallback); imgFallback.remove(); canvas.style.display = 'block'; }
-        cards.forEach((c, i) => { c.style.backgroundImage = originalBg[i]; });
-        allNodes.forEach((node, i) => { if (originalShadows[i]) node.style.boxShadow = originalShadows[i]; });
-        console.error("PDF generation error: ", err);
-        if (btnPDF) {
-            btnPDF.disabled = false;
-            btnPDF.innerHTML = '<i class="bi bi-file-earmark-pdf-fill me-2"></i>Exportar PDF';
-        }
-    });
-};
-
-/* =========================================================================
-   MÓDULO: EXPORTAR PDF DEL FINANCIAMIENTO
-========================================================================= */
-
-window.exportarFinanciamientoPDF = function() {
-    const btnPDF = document.getElementById('btnExportarFinPDF');
-    if (btnPDF) {
-        btnPDF.disabled = true;
-        btnPDF.innerHTML = '<i class="bi bi-hourglass-split me-2"></i>Generando...';
-    }
-
-    const resultadoPanel = document.getElementById('resultadoPanel');
-    if (resultadoPanel && resultadoPanel.classList.contains('d-none')) {
-        alert('Debes calcular primero el plan de financiamiento antes de exportar el PDF.');
-        if (btnPDF) { btnPDF.disabled = false; btnPDF.innerHTML = '<i class="bi bi-file-earmark-pdf-fill me-2"></i>Exportar PDF'; }
-        return;
-    }
-
-    const captureEl = document.getElementById('finCaptureZone');
-    if (!captureEl) {
-        if (btnPDF) { btnPDF.disabled = false; btnPDF.innerHTML = '<i class="bi bi-file-earmark-pdf-fill me-2"></i>Exportar PDF'; }
-        return;
-    }
-
-    // PATCH 1: Quitar fondos con patrones que rompen html2canvas
-    const cards = captureEl.querySelectorAll('.card-body');
-    const originalBg = [];
-    cards.forEach((c, i) => {
-        originalBg[i] = c.style.backgroundImage;
-        c.style.backgroundImage = 'none';
-    });
-
-    // PATCH 2: Quitar sombras pesadas
-    const allNodes = captureEl.querySelectorAll('*');
-    const originalShadows = [];
-    allNodes.forEach((node, i) => {
-        originalShadows[i] = node.style.boxShadow;
-        if (node.style.boxShadow) node.style.boxShadow = 'none';
-    });
-
-    // PATCH 3: Convertir canvas a imagen estatica
-    const canvas = captureEl.querySelector('canvas');
-    let imgFallback;
-    if (canvas) {
-        imgFallback = document.createElement('img');
-        imgFallback.src = canvas.toDataURL('image/png');
-        imgFallback.style.width = canvas.style.width || '100%';
-        imgFallback.style.height = canvas.style.height || 'auto';
-        imgFallback.className = canvas.className;
-        canvas.parentNode.insertBefore(imgFallback, canvas);
-        canvas.parentNode.removeChild(canvas);
-    }
-
-    const opciones = {
-        margin:       [8, 8, 8, 8],
-        filename:     'TravelWishly_Financiamiento_' + new Date().getFullYear() + '.pdf',
-        image:        { type: 'jpeg', quality: 1.0 },
-        html2canvas:  { scale: 1.5, useCORS: true, logging: false, windowWidth: 900 },
-        jsPDF:        { unit: 'mm', format: 'a3', orientation: 'landscape' }
-    };
-
-    const restore = () => {
-        if (canvas) { imgFallback.parentNode.insertBefore(canvas, imgFallback); imgFallback.remove(); }
-        cards.forEach((c, i) => { c.style.backgroundImage = originalBg[i]; });
-        allNodes.forEach((node, i) => { if (originalShadows[i]) node.style.boxShadow = originalShadows[i]; });
-        if (btnPDF) {
-            btnPDF.disabled = false;
-            btnPDF.innerHTML = '<i class="bi bi-file-earmark-pdf-fill me-2"></i>Exportar PDF';
-        }
-    };
-
-    html2pdf().set(opciones).from(captureEl).save().then(restore).catch(err => {
-        console.error('PDF Financiamiento error:', err);
-        restore();
-    });
-};
-
-/* =========================================================================
-   MÓDULO: EXPORTAR PDF DEL CONSTRUCTOR
-========================================================================= */
-
-/** @function exportarReportePDF recopila el estado del constructor y genera un PDF profesional */
-function exportarReportePDF() {
-    const btnPDF = document.getElementById('btnExportarPDF');
     if (btnPDF) {
         btnPDF.disabled = true;
         btnPDF.innerHTML = '<i class="bi bi-hourglass-split me-2"></i>Generando...';
