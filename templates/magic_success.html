@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="row justify-content-center align-items-center main-min-height">
+    <div class="col-md-6 col-lg-5 text-center">
+        <div class="card border-dark border-3 rounded-0 shadow-none hover-lift p-5"
+            style="box-shadow: 8px 8px 0 0 #000 !important; transform: scale(1.05);">
+            <div class="mb-4">
+                <div class="d-inline-flex align-items-center justify-content-center border border-dark border-3 text-white bg-dark rounded-circle"
+                    style="width: 100px; height: 100px; box-shadow: 4px 4px 0 0 rgba(0,0,0,0.5);">
+                    <i class="bi bi-check-circle-fill" style="font-size: 3rem;"></i>
+                </div>
+            </div>
+            <h2 class="fw-bold text-dark text-uppercase tracking-wider">¡Autenticación Exitosa!</h2>
+            <p class="text-dark fw-bold mt-3 mb-0">Has iniciado sesión correctamente.</p>
+            <p class="text-muted small fw-bold">Ya puedes cerrar esta ventana con seguridad y regresar a tu pestaña original.</p>
+            
+            <hr class="my-4 border-dark border-2 border-dashed">
+            
+            <a href="{{ url_for('index') }}" class="btn btn-outline-dark w-100 py-3 fw-bold rounded-0 text-uppercase tracking-wider border-2 border-dark" id="closeBtn">
+                Ir de todos modos al Inicio
+            </a>
+            
+            <script>
+                // Intentar cerrar la pestaña automáticamente (no funciona en todos los navegadores si no fue abierta por JS)
+                let countdown = 5;
+                const btn = document.getElementById("closeBtn");
+                const ogText = btn.innerHTML;
+                
+                setInterval(() => {
+                    countdown--;
+                    if(countdown <= 0) {
+                        try { window.close(); } catch(e) { }
+                        // Si el navegador prohíbe cerrar, redirigimos automáticamente a index de respaldo
+                        window.location.href = "{{ url_for('index') }}";
+                    } else {
+                        btn.innerHTML = `Cerrando / Entrando en ${countdown}...`;
+                    }
+                }, 1000);
+            </script>
+        </div>
+    </div>
+</div>
+{% endblock %}

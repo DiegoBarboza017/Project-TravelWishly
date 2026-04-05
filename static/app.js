@@ -16,12 +16,126 @@ document.addEventListener("DOMContentLoaded", () => {
             link.style.paddingBottom = '2px';
         }
     });
+
+    // Flujo Global Lineal (Auto-Cargas por URL)
+    if (currentPath === '/dashboard') {
+        const p = new URLSearchParams(window.location.search);
+        if (p.has('destino')) {
+            const dest = p.get('destino');
+            const destInput = document.getElementById('destinoSugerido');
+            if (destInput) {
+                destInput.value = dest;
+                if (window.sugerirPresupuestoBuscador) {
+                    window.sugerirPresupuestoBuscador(dest);
+                }
+                setTimeout(() => { destInput.scrollIntoView({behavior: 'smooth', block: 'center'}); }, 500);
+            }
+        }
+    } else if (currentPath === '/constructor') {
+        const p = new URLSearchParams(window.location.search);
+        if (p.has('destino')) {
+            const dest = p.get('destino');
+            const rutaDest = document.getElementById('rutaDestino');
+            if (rutaDest) rutaDest.value = dest;
+            if (p.has('budget')) {
+                // Info that they came from budget
+                console.log("Presupuesto proyectado:", p.get('budget'));
+            }
+        }
+
+        // === VALIDACIÓN: Fecha mínima = hoy (no se puede elegir fecha pasada) ===
+        const rutaFechaInput = document.getElementById('rutaFecha');
+        if (rutaFechaInput) {
+            const hoy = new Date();
+            const yyyy = hoy.getFullYear();
+            const mm   = String(hoy.getMonth() + 1).padStart(2, '0');
+            const dd   = String(hoy.getDate()).padStart(2, '0');
+            rutaFechaInput.setAttribute('min', `${yyyy}-${mm}-${dd}`);
+
+            // Prevenir escritura manual de fechas anteriores
+            rutaFechaInput.addEventListener('change', function() {
+                const seleccionada = new Date(this.value + 'T00:00:00');
+                const hoyCheck    = new Date();
+                hoyCheck.setHours(0, 0, 0, 0);
+                if (seleccionada < hoyCheck) {
+                    this.value = `${yyyy}-${mm}-${dd}`;
+                    alert('⚠️ La fecha de salida no puede ser anterior a hoy. Se ha restablecido a la fecha actual.');
+                }
+            });
+        }
+
+        // Auto-Rehidratación del Constructor desde la BD de Historial
+        const params = new URLSearchParams(window.location.search);
+        if (params.has('history_id')) {
+            const historyId = params.get('history_id');
+            fetch(`/api/get_route/${historyId}`)
+            .then(r => r.json())
+            .then(data => {
+                if(data.success) {
+                    if (document.getElementById('rutaOrigen')) document.getElementById('rutaOrigen').value = data.origen;
+                    if (document.getElementById('rutaDestino')) document.getElementById('rutaDestino').value = data.destino;
+                    if (document.getElementById('rutaDuracion')) document.getElementById('rutaDuracion').value = data.duracion_dias;
+                    if (document.getElementById('rutaFecha') && data.fecha_ideal && data.fecha_ideal !== 'None') document.getElementById('rutaFecha').value = data.fecha_ideal;
+                    
+                    // Auto-trigger principal de la generación (UX)
+                    setTimeout(() => {
+                        if(window.generarRutaInteligente) window.generarRutaInteligente();
+                    }, 600);
+
+                    // Rehidratación Asincrónica en Cascada (Mochila, Vibes, PackingList)
+                    setTimeout(() => {
+                        try {
+                            const mochilas = JSON.parse(data.mochila_state || '[]');
+                            mochilas.forEach(id => {
+                                const cb = document.getElementById(id);
+                                if(cb) cb.checked = true;
+                            });
+                            if(window.calcularMochila) window.calcularMochila();
+                        } catch(e){}
+                    }, 800);
+
+                    setTimeout(() => {
+                        try {
+                            const vibes = JSON.parse(data.vibes_state || '[]');
+                            vibes.forEach(vibe => {
+                                const btn = document.querySelector(`button[onclick*="recomendarDestino('${vibe}'"]`);
+                                if(btn) window.recomendarDestino(vibe, btn);
+                            });
+                        } catch(e){}
+                    }, 1000);
+
+                    // Damos ~2500ms para asegurar que `cargarPackingList` ya inyectó el HTML semántico global 
+                    setTimeout(() => {
+                        try {
+                            const packings = JSON.parse(data.packing_state || '[]');
+                            packings.forEach(id => {
+                                const packDiv = document.getElementById(id);
+                                if(packDiv) {
+                                    // Simula un toggle pero forzando True en toggle visual
+                                    packDiv.classList.add('checked');
+                                    const icon = packDiv.querySelector('i');
+                                    if(icon) {
+                                        icon.className = 'bi bi-check-square-fill';
+                                        icon.style.cssText = 'min-width:18px;font-size:1rem;flex-shrink:0;color:#fff;';
+                                    }
+                                }
+                            });
+                            if(window.actualizarProgressPacking) window.actualizarProgressPacking();
+                        } catch(e){}
+                    }, 3000); 
+                }
+            });
+        }
+    }
+
+
 });
 
 /* =========================================================================
    MÓDULO: CALCULADORA Y PANEL DE ESTADÍSTICAS
 ========================================================================= */
 let donutGráficoInstancia = null; // Almacenamiento de Chart global.
+let financeChartInstancia = null; // Gráfico de simulación de crédito
 
 const ESTILOS_VIAJE = {
     'mochilero': { hospedaje: 0.20, vuelos: 0.40, comida: 0.25, actividades: 0.15 },
@@ -113,7 +227,38 @@ function calcularDistribucion() {
 
     renderizarPanelGraficas(distribucion);
     actualizarTextosDeInsights(ahorroConvertido, mesesParaAhorrarAprox, distribucion, ingreso, capitalViajeEst);
+
+    // Guardar estado de la proyección para el modal de recordatorios de ahorro
+    const destinoEl2 = document.getElementById('destinoSugerido');
+    window._lastSavingsCalc = {
+        destination:    destinoEl2 ? destinoEl2.value.trim() : '',
+        monthlyAmount:  parseFloat(capacidadMonetariaAhorro.toFixed(2)),
+        totalMonths:    mesesParaAhorrarAprox,
+        currency:       divisaSelec,
+        currencySymbol: conversion.simbolo
+    };
+
+    // Activar Botón de Flujo Continuo a Itinerario
+    const btnFlujo = document.getElementById('btnContinuarItinerario');
+    if (btnFlujo) btnFlujo.classList.remove('d-none');
 }
+
+/** @function continuarAItinerario Extrae variables y redirige al constructor */
+window.continuarAItinerario = function() {
+    const destinoEl = document.getElementById('destinoSugerido');
+    const budgetEl = document.getElementById('viajeObjetivo');
+    let url = '/constructor';
+    let params = new URLSearchParams();
+    
+    if (destinoEl && destinoEl.value) params.append('destino', destinoEl.value);
+    if (budgetEl && budgetEl.value) params.append('budget', budgetEl.value);
+    
+    if(params.toString()) {
+        window.location.href = url + '?' + params.toString();
+    } else {
+        window.location.href = url;
+    }
+};
 
 /** 
  * Actualiza el Canvas Chart.js del Frontend con transiciones animadas 
@@ -204,7 +349,7 @@ function seleccionarPlazo(meses, btnElement) {
     if (btnElement) {
         btnElement.classList.remove('btn-outline-dark');
         btnElement.classList.add('btn-dark', 'text-white');
-        if (meses === 12) btnElement.innerHTML = '12 ⭐';
+        btnElement.innerHTML = `${meses} ⭐`;
     }
 
     // Actualizar input oculto
@@ -274,14 +419,44 @@ function simularCredito() {
             const tot  = c * p + enganche;
             const int  = Math.max(0, tot - monto);
             const esActual = p === meses;
-            const rowStyle = esActual ? 'background: #000; color: #fff;' : '';
-            return `<tr style="${rowStyle}">
-                <td class="fw-black">${p} meses ${esActual ? '✓' : ''}</td>
+            const bgClass = esActual ? 'table-warning fw-black' : '';
+            return `<tr class="${bgClass}">
+                <td class="fw-black">${p} meses ${esActual ? '⭐' : ''}</td>
                 <td>${fmt(c)}</td>
                 <td>${fmt(tot)}</td>
-                <td class="${esActual ? 'text-warning' : 'text-danger'}">${fmt(int)}</td>
+                <td class="${esActual ? 'text-dark' : 'text-danger'}">${fmt(int)}</td>
             </tr>`;
         }).join('');
+    }
+
+    // Render de Gráfico Costo Real
+    const canvasFinance = document.getElementById('financeChart');
+    if (canvasFinance) {
+        const areaFinance = canvasFinance.getContext('2d');
+        if (financeChartInstancia !== null) {
+            financeChartInstancia.destroy();
+        }
+        financeChartInstancia = new Chart(areaFinance, {
+            type: 'doughnut',
+            data: {
+                labels: ['Valor Original (Sin Intereses)', 'Costo Extra (Intereses Puros)'],
+                datasets: [{
+                    label: 'Costo Real',
+                    data: [monto, Math.max(0, totalIntereses)],
+                    backgroundColor: ['#212529', '#dc3545'],
+                    borderWidth: 2,
+                    borderColor: '#ffffff',
+                    hoverOffset: 8
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'bottom', labels: { font: { weight: 'bold' }, color: '#000' } }
+                }
+            }
+        });
     }
 
     // Consejo inteligente contextual
@@ -354,27 +529,13 @@ function actualizarTextosDeInsights(monedaAhorradaXMes, cantMeses, distr, ingres
 
 // Data Fuente simulando un acceso a un API RESTful backend global
 const INTELIGENCIA_DESTINOS_DB = [
-    { ciudad: "Tokio", pais: "Japón", cultura: "Fusión de reverencia antigua y vanguardia digital. Respeta el silencio público en el Metro.", puntosInteres: ["Templo Senso-ji de noche", "Akihabara y electrónica", "Cruce peatonal de Shibuya"], zonasRojas: "Roppongi pasada la medianoche. Evita promotores de bares en la calle que podrían estafar." },
-    { ciudad: "Kioto", pais: "Japón", cultura: "El verdadero corazón espiritual y estricto de Japón. No detengas ni toques a las Maikos o Geishas.", puntosInteres: ["Fushimi Inari Taisha", "Pabellón de Oro", "Bosque de Bambú Arashiyama"], zonasRojas: "Es extremadamente seguro, pero respeta el espacio privado y no entres a calles residenciales en Gion." },
-    { ciudad: "Osaka", pais: "Japón", cultura: "Capital gastronómica y rebelde del país, gente más abierta y amigable al hablar.", puntosInteres: ["Castillo de Osaka", "Dotonbori nocturno", "Universal Studios Japan"], zonasRojas: "Algunas áreas puntuales en Shinsekai muy tarde, aunque en términos generales Japón raya el 100% en seguridad." },
-    { ciudad: "Buenos Aires", pais: "Argentina", cultura: "Pasión por el fútbol, asado y cultura europea sudamericana. Vida literaria rica.", puntosInteres: ["Teatro Colón", "Puerto Madero", "Feria de San Telmo"], zonasRojas: "Limita visitas en La Boca netamente a Caminito. Evita mostrar electrónica cara en avenidas." },
-    { ciudad: "Roma", pais: "Italia", cultura: "Un museo vivo con fuerte peso histórico y religioso. Vístete conservador al visitar iglesias.", puntosInteres: ["Coliseo Romano", "Fontana Di Trevi", "Paseo por Trastevere"], zonasRojas: "Previene a carteristas en los alrededores céntricos de Termini y del Vaticano en fuertes aglomeraciones." },
-    { ciudad: "Estambul", pais: "Turquía", cultura: "Ciudad intercontinental donde occidente choca con oriente. Regatear en bazares es vital.", puntosInteres: ["Santa Sofía y Mezquita Azul", "Cruce del Bósforo en ferry", "Döner Kebab original callejero"], zonasRojas: "Rechaza 'lustradores de zapatos' amistosos en el puente de Gálata, acabarán extorsionando por el servicio no solicitado." },
-    { ciudad: "París", pais: "Francia", cultura: "Romanticismo puro, moda e historia extensa. Aprender francés básico ('Bonjour', 'Merci') abre muchísimas puertas.", puntosInteres: ["La Torre Eiffel", "Museo del Louvre", "Barrio de Montmartre"], zonasRojas: "Los alrededores inmediatos de Gare du Nord por la noche. Ojo con el engaño del anillo de oro tirado en el piso." },
-    { ciudad: "Nueva York", pais: "EE.UU.", cultura: "Meca cultural global que camina rápido. Da propina (18-20%) religiosamente, es parte estructural del servicio.", puntosInteres: ["Times Square", "Central Park", "Metropolitan Museum (MET)"], zonasRojas: "Partes remotas del Bronx o este de Brooklyn de madrugada. Manten cuidado básico en el Subway muy tarde." },
-    { ciudad: "Cancún", pais: "México", cultura: "Paraíso caribeño orientado fuertemente al turismo, fiesta y relajación extrema. Respeta el delicado ecosistema.", puntosInteres: ["Zona Arqueológica Maya", "Cenotes circundantes", "Playas de la Zona Hotelera"], zonasRojas: "Evita caminar fuera de la zona hotelera o el centro turístico seguro durante la madrugada profunda." },
-    { ciudad: "Bali", pais: "Indonesia", cultura: "Religiosidad hindú omnipresente. Viste modesto en templos sagrados, usando siempre un pareo (sarong).", puntosInteres: ["Terrazas de Tegalalang", "Templo de Uluwatu", "Descanso en Seminyak"], zonasRojas: "No cambies dinero en stands informales de las calles, la manipulación de billetes de alta denominación genera robos sutiles." },
-    { ciudad: "Madrid", pais: "España", cultura: "Vida orientada al disfrute callejero, tapeo e historia imperial. La cena sucede pasadas las 9 PM usualmente.", puntosInteres: ["Museo del Prado", "Parque del Retiro", "La Plaza Mayor"], zonasRojas: "Carteristas activos en Gran Vía, Sol o el Metro. No dejes móviles sobre las mesas expuestos." },
-    { ciudad: "Ciudad de México", pais: "México", cultura: "Metrópolis inmensa repleta de historia Azteca, gastronomía inigualable y hospitalidad desbordante.", puntosInteres: ["Zócalo y Bellas Artes", "Coyoacán y Museo Frida Kahlo", "Pirámides de Teotihuacán"], zonasRojas: "Zonas alejadas (ej. Tepito, Doctores). En el metro protege firmemente tus pertenencias en hora pico." },
-    { ciudad: "Bangkok", pais: "Tailandia", cultura: "Caos tropical, espiritualidad budista y comida callejera. Jamás ofendas a la figura del Rey (es penado legalmente).", puntosInteres: ["El Gran Palacio", "Templos Wat Pho y Wat Arun", "Mercados flotantes"], zonasRojas: "Tuk-Tuks que te ofrecen viajes 'casi gratis' te secuestrarán tiempo llevándote a tiendas de trajes o gemas falsas buscando comisión." },
-    { ciudad: "San Juan", pais: "Puerto Rico", cultura: "Joya colonial caribeña y capital innegable de la salsa. Gran hospitalidad con fuerte influencia estadounidense combinada.", puntosInteres: ["Viejo San Juan y El Morro", "Bosque El Yunque", "Playa del Condado"], zonasRojas: "Transitar zonas alejadas del marjal denso de noche pura; el interior profundo del barrio La Perla sin guía diurno." },
-    { ciudad: "San Juan", pais: "Argentina", cultura: "Oasis vitivinícola rodeado de aridez andina y valles imponentes. Cuna del buen vino sanjuanino.", puntosInteres: ["Parque Provincial Ischigualasto", "Ruta del Vino", "Dique Punta Negra"], zonasRojas: "Ciudad muy pacífica en general. Precaución estándar en zonas céntricas o salidas de discotecas un fin de semana." },
-    { ciudad: "Londres", pais: "Reino Unido", cultura: "Fusión monárquica clásica y diversidad extrema global. Respeta a rajatabla las filas cívicas formadas al esperar cualquier cosa.", puntosInteres: ["El Ojo de Londres (Eye)", "Museo Británico", "Paseo por el Támesis"], zonasRojas: "Aglomeraciones turísticas altas cerca de Piccadilly Circus y el tubo subterráneo central están plagadas de distracciones." },
-    { ciudad: "Medellín", pais: "Colombia", cultura: "La 'Ciudad de la Eterna Primavera', ejemplo mundial de increíble transformación de seguridad social y urbanismo verde.", puntosInteres: ["Comuna 13 (Grafiti Tour)", "Pueblito Paisa", "Uso del Metrocable"], zonasRojas: "El centro ('El Centro') y la Zona Norte muy pasada la medianoche. Respeta a los locales y no romantices conflictos pasados de capos." },
-    { ciudad: "Río de Janeiro", pais: "Brasil", cultura: "Capital incansable con samba en las venas. La interacción es cariñosamente táctil y muy expresiva. ¡Usa siempre protector!", puntosInteres: ["Cristo Redentor", "Pan de Azúcar", "Ipanema y Copacabana"], zonasRojas: "Pasear de noche solitariamente por las playas. Las Favelas son prohibidas si no tienes un contacto oficial y verificado directo del tour local." },
-    { ciudad: "Lima", pais: "Perú", cultura: "Capital en un acantilado del pacífico, cima indiscutible de comida criolla de exportación e increíble historia colonial/incaica.", puntosInteres: ["Malecón de Miraflores", "Centro Histórico de Lima", "Experiencia Gastronómica top"], zonasRojas: "Barrios como Callao y el centro norte (ej: Rímac) cuando empieza a bajar el sol radicalmente." },
-    { ciudad: "Santiago", pais: "Chile", cultura: "Urbe andina desarrollada y formal en el gran cono sur. Montañas majestuosas rodeando el valle central de extremo a extremo.", puntosInteres: ["Cerro San Cristóbal", "Palacio de La Moneda", "Barrios Lastarria / Bellavista"], zonasRojas: "Carteristas prolíficos dentro del Metro en hora pico. Alrededores de Estación Central en horas de la madrugada." },
-    { ciudad: "Bogotá", pais: "Colombia", cultura: "Urbe elevadísima cerca de las nubes, capital cafetera y un foco inmenso de la cultura de galerías y universidades de Sudamérica.", puntosInteres: ["Museo del Oro", "Cerro de Monserrate", "La Candelaria histórica"], zonasRojas: "Las fronteras sureñas de la ciudad sin razón aparente. Nunca pares o tomes taxis 'libres' en la calle trasnochado, pídelos siempre por App." }
+    { ciudad: "Tokio", pais: "Japón", cultura: "Fusión de reverencia antigua y vanguardia digital. Respeta el silencio público en el Metro.", puntosInteres: ["Templo Senso-ji", "Akihabara", "Cruce Shibuya", "Shinjuku de Noche", "Monte Fuji", "Torre de Tokio", "Parque Ueno", "Mercado Tsukiji", "Santuario Meiji", "Jardines Nacionales"], zonasRojas: "Roppongi pasada la medianoche. Evita promotores de bares en la calle que podrían estafar." },
+    { ciudad: "París", pais: "Francia", cultura: "Romanticismo puro, moda e historia extensa. Aprender francés básico abre muchísimas puertas.", puntosInteres: ["La Torre Eiffel", "Museo del Louvre", "Barrio de Montmartre", "Catedral de Notre Dame", "Arco de Triunfo", "Río Sena", "Palacio de Versalles", "Panteón de París", "Jardines de Luxemburgo", "Barrio Latino"], zonasRojas: "Los alrededores inmediatos de Gare du Nord por la noche. Ojo con el engaño del anillo de oro tirado en el piso." },
+    { ciudad: "Cancún", pais: "México", cultura: "Paraíso caribeño orientado fuertemente al turismo, fiesta y relajación extrema. Respeta el delicado ecosistema.", puntosInteres: ["Isla Mujeres", "Chichén Itzá", "Xcaret", "Tulum", "Cobá", "Cenote Dos Ojos", "Playa Delfines", "Museo Subacuático (MUSA)", "Parque Kabah", "Zona Hotelera"], zonasRojas: "Evita caminar fuera de la zona hotelera o el centro turístico seguro durante la madrugada profunda." },
+    { ciudad: "Londres", pais: "Reino Unido", cultura: "Fusión monárquica clásica y diversidad extrema global. Respeta a rajatabla las filas cívicas formadas al esperar.", puntosInteres: ["El Ojo de Londres", "Museo Británico", "El Támesis", "Torre de Londres", "Big Ben", "Abadía de Westminster", "Hyde Park", "Palacio Buckingham", "Piccadilly Circus", "Trafalgar Square"], zonasRojas: "Aglomeraciones turísticas altas cerca de Piccadilly Circus y el tubo subterráneo central están plagadas de distracciones." },
+    { ciudad: "Río de Janeiro", pais: "Brasil", cultura: "Capital incansable con samba en las venas. La interacción es cariñosamente táctil y muy expresiva. ¡Usa protector!", puntosInteres: ["Cristo Redentor", "Pan de Azúcar", "Playa Copacabana", "Ipanema", "Escalera Selarón", "Estadio Maracaná", "Jardín Botánico", "Parque Lage", "Barrio Santa Teresa", "Museo del Mañana"], zonasRojas: "Pasear de noche solitariamente por las playas. Las Favelas son prohibidas si no tienes un contacto oficial." },
+    { ciudad: "Lima", pais: "Perú", cultura: "Capital en un acantilado del pacífico, cima indiscutible de comida criolla de exportación e historia incaica.", puntosInteres: ["Malecón de Miraflores", "Plaza de Armas", "Circuito del Agua", "Huaca Pucllana", "Barranco", "Museo Larco", "Parque del Amor", "Mercado Surquillo", "Catedral de Lima", "Callao Monumental"], zonasRojas: "Barrios como Callao y el centro norte cuando empieza a bajar el sol radicalmente." },
+    { ciudad: "Bogotá", pais: "Colombia", cultura: "Urbe elevadísima cerca de las nubes, capital cafetera y un foco inmenso de la cultura de galerías artísticas.", puntosInteres: ["Museo del Oro", "Cerro de Monserrate", "La Candelaria", "Plaza de Bolívar", "Museo Botero", "Usaquén", "Jardín Botánico", "Parque de la 93", "Mercado Paloquemao", "Teatro Colón"], zonasRojas: "Las fronteras sureñas de la ciudad sin razón aparente. Usa Apps de transporte tarde." }
 ];
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -390,7 +551,7 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 /** @function cargarGuiaSegura busca dentro del array y reemplaza/anima elementos DOM */
-function cargarGuiaSegura() {
+window.cargarGuiaSegura = function cargarGuiaSegura() {
     const selectorObj = document.getElementById('destinosDropdown');
     const panelUI = document.getElementById('panelDestino');
     
@@ -407,21 +568,34 @@ function cargarGuiaSegura() {
         db.pais.toLowerCase() === txtBuscado
     );
 
-    // Fallback Generativo Global Absoluto para cualquier ciudad del mundo de Nominatim
-    if(!destinoObj && txtBuscado.includes(',')) {
-        let partes = selectorObj.value.split(','); // Respeta casing original
-        let cName = partes[0].trim();
-        let pName = partes[partes.length - 1].trim(); // Por si hay multiples comas ej: City, State, Country
+    // Fallback Generativo Global Absoluto para cualquier ciudad/país del mundo de Nominatim
+    if(!destinoObj && txtBuscado.length >= 2) {
+        let originalText = selectorObj.value.trim();
+        let cName = originalText;
+        let pName = originalText;
+        
+        if(originalText.includes(',')) {
+            let partes = originalText.split(',');
+            cName = partes[0].trim();
+            pName = partes[partes.length - 1].trim(); 
+        }
         
         destinoObj = {
             ciudad: cName,
             pais: pName,
-            cultura: `Descubre la cultura local de ${cName}. Al explorar ${pName}, debes estar siempre abierto a adaptarte a los modismos ciudadanos y reglas locales para maximizar tu inmersión. Aprender frases básicas abre muchísimas puertas.`,
-            zonasRojas: `Aplica el sentido común internacional de TravelWishly. ${cName}, como todo destino, posee carterismo potencial en zonas muy aglomeradas, el transporte público o al pasear por madrugadas en soledad absoluta. Mantén alerta tus pertenencias.`,
+            cultura: `Descubre la cultura de ${cName}. Al explorar ${pName}, adáptate a los modismos y costumbres locales.`,
+            zonasRojas: `Aplica el sentido común internacional. ${cName} posee riesgos estándar por aglomeraciones. Mantén alerta tus pertenencias.`,
             puntosInteres: [
-                `Recrearte en la plaza central o el casco histórico de ${cName}`,
-                `Degustación de la gastronomía representativa popular de ${pName}`,
-                `Paseo de reconocimiento del área urbana principal de vida`
+                `La Plaza o Zócalo Mayor`,
+                `Centro Histórico Principal`,
+                `Mercados Tradicionales de ${cName}`,
+                `Museo Antropológico Regional`,
+                `Áreas Verdes y Parques Centrales`,
+                `Avenida Principal de Compras`,
+                `Catedrales o Templos Históricos`,
+                `Paseos Peatonales Emblemáticos`,
+                `Atracciones y Reservas Naturales`,
+                `Zona de Teatros y Vida Nocturna`
             ]
         };
     }
@@ -440,14 +614,56 @@ function cargarGuiaSegura() {
     document.getElementById('panelCultura').innerText = destinoObj.cultura;
     document.getElementById('panelEvitar').innerText = destinoObj.zonasRojas;
 
+    // Fetch Dinamico de Idiomas Mundiales (Primary, Secondary)
+    const panelIdioma = document.getElementById('panelIdiomas');
+    if (panelIdioma) {
+        panelIdioma.innerHTML = `<span class="spinner-border spinner-border-sm" role="status"></span> Calculando Lenguajes...`;
+        fetch(`https://restcountries.com/v3.1/name/${encodeURIComponent(destinoObj.pais)}`)
+            .then(r => r.json())
+            .then(data => {
+                if (data && data[0] && data[0].languages) {
+                    const l = Object.values(data[0].languages);
+                    const mainStr = l[0] || "REGIONAL";
+                    const secStr = l[1] || "INGLÉS";
+                    panelIdioma.innerHTML = `<i class="bi bi-translate me-2"></i> IDIOMAS: 1. ${mainStr.toUpperCase()} | 2. ${secStr.toUpperCase()}`;
+                } else {
+                    panelIdioma.innerHTML = `<i class="bi bi-translate me-2"></i> IDIOMAS: ESPAÑOL Y LENGUAS LOCALES`;
+                }
+            }).catch(e => {
+                panelIdioma.innerHTML = `<i class="bi bi-translate me-2"></i> IDIOMAS: ESPAÑOL Y LENGUAS LOCALES`;
+            });
+    }
+
+    // Save for Flow
+    window._guiaDestinoActual = `${destinoObj.ciudad}, ${destinoObj.pais}`;
+
     // Poblamiento Dinámico Iterativo de Checklist Beneficiosa
     const listaHtmlUl = document.getElementById('panelRecomendaciones');
+    if (!listaHtmlUl) {
+        console.warn('[cargarGuiaSegura] #panelRecomendaciones no encontrado en el DOM');
+        return;
+    }
     listaHtmlUl.innerHTML = ''; // Reset
 
     destinoObj.puntosInteres.forEach((punto, i) => {
         const elementoHijo = document.createElement('li');
-        elementoHijo.className = "fs-6 fw-medium d-flex align-items-center bg-white p-2 rounded shadow-sm opacity-0";
-        elementoHijo.innerHTML = `<i class="bi bi-check-circle-fill text-success me-3 fs-5"></i> ${punto}`;
+        elementoHijo.className = "fs-6 fw-bold d-flex align-items-center bg-white border border-dark border-3 rounded-0 shadow-sm opacity-0 mx-0 mt-3 hover-lift";
+        // Clic para Galería de 10 Imágenes
+        elementoHijo.onclick = () => { if(window.abrirGaleria) window.abrirGaleria(punto, destinoObj.ciudad); };
+        elementoHijo.style.cursor = "pointer";
+        elementoHijo.style.boxShadow = "4px 4px 0 0 #000";
+
+        elementoHijo.innerHTML = `
+            <div class="bg-dark text-white p-3 d-flex align-items-center justify-content-center border-end border-3 border-dark" style="width: 50px;">
+                <i class="bi bi-geo-alt-fill fs-5"></i>
+            </div>
+            <div class="flex-grow-1 p-3 text-uppercase align-items-center text-truncate tracking-wider">
+                ${punto}
+            </div>
+            <div class="p-3 border-start border-3 border-dark bg-light d-flex align-items-center text-dark hover-yellow">
+                <i class="bi bi-camera-fill fs-5"></i>
+            </div>
+        `;
         listaHtmlUl.appendChild(elementoHijo);
         
         // Animacion intro encadenada
@@ -461,6 +677,81 @@ function cargarGuiaSegura() {
         }, 30 + (i * 100));
     });
 }
+
+/** @function continuarAPresupuesto redirige de Guía a Presupuesto usando el flujo global lineal */
+window.continuarAPresupuesto = function() {
+    if (window._guiaDestinoActual) {
+        window.location.href = `/dashboard?destino=${encodeURIComponent(window._guiaDestinoActual)}`;
+    }
+};
+
+/** @function abrirGaleria ejecuta el renderizado visual de 10 imagenes de Unsplash de cualquier parte */
+window.abrirGaleria = function(puntoInteres, ciudadContexto) {
+    const modalEl = document.getElementById('galleryModal');
+    if(!modalEl) return;
+    const modal = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
+    
+    document.getElementById('galleryModalLabel').innerHTML = `<i class="bi bi-images me-2"></i> EXPEDIENTE VISUAL: ${puntoInteres.toUpperCase()}`;
+    document.getElementById('galleryLocationSubtitle').innerHTML = `<i class="bi bi-geo-alt-fill me-1"></i> ${ciudadContexto.toUpperCase()}`;
+    
+    const spinner = document.getElementById('gallerySpinner');
+    const grid    = document.getElementById('galleryGrid');
+    
+    spinner.classList.remove('d-none');
+    grid.classList.add('d-none');
+    grid.innerHTML = '';
+    
+    modal.show();
+
+    // Limpiar texto (quitar acentos y caracteres especiales)
+    const clean = (str) => str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^\w\s]/gi, '').trim();
+    const cityKw = clean(ciudadContexto).split(' ')[0] || 'travel';
+    const poiKw  = clean(puntoInteres).split(' ').filter(w => w.length >= 3)[0] || 'landmark';
+
+    // Hash determinista de CIUDAD + POI — garantiza seed único por cada combinación de país + punto de interés
+    const fullKey = `${ciudadContexto}::${puntoInteres}`;
+    let combinedHash = 0;
+    for (let c = 0; c < fullKey.length; c++) {
+        combinedHash = ((combinedHash << 5) - combinedHash + fullKey.charCodeAt(c)) | 0;
+    }
+    combinedHash = Math.abs(combinedHash) % 900000 + 100000;  // número 6 dígitos, siempre positivo
+
+    // Contextos rotativos: cada slot dentro del POI busca un tema diferente
+    const ctxWords = ['architecture', 'street photography', 'landscape', 'culture', 'tourism',
+                      'history', 'market', 'monument', 'nature scenery', 'travel'];
+
+    let imgHTML = '';
+    for (let i = 1; i <= 10; i++) {
+        const ctx      = ctxWords[i - 1];
+        const keyword  = encodeURIComponent(`${poiKw} ${cityKw} ${ctx}`);
+        const sig      = combinedHash * 10 + i;                       // único por país+POI+slot
+        const urlReq   = `https://source.unsplash.com/800x600/?${keyword}&sig=${sig}`;
+        const fallback = `https://picsum.photos/seed/${combinedHash + i * 13}/800/600`;
+        const colSize  = i % 3 === 0 ? 'col-md-12 col-lg-8' : 'col-md-6 col-lg-4';
+
+        imgHTML += `
+            <div class="${colSize}">
+                <div class="card h-100 border-dark border-3 rounded-0" style="box-shadow: 4px 4px 0 0 #000; overflow:hidden;">
+                    <img src="${urlReq}"
+                         onerror="this.onerror=null;this.src='${fallback}';"
+                         class="img-fluid w-100 object-fit-cover" alt="Vista ${i}: ${ctx} en ${ciudadContexto}"
+                         loading="lazy" style="min-height: 220px; max-height: 280px;">
+                    <div class="card-footer bg-dark text-white border-top border-3 border-dark py-2 px-3 rounded-0 d-flex justify-content-between align-items-center">
+                        <small class="fw-bold tracking-wider text-uppercase" style="font-size: 10px;"><i class="bi bi-camera me-1"></i>VISTA ${i}/10</small>
+                        <span class="badge bg-white text-dark rounded-0 fw-black px-2 py-1"><i class="bi bi-check-circle-fill text-success me-1"></i>VERIFICADA</span>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    setTimeout(() => {
+        grid.innerHTML = imgHTML;
+        spinner.classList.add('d-none');
+        grid.classList.remove('d-none');
+    }, 600);
+};
+
 
 /* =========================================================================
    MÓDULO: CONSTRUCTOR DE VIAJES (PREPARATIVOS E INTERESES)
@@ -492,55 +783,55 @@ function calcularMochila() {
 
 const TODOS_DESTINOS_DB = [
     { 
-      id: 1, ciudad: "Tokio", pais: "Japón", tags: ["cultura", "fiesta"], desc: "Tecnología, templos ancestrales y la mejor vida nocturna en Shinjuku y Shibuya.", timezone: "Asia/Tokyo", moneda: "JPY (Yen)", climaBase: 15,
+      id: 1, ciudad: "Tokio", pais: "Japón", tags: ["cultura", "fiesta", "gastronomia", "compras", "arquitectura"], desc: "Tecnología, templos ancestrales y la mejor vida nocturna en Shinjuku y Shibuya.", timezone: "Asia/Tokyo", moneda: "JPY (Yen)", climaBase: 15,
       galeria: [{n:"Cruce Shibuya",q:"shibuya,crossing"},{n:"Akihabara",q:"akihabara,neon"},{n:"Templo Senso-ji",q:"sensoji,temple"},{n:"Shinjuku de Noche",q:"shinjuku,night"},{n:"Monte Fuji (Cercanías)",q:"fuji,mountain"},{n:"Torre de Tokio",q:"tokyotower"},{n:"Parque Ueno",q:"ueno,park"},{n:"Mercado Tsukiji",q:"tsukiji,market"},{n:"Santuario Meiji",q:"meijijingu,shrine"},{n:"Jardines Nacionales",q:"tokyo,garden"}]
     },
     { 
-      id: 2, ciudad: "París", pais: "Francia", tags: ["cultura", "relax"], desc: "El romanticismo puro en cada esquina, museos increíbles y atardeceres frente a la torre Eiffel.", timezone: "Europe/Paris", moneda: "EUR (€)", climaBase: 12,
+      id: 2, ciudad: "París", pais: "Francia", tags: ["cultura", "relax", "gastronomia", "compras", "arquitectura"], desc: "El romanticismo puro en cada esquina, museos increíbles y atardeceres frente a la torre Eiffel.", timezone: "Europe/Paris", moneda: "EUR (€)", climaBase: 12,
       galeria: [{n:"Torre Eiffel",q:"eiffel,tower"},{n:"Museo del Louvre",q:"louvre,museum"},{n:"Catedral de Notre Dame",q:"notredame,paris"},{n:"Arco de Triunfo",q:"arcdetriomphe"},{n:"Montmartre",q:"montmartre,street"},{n:"Río Sena",q:"seine,river"},{n:"Palacio de Versalles",q:"versailles,palace"},{n:"Panteón de París",q:"pantheon,paris"},{n:"Jardines de Luxemburgo",q:"luxembourg,gardens"},{n:"Barrio Latino",q:"latinquarter,paris"}]
     },
     { 
-      id: 3, ciudad: "Cancún", pais: "México", tags: ["fiesta", "relax", "naturaleza"], desc: "Playas azul turquesa, la adrenalina interminable de Xcaret y cenotes vírgenes.", timezone: "America/Cancun", moneda: "MXN ($)", climaBase: 28,
+      id: 3, ciudad: "Cancún", pais: "México", tags: ["fiesta", "relax", "naturaleza", "gastronomia"], desc: "Playas azul turquesa, la adrenalina interminable de Xcaret y cenotes vírgenes.", timezone: "America/Cancun", moneda: "MXN ($)", climaBase: 28,
       galeria: [{n:"Zona Hotelera",q:"cancun,beach"},{n:"Playa del Carmen",q:"playadelcarmen,mexico"},{n:"Ruinas de Tulum",q:"tulum,ruins"},{n:"Isla Mujeres",q:"islamujeres,beach,mexico"},{n:"Cenote Sagrado",q:"cenote,mexico,water"},{n:"Parque Xcaret",q:"xcaret,mexico,nature"},{n:"Chichén Itzá",q:"chichenitza,mexico"},{n:"Isla Cozumel",q:"cozumel,ocean,reef"},{n:"Holbox",q:"holbox,island,mexico"},{n:"Vida Nocturna Coco Bongo",q:"cancun,nightclub"}]
     },
     { 
-      id: 4, ciudad: "Bali", pais: "Indonesia", tags: ["relax", "naturaleza", "cultura"], desc: "Retiros Zen en la jungla profunda, santuarios de monos y meditación total.", timezone: "Asia/Makassar", moneda: "IDR (Rupia)", climaBase: 27,
+      id: 4, ciudad: "Bali", pais: "Indonesia", tags: ["relax", "naturaleza", "cultura", "espiritual", "mochilero"], desc: "Retiros Zen en la jungla profunda, santuarios de monos y meditación total.", timezone: "Asia/Makassar", moneda: "IDR (Rupia)", climaBase: 27,
       galeria: [{n:"Terrazas de Tegalalang",q:"bali,riceterrace"},{n:"Bosque de los Monos",q:"monkeyforest,bali"},{n:"Templo Uluwatu",q:"uluwatu,temple"},{n:"Nusa Penida",q:"nusapenida,cliff"},{n:"Playa Seminyak",q:"seminyak,beach"},{n:"Cascada Tegenungan",q:"waterfall,bali"},{n:"Templo Tanah Lot",q:"tanahlot,sunset"},{n:"Monte Batur",q:"batur,volcano"},{n:"Puertas del Cielo",q:"lempuyang,temple"},{n:"Ubud Centro",q:"ubud,bali,street"}]
     },
     { 
-      id: 5, ciudad: "Nueva York", pais: "EE.UU.", tags: ["cultura", "fiesta"], desc: "La ciudad que no duerme. Rascacielos impresionantes, Broadway y eventos exclusivos.", timezone: "America/New_York", moneda: "USD ($)", climaBase: 8,
+      id: 5, ciudad: "Nueva York", pais: "EE.UU.", tags: ["cultura", "fiesta", "compras", "arquitectura", "gastronomia"], desc: "La ciudad que no duerme. Rascacielos impresionantes, Broadway y eventos exclusivos.", timezone: "America/New_York", moneda: "USD ($)", climaBase: 8,
       galeria: [{n:"Times Square",q:"timessquare,newyork"},{n:"Central Park",q:"centralpark,newyork"},{n:"Estatua de la Libertad",q:"statueofliberty"},{n:"Puente de Brooklyn",q:"brooklynbridge"},{n:"Empire State",q:"empirestate,building"},{n:"El MET",q:"metropolitanmuseum"},{n:"Wall Street",q:"wallstreet"},{n:"Rockerfeller Center",q:"rockefeller,center"},{n:"Broadway",q:"broadway,theater"},{n:"Grand Central",q:"grandcentral,station"}]
     },
     { 
-      id: 6, ciudad: "Patagonia", pais: "Argentina", tags: ["naturaleza", "relax"], desc: "Glaciares imponentes. La pureza espectacular del verdadero fin del mundo.", timezone: "America/Argentina/Rio_Gallegos", moneda: "ARS ($)", climaBase: 2,
+      id: 6, ciudad: "Patagonia", pais: "Argentina", tags: ["naturaleza", "relax", "nieve", "mochilero", "aventura"], desc: "Glaciares imponentes. La pureza espectacular del verdadero fin del mundo.", timezone: "America/Argentina/Rio_Gallegos", moneda: "ARS ($)", climaBase: 2,
       galeria: [{n:"Glaciar Perito Moreno",q:"peritomoreno,glacier"},{n:"Monte Fitz Roy",q:"fitzroy,mountain"},{n:"Ushuaia",q:"ushuaia,argentina"},{n:"Parque Tierra del Fuego",q:"tierradelfuego,park"},{n:"El Chaltén",q:"elchalten,nature"},{n:"Península Valdés",q:"valdes,peninsula"},{n:"Cueva de las Manos",q:"patagonia,cave"},{n:"Cerro Tronador",q:"cerrotronador"},{n:"Faro Les Eclaireurs",q:"ushuaia,lighthouse"},{n:"Ruta de los 7 Lagos",q:"patagonia,lakes"}]
     },
     { 
-      id: 7, ciudad: "Roma", pais: "Italia", tags: ["cultura", "fiesta"], desc: "Calles cargadas de historia milenaria, pizzerías nocturnas y vida urbana animada.", timezone: "Europe/Rome", moneda: "EUR (€)", climaBase: 16,
+      id: 7, ciudad: "Roma", pais: "Italia", tags: ["cultura", "fiesta", "gastronomia", "arquitectura"], desc: "Calles cargadas de historia milenaria, pizzerías nocturnas y vida urbana animada.", timezone: "Europe/Rome", moneda: "EUR (€)", climaBase: 16,
       galeria: [{n:"El Coliseo",q:"colosseum,rome"},{n:"Fontana di Trevi",q:"trevi,fountain"},{n:"Panteón de Agripa",q:"pantheon,rome"},{n:"Foro Romano",q:"romanforum"},{n:"El Vaticano",q:"vatican,basilica"},{n:"Piazza Navona",q:"piazzanavona"},{n:"Villa Borghese",q:"villaborghese"},{n:"Trastevere",q:"trastevere,rome"},{n:"Castillo Sant'Angelo",q:"castelsantangelo"},{n:"Piazza di Spagna",q:"piazzadispagna"}]
     },
     { 
-      id: 8, ciudad: "Ibiza", pais: "España", tags: ["fiesta", "relax"], desc: "Discotecas monumentales por las madrugadas y playas escondidas perfectas por las mañanas.", timezone: "Europe/Madrid", moneda: "EUR (€)", climaBase: 22,
+      id: 8, ciudad: "Ibiza", pais: "España", tags: ["fiesta", "relax", "compras", "gastronomia"], desc: "Discotecas monumentales por las madrugadas y playas escondidas perfectas por las mañanas.", timezone: "Europe/Madrid", moneda: "EUR (€)", climaBase: 22,
       galeria: [{n:"Dalt Vila",q:"daltvila,ibiza"},{n:"Cala Comte",q:"calacomte,beach"},{n:"Es Vedrà",q:"esvedra,ibiza"},{n:"Playa d'en Bossa",q:"playadenbossa"},{n:"Discotecas de Ibiza",q:"ibiza,nightclub"},{n:"Cala Bassa",q:"calabassa"},{n:"Mercado Las Dalias",q:"lasdalias,market"},{n:"Cala Salada",q:"calasalada"},{n:"Puerto de Sant Antoni",q:"ibiza,port"},{n:"Cueva de Can Marçà",q:"ibiza,cave"}]
     },
     { 
-      id: 9, ciudad: "Cusco", pais: "Perú", tags: ["cultura", "naturaleza"], desc: "Exploración de la mística ciudadela de Machu Picchu rodeada de alturas imponentes.", timezone: "America/Lima", moneda: "PEN (Sol)", climaBase: 14,
+      id: 9, ciudad: "Cusco", pais: "Perú", tags: ["cultura", "naturaleza", "mochilero", "espiritual"], desc: "Exploración de la mística ciudadela de Machu Picchu rodeada de alturas imponentes.", timezone: "America/Lima", moneda: "PEN (Sol)", climaBase: 14,
       galeria: [{n:"Machu Picchu",q:"machupicchu"},{n:"Plaza de Armas Cusco",q:"cusco,plaza"},{n:"Valle Sagrado",q:"sacredvalley,peru"},{n:"Montaña 7 Colores",q:"rainbowmountain,peru"},{n:"Sacsayhuamán",q:"sacsayhuaman"},{n:"Ollantaytambo",q:"ollantaytambo"},{n:"Laguna Humantay",q:"humantay,lake"},{n:"Barrio San Blas",q:"sanblas,cusco"},{n:"Qorikancha",q:"qorikancha"},{n:"Mercado San Pedro",q:"cusco,market"}]
     },
     { 
-      id: 10, ciudad: "Kioto", pais: "Japón", tags: ["cultura", "relax"], desc: "Geishas misteriosas, jardines pulcros y santuarios apartados totalmente del ruido urbano.", timezone: "Asia/Tokyo", moneda: "JPY (Yen)", climaBase: 14,
+      id: 10, ciudad: "Kioto", pais: "Japón", tags: ["cultura", "relax", "espiritual", "arquitectura"], desc: "Geishas misteriosas, jardines pulcros y santuarios apartados totalmente del ruido urbano.", timezone: "Asia/Tokyo", moneda: "JPY (Yen)", climaBase: 14,
       galeria: [{n:"Fushimi Inari-taisha",q:"fushimiinari"},{n:"Kinkaku-ji (Pabellón de Oro)",q:"kinkakuji"},{n:"Bosque de Bambú Arashiyama",q:"arashiyama,bamboo"},{n:"Barrio de Gion",q:"gion,kyoto"},{n:"Templo Kiyomizu-dera",q:"kiyomizudera"},{n:"Castillo Nijo",q:"nijocastle"},{n:"Camino del Filósofo",q:"kyoto,path"},{n:"Ginkaku-ji (Pabellón Plata)",q:"ginkakuji"},{n:"Palacio Imperial",q:"kyoto,palace"},{n:"Torre de Kioto",q:"kyototower"}]
     },
     { 
-      id: 11, ciudad: "Las Vegas", pais: "EE.UU.", tags: ["fiesta"], desc: "El parque de diversiones adulto definitivo: vida de lujos repentinos, casinos y conciertos.", timezone: "America/Los_Angeles", moneda: "USD ($)", climaBase: 30,
+      id: 11, ciudad: "Las Vegas", pais: "EE.UU.", tags: ["fiesta", "compras", "gastronomia", "arquitectura"], desc: "El parque de diversiones adulto definitivo: vida de lujos repentinos, casinos y conciertos.", timezone: "America/Los_Angeles", moneda: "USD ($)", climaBase: 30,
       galeria: [{n:"Las Vegas Strip",q:"lasvegas,strip"},{n:"Fuentes del Bellagio",q:"bellagio,fountains"},{n:"Fremont Street",q:"fremont,lasvegas"},{n:"High Roller Ferris",q:"highroller,vegas"},{n:"Gran Cañón (viaje corto)",q:"grandcanyon"},{n:"Torre Stratosphere",q:"stratosphere,vegas"},{n:"El Volcán del Mirage",q:"mirage,volcano"},{n:"Signo Bienvenidos",q:"lasvegas,sign"},{n:"Presa Hoover",q:"hooverdam"},{n:"Resorts Venetian",q:"venetian,lasvegas"}]
     },
     { 
-      id: 12, ciudad: "Banff", pais: "Canadá", tags: ["naturaleza", "relax"], desc: "Fauna salvaje increíble conviviendo en un oasis de lagos azules montañosos perfectos.", timezone: "America/Edmonton", moneda: "CAD ($)", climaBase: -2,
+      id: 12, ciudad: "Banff", pais: "Canadá", tags: ["naturaleza", "relax", "nieve", "mochilero"], desc: "Fauna salvaje increíble conviviendo en un oasis de lagos azules montañosos perfectos.", timezone: "America/Edmonton", moneda: "CAD ($)", climaBase: -2,
       galeria: [{n:"Lake Louise",q:"lakelouise,banff"},{n:"Parque Nacional Banff",q:"banff,nationalpark"},{n:"Moraine Lake",q:"morainelake"},{n:"Icefields Parkway",q:"icefields,canada"},{n:"Johnston Canyon",q:"johnstoncanyon"},{n:"Montaña Sulphur",q:"sulphurmountain"},{n:"Peyto Lake",q:"peytolake"},{n:"Athabasca Glacier",q:"athabasca,glacier"},{n:"Bow Falls",q:"bowfalls"},{n:"Castillo Fairmont",q:"fairmont,banff"}]
     },
     { 
-      id: 13, ciudad: "Oaxaca", pais: "México", tags: ["cultura", "fiesta"], desc: "Aromas que enamoran, alebrijes coloridos y festivales locales con mucho mezcal espectacular.", timezone: "America/Mexico_City", moneda: "MXN ($)", climaBase: 22,
+      id: 13, ciudad: "Oaxaca", pais: "México", tags: ["cultura", "fiesta", "gastronomia", "mochilero"], desc: "Aromas que enamoran, alebrijes coloridos y festivales locales con mucho mezcal espectacular.", timezone: "America/Mexico_City", moneda: "MXN ($)", climaBase: 22,
       galeria: [{n:"Templo Santo Domingo",q:"santodomingo,oaxaca"},{n:"Monte Albán",q:"montealban,oaxaca"},{n:"Hierve el Agua",q:"hierveelagua"},{n:"Árbol del Tule",q:"eltule,tree"},{n:"Mitla",q:"mitla,ruins"},{n:"Mercado 20 de Noviembre",q:"oaxaca,market"},{n:"Playas Puerto Escondido",q:"puertoescondido"},{n:"Bahías de Huatulco",q:"huatulco,mexico"},{n:"Centro Histórico",q:"oaxaca,street"},{n:"Ruta del Mezcal",q:"mezcal,agave"}]
     },
     { 
@@ -613,6 +904,51 @@ window.recomendarDestino = function(interesStr, btnElement) {
     });
     renderHtml += `</div>`;
     descObj.innerHTML = renderHtml;
+}
+
+// ===== Selector de Intereses en Explorar Destinos (Guía) =====
+let _guiaInteresesSeleccionados = [];
+let _guiaDestinoSeleccionado = null;
+
+window.recomendarDestinoGuia = function(interesStr, btnElement) {
+    const idx = _guiaInteresesSeleccionados.indexOf(interesStr);
+    if (idx > -1) {
+        _guiaInteresesSeleccionados.splice(idx, 1);
+        if (btnElement) { btnElement.classList.remove('btn-dark','text-white'); btnElement.classList.add('btn-outline-dark'); }
+    } else {
+        _guiaInteresesSeleccionados.push(interesStr);
+        if (btnElement) { btnElement.classList.remove('btn-outline-dark'); btnElement.classList.add('btn-dark','text-white'); }
+    }
+
+    const panel = document.getElementById('guiaPanelRecomendado');
+    const titulo = document.getElementById('guiaRecomendacionTitulo');
+    const desc = document.getElementById('guiaRecomendacionDesc');
+    if (!panel || !titulo || !desc) return;
+
+    if (_guiaInteresesSeleccionados.length === 0) { panel.classList.add('d-none'); return; }
+
+    let matches = TODOS_DESTINOS_DB.map(d => {
+        let sc = 0;
+        d.tags.forEach(t => { if (_guiaInteresesSeleccionados.includes(t)) sc++; });
+        return { ...d, score: sc };
+    }).filter(d => d.score > 0).sort((a, b) => b.score - a.score);
+
+    if (matches.length === 0) matches = TODOS_DESTINOS_DB.slice(0, 3);
+
+    _guiaDestinoSeleccionado = matches[0];
+    titulo.innerText = `${matches[0].ciudad}, ${matches[0].pais}`;
+    desc.innerText = matches[0].desc;
+    panel.classList.remove('d-none');
+}
+
+window.enviarDestinoAlBuscador = function() {
+    if (!_guiaDestinoSeleccionado) return;
+    const input = document.getElementById('destinosDropdown');
+    if (input) {
+        input.value = _guiaDestinoSeleccionado.ciudad;
+        input.dispatchEvent(new Event('input'));
+        input.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
 }
 
 window.mostrarDetallesDestino = function(id) {
@@ -775,6 +1111,11 @@ window.sugerirPresupuestoBuscador = function(valTyped) {
 /* =========================================================================
    MÓDULO UNIFICADO: BUSCADOR MUNDIAL (INTEGRACIÓN OPENSTREETMAP - NOMINATIM)
    Aplica a inputs .global-search-input (Dash, Guía, Constructor)
+};
+
+/* =========================================================================
+   MÓDULO UNIFICADO: BUSCADOR MUNDIAL (INTEGRACIÓN OPENSTREETMAP - NOMINATIM)
+   Aplica a inputs .global-search-input (Dash, Guía, Constructor)
 ========================================================================= */
 let globalSearchTimeout = null;
 function setupGlobalAutocomplete() {
@@ -840,78 +1181,6 @@ window.exportarDashboardPDF = function() {
         btnPDF.innerHTML = '<i class="bi bi-hourglass-split me-2"></i>Generando...';
     }
 
-    const captureEl = document.getElementById('dashboardCaptureZone');
-    if (!captureEl) return;
-
-    // PATCH 1: Quitar fondos problemáticos temporales
-    const cards = captureEl.querySelectorAll('.card-body');
-    const originalBg = [];
-    cards.forEach((c, i) => {
-        originalBg[i] = c.style.backgroundImage;
-        c.style.backgroundImage = 'none'; 
-    });
-
-    // PATCH 2: Sombras pesadas
-    const allNodes = captureEl.querySelectorAll('*');
-    const originalShadows = [];
-    allNodes.forEach((node, i) => {
-        originalShadows[i] = node.style.boxShadow;
-        if(node.style.boxShadow) node.style.boxShadow = 'none'; 
-    });
-
-    // PATCH 3: Prevenir Congelamiento por Canvas (Convertiendo Chart a Img 2D)
-    const canvas = captureEl.querySelector('canvas');
-    let imgFallback;
-    if (canvas) {
-        imgFallback = document.createElement('img');
-        imgFallback.src = canvas.toDataURL("image/png");
-        imgFallback.style.width = canvas.style.width || '100%';
-        imgFallback.style.height = canvas.style.height || 'auto';
-        imgFallback.className = canvas.className;
-        canvas.parentNode.insertBefore(imgFallback, canvas);
-        canvas.parentNode.removeChild(canvas); // Extraer nodo físicamente para evitar lock
-    }
-
-    const opciones = {
-        margin:       [10, 10, 10, 10],
-        filename:     `TravelWishly_Dashboard_Visual_${new Date().getFullYear()}.pdf`,
-        image:        { type: 'jpeg', quality: 1.0 },
-        html2canvas:  { scale: 2, useCORS: true, logging: false, windowWidth: 1200 },
-        jsPDF:        { unit: 'mm', format: 'a3', orientation: 'landscape' }
-    };
-
-    html2pdf().set(opciones).from(captureEl).save().then(() => {
-        if (canvas) { imgFallback.parentNode.insertBefore(canvas, imgFallback); imgFallback.remove(); canvas.style.display = 'block'; }
-        cards.forEach((c, i) => { c.style.backgroundImage = originalBg[i]; });
-        allNodes.forEach((node, i) => { if (originalShadows[i]) node.style.boxShadow = originalShadows[i]; });
-        if (btnPDF) {
-            btnPDF.disabled = false;
-            btnPDF.innerHTML = '<i class="bi bi-file-earmark-pdf-fill me-2"></i>Exportar PDF';
-        }
-    }).catch(err => {
-        if (canvas) { imgFallback.parentNode.insertBefore(canvas, imgFallback); imgFallback.remove(); canvas.style.display = 'block'; }
-        cards.forEach((c, i) => { c.style.backgroundImage = originalBg[i]; });
-        allNodes.forEach((node, i) => { if (originalShadows[i]) node.style.boxShadow = originalShadows[i]; });
-        console.error("PDF generation error: ", err);
-        if (btnPDF) {
-            btnPDF.disabled = false;
-            btnPDF.innerHTML = '<i class="bi bi-file-earmark-pdf-fill me-2"></i>Exportar PDF';
-        }
-    });
-};
-
-/* =========================================================================
-   MÓDULO: EXPORTAR PDF DEL CONSTRUCTOR
-========================================================================= */
-
-/** @function exportarReportePDF recopila el estado del constructor y genera un PDF profesional */
-function exportarReportePDF() {
-    const btnPDF = document.getElementById('btnExportarPDF');
-    if (btnPDF) {
-        btnPDF.disabled = true;
-        btnPDF.innerHTML = '<i class="bi bi-hourglass-split me-2"></i>Generando...';
-    }
-
     const captureEl = document.getElementById('constructorCaptureZone');
     if (!captureEl) { console.error('No se encontró #constructorCaptureZone'); return; }
 
@@ -960,59 +1229,313 @@ function exportarReportePDF() {
    MÓDULO: EXTRAS (DIVISAS Y CLIMA)
 ========================================================================= */
 
-/** @function convertCurrency Realiza la conversión entre las divisas seleccionadas en el dashboard */
-async function convertCurrency() {
-    const amount = parseFloat(document.getElementById('currencyAmount').value);
-    const from = document.getElementById('fromCurrency').value;
-    const to = document.getElementById('toCurrency').value;
-    const resultEl = document.getElementById('currencyResult');
+// === CONVERSOR DE DIVISAS CON API EN TIEMPO REAL ===
 
-    if (isNaN(amount) || amount <= 0) {
-        resultEl.innerText = "--";
-        return;
-    }
+let _exchangeAllCurrencies = [];  // lista de códigos
+let _exchangeRatesCache = {};     // { base: { rates, updated } }
 
-    resultEl.innerText = "⏳...";
+// Instancias globales de Choices.js para los selects de moneda
+let _choicesFrom = null;
+let _choicesTo = null;
+
+async function cargarListaMonedas() {
+    const fromSel = document.getElementById('fromCurrency');
+    const toSel = document.getElementById('toCurrency');
+    if (!fromSel || !toSel) return;
 
     try {
-        const response = await fetch(`https://open.er-api.com/v6/latest/${from}`);
-        const data = await response.json();
-        
-        if (data && data.rates && data.rates[to]) {
-            const converted = amount * data.rates[to];
-            resultEl.innerText = `${converted.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} ${to}`;
-        } else {
-            resultEl.innerText = "Error";
+        const resp = await fetch('/api/exchange?base=USD');
+        const data = await resp.json();
+        if (!data.currencies || data.currencies.length === 0) return;
+
+        _exchangeAllCurrencies = data.currencies;
+        _exchangeRatesCache['USD'] = { rates: data.rates, updated: data.updated };
+
+        // Nombres de monedas comunes para mostrar en el option
+        const nombres = {
+            USD:'USD — Dólar Estadounidense', EUR:'EUR — Euro', MXN:'MXN — Peso Mexicano',
+            GBP:'GBP — Libra Esterlina', JPY:'JPY — Yen Japonés', CAD:'CAD — Dólar Canadiense',
+            AUD:'AUD — Dólar Australiano', CHF:'CHF — Franco Suizo', CNY:'CNY — Yuan Chino',
+            BRL:'BRL — Real Brasileño', ARS:'ARS — Peso Argentino', COP:'COP — Peso Colombiano',
+            CLP:'CLP — Peso Chileno', PEN:'PEN — Sol Peruano', INR:'INR — Rupia India',
+            KRW:'KRW — Won Coreano', SGD:'SGD — Dólar Singapurés', HKD:'HKD — Dólar de Hong Kong',
+            NZD:'NZD — Dólar Neozelandés', SEK:'SEK — Corona Sueca', NOK:'NOK — Corona Noruega',
+            DKK:'DKK — Corona Danesa', TRY:'TRY — Lira Turca', RUB:'RUB — Rublo Ruso',
+            ZAR:'ZAR — Rand Sudafricano', AED:'AED — Dírham Emirati', SAR:'SAR — Riyal Saudí',
+            THB:'THB — Baht Tailandés', IDR:'IDR — Rupia Indonesia', MYR:'MYR — Ringgit Malayo',
+            PHP:'PHP — Peso Filipino', VND:'VND — Dong Vietnamita', EGP:'EGP — Libra Egipcia',
+            NGN:'NGN — Naira Nigeriana', KES:'KES — Chelín Keniano', ILS:'ILS — Nuevo Séquel Israelí',
+            PLN:'PLN — Zloty Polaco', CZK:'CZK — Corona Checa', HUF:'HUF — Forinto Húngaro',
+            RON:'RON — Leu Rumano', BGN:'BGN — Lev Búlgaro', HRK:'HRK — Kuna Croata',
+            ISK:'ISK — Corona Islandesa', UAH:'UAH — Grivna Ucraniana', QAR:'QAR — Riyal Catarí',
+            KWD:'KWD — Dinar Kuwaiti', BHD:'BHD — Dinar Bareiní', OMR:'OMR — Rial Omaní',
+            JOD:'JOD — Dinar Jordano', MAD:'MAD — Dírham Marroquí', PKR:'PKR — Rupia Pakistaní',
+            BDT:'BDT — Taka Bangladesí', LKR:'LKR — Rupia Ceilanesa', NPR:'NPR — Rupia Nepalesa',
+            CRC:'CRC — Colón Costarricense', GTQ:'GTQ — Quetzal Guatemalteco', HNL:'HNL — Lempira Hondureño',
+            NIO:'NIO — Córdoba Nicaragüense', DOP:'DOP — Peso Dominicano', CUP:'CUP — Peso Cubano',
+            JMD:'JMD — Dólar Jamaicano', TTD:'TTD — Dólar de Trinidad', UYU:'UYU — Peso Uruguayo',
+            BOB:'BOB — Boliviano', PYG:'PYG — Guaraní Paraguayo', VES:'VES — Bolívar Venezolano'
+        };
+
+        [fromSel, toSel].forEach(sel => {
+            const current = sel.value;
+            sel.innerHTML = '';
+            _exchangeAllCurrencies.forEach(code => {
+                const opt = document.createElement('option');
+                opt.value = code;
+                opt.textContent = nombres[code] || code;
+                sel.appendChild(opt);
+            });
+        });
+        fromSel.value = 'MXN';
+        toSel.value = 'USD';
+
+        // Destruir instancias previas si existen
+        if (_choicesFrom) { try { _choicesFrom.destroy(); } catch(e){} _choicesFrom = null; }
+        if (_choicesTo)   { try { _choicesTo.destroy();   } catch(e){} _choicesTo   = null; }
+
+        // Inicializar Choices.js con búsqueda en ambos selects
+        if (typeof Choices !== 'undefined') {
+            const cfg = {
+                searchEnabled: true,
+                searchPlaceholderValue: 'Buscar moneda...',
+                itemSelectText: '',
+                shouldSort: false,
+                searchResultLimit: 25,
+                noResultsText: 'Moneda no encontrada',
+            };
+            _choicesFrom = new Choices(fromSel, cfg);
+            _choicesTo   = new Choices(toSel,   cfg);
+            fromSel.addEventListener('change', () => { if(window.convertCurrency) window.convertCurrency(); });
+            toSel.addEventListener('change',   () => { if(window.convertCurrency) window.convertCurrency(); });
         }
-    } catch (error) {
-        console.error("Error en conversión:", error);
-        resultEl.innerText = "Offline";
+
+        // Primera conversión automática
+        window.convertCurrency();
+    } catch(e) {
+        console.warn('No se pudo cargar la lista de monedas:', e);
     }
 }
 
-/** @function actualizarClimaGlobal Simula y refresca datos de clima para destinos populares */
-function actualizarClimaGlobal() {
-    const cities = [
-        { id: 'weather-tokyo', base: 12, icon: 'bi-cloud-sun' },
-        { id: 'weather-ny', base: 5, icon: 'bi-snow' },
-        { id: 'weather-paris', base: 10, icon: 'bi-cloud-rain' },
-        { id: 'weather-cancun', base: 28, icon: 'bi-brightness-high' }
-    ];
+/** @function convertCurrency Convierte con tipo de cambio real en tiempo real */
+window.convertCurrency = async function() {
+    const amount = parseFloat(document.getElementById('currencyAmount').value);
+    const from = document.getElementById('fromCurrency')?.value;
+    const to = document.getElementById('toCurrency')?.value;
+    const resultEl = document.getElementById('currencyResult');
+    const rateEl = document.getElementById('currencyRate');
+    const updEl = document.getElementById('currencyUpdated');
+    if (!resultEl || !from || !to) return;
 
-    cities.forEach(city => {
-        const el = document.getElementById(city.id);
-        if (el) {
-            const temp = (city.base + (Math.random() * 4 - 2)).toFixed(1);
-            el.innerHTML = `${temp}°C <i class="bi ${city.icon}"></i>`;
+    if (isNaN(amount) || amount <= 0) { resultEl.innerText = '--'; return; }
+    resultEl.innerText = '⏳...';
+
+    try {
+        // Usar cache si existe para la base
+        if (!_exchangeRatesCache[from]) {
+            const resp = await fetch('/api/exchange?base=' + from);
+            const data = await resp.json();
+            if (!data.rates) throw new Error('Sin datos');
+            _exchangeRatesCache[from] = { rates: data.rates, updated: data.updated };
         }
-    });
+        const cache = _exchangeRatesCache[from];
+        const rate = cache.rates[to];
+        if (!rate) { resultEl.innerText = 'N/A'; return; }
+
+        const converted = amount * rate;
+        resultEl.innerText = converted.toLocaleString('es-MX', {minimumFractionDigits: 2, maximumFractionDigits: 4}) + ' ' + to;
+        if (rateEl) rateEl.innerText = `1 ${from} = ${rate.toLocaleString('es-MX', {minimumFractionDigits: 4, maximumFractionDigits: 6})} ${to}`;
+        if (updEl && cache.updated) {
+            const d = new Date(cache.updated);
+            updEl.innerHTML = `<i class="bi bi-clock me-1"></i>Última actualización: ${cache.updated.replace(' +0000 UTC','').replace(' UTC','')}`;
+        }
+    } catch (error) {
+        console.error('Error en conversión:', error);
+        resultEl.innerText = 'Offline';
+    }
+};
+
+
+// === CLIMA CON OPENWEATHER API ===
+
+const CLIMA_POOL = [
+    'Tokyo,JP', 'New York,US', 'Paris,FR', 'Cancun,MX', 'London,GB',
+    'Sydney,AU', 'Dubai,AE', 'Barcelona,ES', 'Rome,IT', 'Bangkok,TH',
+    'Mexico City,MX', 'Amsterdam,NL', 'Istanbul,TR', 'Cairo,EG', 'Seoul,KR'
+];
+
+let climaCiudadesActivas = [];
+
+function owmIconClass(iconCode) {
+    if (!iconCode) return 'bi-cloud';
+    const code = iconCode.replace('d','').replace('n','');
+    const map = {
+        '01': 'bi-brightness-high', '02': 'bi-cloud-sun', '03': 'bi-cloud',
+        '04': 'bi-clouds', '09': 'bi-cloud-drizzle', '10': 'bi-cloud-rain',
+        '11': 'bi-cloud-lightning-rain', '13': 'bi-snow', '50': 'bi-wind'
+    };
+    return map[code] || 'bi-cloud';
 }
+
+async function fetchCiudadClima(cityQ) {
+    try {
+        const resp = await fetch('/api/weather?city=' + encodeURIComponent(cityQ));
+        if (!resp.ok) return null;
+        return await resp.json();
+    } catch { return null; }
+}
+
+async function actualizarClimaGlobal() {
+    const lista = document.getElementById('climaCiudadesLista');
+    const msg = document.getElementById('climaActualizadoMsg');
+    if (!lista) return;
+
+    // Elegir 5 ciudades aleatorias del pool
+    const shuffled = [...CLIMA_POOL].sort(() => Math.random() - 0.5);
+    climaCiudadesActivas = shuffled.slice(0, 5);
+
+    lista.innerHTML = '<div class="list-group-item text-center py-2 text-muted small">Obteniendo datos reales...</div>';
+
+    const resultados = await Promise.all(climaCiudadesActivas.map(c => fetchCiudadClima(c)));
+
+    lista.innerHTML = '';
+    resultados.forEach((data, i) => {
+        const item = document.createElement('div');
+        const isLast = i === resultados.length - 1;
+        item.className = 'list-group-item d-flex justify-content-between align-items-center bg-white' + (isLast ? '' : ' border-bottom border-dark');
+
+        if (!data || data.error) {
+            item.innerHTML = `<span class="fw-bold text-uppercase text-muted">${climaCiudadesActivas[i]}</span>
+                             <span class="badge bg-secondary rounded-0 px-3 py-2">Sin datos</span>`;
+        } else {
+            const iconCls = owmIconClass(data.icon_code);
+            item.innerHTML = `
+                <div>
+                    <div class="fw-bold text-uppercase">${data.city}, ${data.country}</div>
+                    <div class="small text-muted">${data.description}</div>
+                </div>
+                <span class="badge bg-dark rounded-0 px-3 py-2 fw-bold text-nowrap">
+                    ${data.temp}°C <i class="bi ${iconCls} ms-1"></i>
+                </span>`;
+        }
+        lista.appendChild(item);
+    });
+
+    const now = new Date();
+    if (msg) msg.innerHTML = `<i class="bi bi-check-circle me-1"></i>Actualizado ${now.getHours()}:${String(now.getMinutes()).padStart(2,'0')} · Cambia en 5 min`;
+}
+
+window.buscarClimaManual = async function() {
+    const input = document.getElementById('climaBuscador');
+    const resDiv = document.getElementById('climaBusquedaResult');
+    if (!input || !input.value.trim()) return;
+
+    resDiv.style.display = 'block';
+    document.getElementById('climaBusqCiudad').textContent = 'Buscando...';
+    document.getElementById('climaBusqTemp').textContent = '...';
+    document.getElementById('climaBusqDesc').textContent = '';
+
+    const data = await fetchCiudadClima(input.value.trim());
+    if (!data || data.error) {
+        document.getElementById('climaBusqCiudad').textContent = '⚠ Ciudad no encontrada';
+        document.getElementById('climaBusqTemp').textContent = '—';
+        document.getElementById('climaBusqDesc').textContent = 'Intenta con otro nombre o en inglés';
+        return;
+    }
+    document.getElementById('climaBusqCiudad').textContent = `${data.city}, ${data.country}`;
+    document.getElementById('climaBusqDesc').textContent = data.description;
+    document.getElementById('climaBusqTemp').textContent = data.temp + '°C';
+    document.getElementById('climaBusqSensacion').textContent = data.feels_like;
+    document.getElementById('climaBusqHumedad').textContent = data.humidity;
+    document.getElementById('climaBusqViento').textContent = data.wind;
+};
+
+// Permitir buscar con Enter
+document.addEventListener('DOMContentLoaded', () => {
+    const buscInput = document.getElementById('climaBuscador');
+    if (buscInput) buscInput.addEventListener('keydown', e => { if (e.key === 'Enter') buscarClimaManual(); });
+});
 
 /* =========================================================================
    MÓDULO: LÍNEA DE TIEMPO INTERACTIVA (CONSTRUCTOR)
 ======================================================================== */
 
 let travelTimeline = [];
+
+/** @function evaluarDocumentacion Verifica si es vuelo nacional/internacional */
+window.evaluarDocumentacion = function() {
+    const origenInput = document.getElementById('rutaOrigen');
+    const destinoInput = document.getElementById('rutaDestino');
+    const nacSelect = document.getElementById('nacionalidadUsuario');
+    
+    // Contenedores
+    const divINE = document.getElementById('divCheckINE');
+    const divPasaporte = document.getElementById('divCheckPasaporte');
+    const divVisa = document.getElementById('divCheckVisa');
+    // Checkboxes
+    const chkPasaporte = document.getElementById('checkPasaporte');
+    const chkVisa = document.getElementById('checkVisa');
+
+    if (!origenInput || !destinoInput || !nacSelect) return;
+
+    const origen = origenInput.value.trim().toLowerCase();
+    const destino = destinoInput.value.trim().toLowerCase();
+    const nacCode = nacSelect.value;
+    
+    // Diccionario extendido para mapear el código de nacionalidad con palabras clave de país
+    const countryMap = {
+        'MX': ['méxico', 'mexico', 'cancún', 'cancun', 'tijuana', 'cdmx', 'monterrey', 'guadalajara', 'puerto vallarta'],
+        'US': ['estados unidos', 'usa', 'ee.uu.', 'eeuu', 'new york', 'los angeles', 'miami', 'chicago', 'las vegas'],
+        'ES': ['españa', 'espana', 'madrid', 'barcelona', 'valencia', 'sevilla', 'ibiza'],
+        'CO': ['colombia', 'bogotá', 'bogota', 'medellín', 'medellin', 'cartagena', 'cali'],
+        'AR': ['argentina', 'buenos aires', 'córdoba', 'cordoba', 'mendoza', 'bariloche']
+    };
+
+    let destinoEsNacional = false;
+    let origenEsNacional = false;
+
+    // Detectar si el lugar coincide con la nacionalidad
+    if (nacCode !== 'OTRO' && countryMap[nacCode]) {
+        destinoEsNacional = countryMap[nacCode].some(kw => destino.includes(kw));
+        origenEsNacional = countryMap[nacCode].some(kw => origen.includes(kw));
+    }
+
+    // 1. Mostrar/Ocultar y forzar estados
+    if (destino === "" || origen === "") {
+        // Estado por defecto: mostrar pasaporte
+        divINE.classList.add('d-none');
+        divPasaporte.classList.remove('d-none');
+        divVisa.classList.remove('d-none');
+    } else if (destinoEsNacional) {
+        // ES VUELO NACIONAL/DOMESTICO (Destino de su mismo país)
+        divINE.classList.remove('d-none'); // Mostrar INE/ID
+        
+        divPasaporte.classList.add('d-none'); // Ocultar Pasaporte
+        chkPasaporte.checked = false;
+        
+        divVisa.classList.add('d-none'); // Ocultar Visa
+        chkVisa.checked = false;
+    } else {
+        // ES VUELO INTERNACIONAL
+        divINE.classList.add('d-none'); 
+        divPasaporte.classList.remove('d-none'); 
+        chkPasaporte.checked = true; // El pasaporte es casi siempre obligatorio
+
+        // Visa Check (Solo para destinos gringos si NO eres gringo ni europeo o de libre visado total)
+        const isDestinoGringo = ['estados unidos', 'usa', 'ee.uu.', 'eeuu', 'new york', 'los angeles', 'miami', 'chicago', 'las vegas', 'canadá', 'canada', 'toronto', 'vancouver'].some(k => destino.includes(k));
+        
+        if (isDestinoGringo && nacCode !== 'US') {
+            divVisa.classList.remove('d-none');
+            // Sugerencia: chequear visa si es MEX/CO/AR
+            chkVisa.checked = ['MX','CO','AR','OTRO'].includes(nacCode);
+        } else {
+            divVisa.classList.add('d-none');
+            chkVisa.checked = false;
+        }
+    }
+
+    window.calcularMochila();
+};
 
 /** @function generarRutaInteligente Construye la ruta paso a paso detectando distancias */
 window.generarRutaInteligente = function() {
@@ -1039,6 +1562,9 @@ window.generarRutaInteligente = function() {
     // Minisleep to feel like AI processing
     setTimeout(() => {
         travelTimeline = [];
+        
+        // Ejecutar evaluación de documentación antes de trazar
+        window.evaluarDocumentacion();
 
         // Lógica de heuristicas simple (Detectar País)
         const paisOrigen = origen.includes(',') ? origen.split(',')[origen.split(',').length-1].trim().toLowerCase() : origen.toLowerCase();
@@ -1115,7 +1641,7 @@ window.generarRutaInteligente = function() {
     }, 600);
 };
 
-/** @function renderizarTimeline Dibuja los nodos del itinerario */
+/** @function renderizarTimeline — Drag & Drop inline editable */
 function renderizarTimeline() {
     const container = document.getElementById('timelineContainer');
     if (!container) return;
@@ -1125,46 +1651,187 @@ function renderizarTimeline() {
         return;
     }
 
-    container.innerHTML = travelTimeline.map((step, index) => `
-        <div class="d-flex align-items-start mb-4 position-relative" style="animation: fadeSlideIn 0.4s ease-out forwards; opacity:0; animation-delay: ${index * 0.15}s;">
-            <div class="bg-dark text-white rounded-circle d-flex align-items-center justify-content-center fw-bold" 
-                 style="width: 32px; height: 32px; min-width: 32px; z-index: 2; border: 2px solid #000; box-shadow: 0 0 0 4px #fff;">
-                ${index + 1}
-            </div>
-            <div class="ms-3 p-3 border border-dark border-3 bg-light w-100" style="box-shadow: 4px 4px 0 0 #000;">
-                <div class="d-flex justify-content-between align-items-center">
-                    <span class="fw-bold text-dark" style="font-size:13px; letter-spacing: 0.3px;">${step}</span>
-                    <button class="btn btn-sm btn-outline-danger border-0 rounded-0" onclick="eliminarEventoTimeline(${index})">
-                        <i class="bi bi-trash"></i>
-                    </button>
-                </div>
-            </div>
-            ${index < travelTimeline.length - 1 ? '<div class="position-absolute bg-dark" style="width: 2px; height: 100%; left: 14.5px; top: 32px; z-index: 1;"></div>' : ''}
-        </div>
-    `).join('');
-
-    // Anexamos el keyframe dinámicamente si no existe
+    // Inyectar CSS una sola vez
     if (!document.getElementById('timelineAnimCSS')) {
         const style = document.createElement('style');
         style.id = 'timelineAnimCSS';
-        style.innerHTML = "@keyframes fadeSlideIn { from { opacity:0; transform: translateY(15px); } to { opacity:1; transform: translateY(0); } }";
+        style.innerHTML = `
+            @keyframes fadeSlideIn { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:translateY(0); } }
+            .tl-node { animation: fadeSlideIn 0.35s ease-out forwards; opacity:0; }
+            .tl-card { transition: box-shadow 0.15s, transform 0.15s; cursor: grab; user-select: none; }
+            .tl-card:active { cursor: grabbing; }
+            .tl-card.dragging { opacity: 0.35; transform: scale(0.97); box-shadow: 2px 2px 0 0 #000 !important; }
+            .tl-card.drag-over { border-color: #0d6efd !important; box-shadow: 0 0 0 3px rgba(13,110,253,0.35) !important; }
+            .tl-edit-panel { display:none; border-top: 2px solid #000; margin-top:10px; padding-top:10px; }
+            .tl-edit-panel.open { display:block; }
+            .tl-action-btn { border:none; background:transparent; padding:4px 7px; cursor:pointer; border-radius:0; transition:background 0.15s; }
+            .tl-action-btn:hover { background:#f0f0f0; }
+            .tl-textarea { resize:vertical; font-size:13px; font-weight:600; border:2px solid #000; border-radius:0; padding:8px; width:100%; min-height:56px; font-family:inherit; box-shadow:2px 2px 0 0 #000; }
+            .tl-textarea:focus { outline:none; border-color:#0d6efd; box-shadow:3px 3px 0 0 #0d6efd; }
+            .tl-add-zone { background:#f8f9fa; border:2px dashed #000; padding:16px; text-align:center; margin-top:12px; }
+            .drag-hint { font-size:10px; color:#888; font-weight:600; text-transform:uppercase; margin-top:4px; }
+        `;
         document.head.appendChild(style);
+    }
+
+    container.innerHTML = travelTimeline.map((step, index) => `
+        <div class="d-flex align-items-start mb-4 position-relative tl-node" id="tn-${index}"
+             style="animation-delay:${index * 0.07}s;">
+            <div class="bg-dark text-white rounded-circle d-flex align-items-center justify-content-center fw-bold flex-shrink-0"
+                 style="width:32px;height:32px;z-index:2;border:2px solid #000;box-shadow:0 0 0 4px #fff;font-size:12px;pointer-events:none;">
+                ${index + 1}
+            </div>
+            <div class="ms-3 p-3 border border-dark border-3 bg-light w-100 tl-card"
+                 style="box-shadow:4px 4px 0 0 #000;"
+                 draggable="true"
+                 data-idx="${index}"
+                 ondragstart="tlDragStart(event,${index})"
+                 ondragover="tlDragOver(event)"
+                 ondrop="tlDrop(event,${index})"
+                 ondragend="tlDragEnd(event)">
+
+                <div class="d-flex justify-content-between align-items-start gap-2">
+                    <div style="flex:1;">
+                        <span class="fw-bold text-dark" style="font-size:13px;letter-spacing:0.3px;">${step}</span>
+                        <div class="drag-hint"><i class="bi bi-grip-horizontal me-1"></i>Arrastra para reacomodar</div>
+                    </div>
+                    <div class="d-flex gap-1 flex-shrink-0">
+                        <button class="tl-action-btn" title="Editar actividad" onclick="tlToggleEdit(${index})">
+                            <i class="bi bi-pencil-fill text-primary"></i>
+                        </button>
+                        <button class="tl-action-btn" title="Eliminar paso" onclick="eliminarEventoTimeline(${index})">
+                            <i class="bi bi-trash text-danger"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="tl-edit-panel" id="tl-edit-${index}">
+                    <textarea class="tl-textarea mt-2" id="tl-ta-${index}" rows="3">${step.replace(/<[^>]*>/g,'')}</textarea>
+                    <div class="d-flex gap-2 mt-2">
+                        <button class="btn btn-dark btn-sm rounded-0 fw-bold border-2 border-dark px-3"
+                                onclick="tlSaveEdit(${index})">
+                            <i class="bi bi-check-lg me-1"></i>Guardar
+                        </button>
+                        <button class="btn btn-outline-secondary btn-sm rounded-0 fw-bold border-2 px-3"
+                                onclick="tlToggleEdit(${index})">Cancelar</button>
+                    </div>
+                </div>
+            </div>
+            ${index < travelTimeline.length - 1 ?
+                '<div class="position-absolute bg-dark" style="width:2px;height:calc(100% + 8px);left:14.5px;top:32px;z-index:1;"></div>' : ''}
+        </div>
+    `).join('') + `
+        <div class="tl-add-zone mt-2" id="addActivityZone">
+            <button class="btn btn-outline-dark fw-bold rounded-0 border-2 px-4 py-2 w-100 hover-lift"
+                    style="box-shadow:2px 2px 0 0 #000;" onclick="mostrarAgregarActividad()">
+                <i class="bi bi-plus-circle-fill me-2 text-primary"></i>Agregar actividad personalizada
+            </button>
+            <div id="newActivityForm" class="d-none mt-3 text-start">
+                <textarea class="tl-textarea mb-2" id="newActivityInput"
+                    placeholder="Ej: 🎭 Día 4: Visita al teatro de la ópera y cena romántica en restaurante local..."></textarea>
+                <div class="d-flex gap-2">
+                    <button class="btn btn-dark btn-sm rounded-0 fw-bold border-2 border-dark px-3"
+                            onclick="agregarActividadCustom()">
+                        <i class="bi bi-plus-lg me-1"></i>Añadir al itinerario
+                    </button>
+                    <button class="btn btn-outline-secondary btn-sm rounded-0 fw-bold border-2 px-3"
+                            onclick="document.getElementById('newActivityForm').classList.add('d-none')">
+                        Cancelar
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+// ──── Drag & Drop handlers ────────────────────────────────────────────────────
+let _tlDragSrcIdx = null;
+
+function tlDragStart(e, index) {
+    _tlDragSrcIdx = index;
+    e.dataTransfer.effectAllowed = 'move';
+    // pequeño delay para que el ghost se vea antes de aplicar estilo
+    setTimeout(() => e.target.closest('.tl-card').classList.add('dragging'), 0);
+}
+
+function tlDragOver(e) {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    const card = e.target.closest('.tl-card');
+    if (card) {
+        document.querySelectorAll('.tl-card.drag-over').forEach(c => c.classList.remove('drag-over'));
+        card.classList.add('drag-over');
     }
 }
 
+function tlDrop(e, targetIdx) {
+    e.preventDefault();
+    if (_tlDragSrcIdx === null || _tlDragSrcIdx === targetIdx) return;
+    // Swap en el array
+    const temp = travelTimeline[_tlDragSrcIdx];
+    travelTimeline[_tlDragSrcIdx] = travelTimeline[targetIdx];
+    travelTimeline[targetIdx] = temp;
+    _tlDragSrcIdx = null;
+    renderizarTimeline();
+}
 
-/** @function eliminarEventoTimeline */
+function tlDragEnd(e) {
+    document.querySelectorAll('.tl-card.dragging, .tl-card.drag-over')
+        .forEach(c => c.classList.remove('dragging', 'drag-over'));
+    _tlDragSrcIdx = null;
+}
+
+// ──── Edición inline ──────────────────────────────────────────────────────────
+function tlToggleEdit(index) {
+    const panel = document.getElementById(`tl-edit-${index}`);
+    if (!panel) return;
+    const isOpen = panel.classList.contains('open');
+    document.querySelectorAll('.tl-edit-panel.open').forEach(p => p.classList.remove('open'));
+    if (!isOpen) { panel.classList.add('open'); document.getElementById(`tl-ta-${index}`)?.focus(); }
+}
+
+function tlSaveEdit(index) {
+    const ta = document.getElementById(`tl-ta-${index}`);
+    if (!ta || !ta.value.trim()) return;
+    travelTimeline[index] = ta.value.trim();
+    renderizarTimeline();
+}
+
 function eliminarEventoTimeline(index) {
     travelTimeline.splice(index, 1);
     renderizarTimeline();
 }
 
+function moverTimeline(index, dir) { /* mantenido por compatibilidad — ya no se usa en UI */
+    const ni = index + dir;
+    if (ni < 0 || ni >= travelTimeline.length) return;
+    [travelTimeline[index], travelTimeline[ni]] = [travelTimeline[ni], travelTimeline[index]];
+    renderizarTimeline();
+}
+
+function toggleEditTimeline(i)    { tlToggleEdit(i); }
+function guardarEdicionTimeline(i){ tlSaveEdit(i);   }
+
+function mostrarAgregarActividad() {
+    const f = document.getElementById('newActivityForm');
+    if (f) { f.classList.remove('d-none'); document.getElementById('newActivityInput')?.focus(); }
+}
+
+function agregarActividadCustom() {
+    const inp = document.getElementById('newActivityInput');
+    if (!inp || !inp.value.trim()) return;
+    travelTimeline.splice(Math.max(0, travelTimeline.length - 1), 0, inp.value.trim());
+    inp.value = '';
+    renderizarTimeline();
+}
+
+
 // Inicializadores Extra para Dashboard
 document.addEventListener("DOMContentLoaded", () => {
-    if (document.getElementById('weather-tokyo')) {
+    if (document.getElementById('climaCiudadesLista')) {
         actualizarClimaGlobal();
-        // Simulación de actualización de clima cada 15 segundos
-        setInterval(actualizarClimaGlobal, 15000);
+        // Rotar 5 ciudades aleatorias cada 5 minutos
+        setInterval(actualizarClimaGlobal, 300000);
     }
 });
 
@@ -1181,10 +1848,13 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (!bubbleBtn || !chatWindow) return;
 
+    const chatTooltip = document.getElementById('chatTooltip');
+
     // Toggle Chat Window
     bubbleBtn.addEventListener('click', () => {
         chatWindow.classList.add('active');
         bubbleBtn.style.transform = "scale(0)";
+        if(chatTooltip) chatTooltip.classList.add('hide'); // Ocultar tooltip permanente al abrir
     });
 
     closeChatBtn.addEventListener('click', () => {
@@ -1192,7 +1862,7 @@ document.addEventListener("DOMContentLoaded", () => {
         bubbleBtn.style.transform = "scale(1)";
     });
 
-    // Handle Send Message
+    // Respuestas predefinidas por palabras clave
     const procesarMensaje = () => {
         const text = chatInput.value.trim();
         if (text === "") return;
@@ -1206,14 +1876,114 @@ document.addEventListener("DOMContentLoaded", () => {
         
         chatBody.scrollTop = chatBody.scrollHeight;
 
-        // Mock Bot Reply
+        // Mostrar indicador de "escribiendo..."
+        const typingMsg = document.createElement('div');
+        typingMsg.className = "chat-message bot shadow-sm text-muted fst-italic";
+        typingMsg.innerText = "Escribiendo...";
+        typingMsg.id = "typingIndicator";
+        chatBody.appendChild(typingMsg);
+        chatBody.scrollTop = chatBody.scrollHeight;
+
         setTimeout(() => {
+            const ind = document.getElementById("typingIndicator");
+            if (ind) ind.remove();
+
             const botMsg = document.createElement('div');
             botMsg.className = "chat-message bot shadow-sm";
-            botMsg.innerText = "¡Miau! Soy Leia. Todavía estoy entrenándome para conocer los secretos del mundo de TravelWishly, pronto podré responderte todo. 🐾";
+            
+            const txtLower = text.toLowerCase();
+            let respuesta = "¡Miau! 🐾 Aún estoy aprendiendo, pero puedo guiarte paso a paso. Prueba preguntarme '¿Qué hago aquí?', 'ayuda', o 'siguiente'.";
+
+            // 1. Obtener contexto actual
+            const currentPath = window.location.pathname;
+            const destinoActual = window._guiaDestinoActual || "tu destino";
+            
+            // 2. Intenciones Universales
+            if (txtLower.includes("hola") || txtLower.includes("saludos") || txtLower.includes("hey")) {
+                respuesta = "¡Hola viajero! 👋 Soy Leia. ¿En qué parte del proceso te puedo ayudar hoy? Di 'ayuda' si estás perdido.";
+            } else if (txtLower.includes("gracias") || txtLower.includes("ok") || txtLower.includes("perfecto")) {
+                respuesta = "¡De nada! Aquí sigo por si necesitas más ayuda. 🐱✈️";
+            } else if (txtLower.includes("historial") || txtLower.includes("guardado") || txtLower.includes("pdf")) {
+                respuesta = "📂 Todos tus viajes se guardan en el **Historial**. Ve allá para revisarlos, imprimirlos en PDF o borrarlos.";
+            } else if (txtLower.includes("prestamo") || txtLower.includes("credito") || txtLower.includes("financiamiento") || txtLower.includes("pagar")) {
+                respuesta = "💳 ¿Presupuesto ajustado? Usa nuestro **Simulador de Crédito** (en el menú superior) para calcular pagos parciales transparentes.";
+            } 
+            // 3. Intenciones de Redirección Cruzada
+            else if ((txtLower.includes("clima") || txtLower.includes("tiempo") || txtLower.includes("llover")) && !currentPath.includes('/dashboard')) {
+                respuesta = "⛅ El widget de clima en vivo se encuentra en la pantalla de **Presupuesto**. ¡Inicia tu viaje buscando un destino para llegar ahí!";
+            } else if ((txtLower.includes("moneda") || txtLower.includes("dinero") || txtLower.includes("cambio") || txtLower.includes("divisa") || txtLower.includes("presupuesto") || txtLower.includes("costo") || txtLower.includes("costar")) && !currentPath.includes('/dashboard')) {
+                respuesta = "💰 El Conversor de Divisas global y la calculadora de viáticos se encuentran en la sección **Presupuesto**. ¡Busca un destino en Inicio y sigue el flujo para llegar ahí!";
+            } else if ((txtLower.includes("equipaje") || txtLower.includes("maleta") || txtLower.includes("visa") || txtLower.includes("pasaporte")) && !currentPath.includes('/constructor')) {
+                respuesta = "🎒 La Lista Inteligente de Empaque (Smart Packing List) y avisos de VISA te aparecerán automáticamente en el paso final: el **Itinerario (Constructor)**.";
+            }
+            // 4. Intenciones Contextuales
+            else {
+                if (currentPath === '/' || currentPath === '/inicio' || currentPath === '') {
+                    // CONTEXTO: INICIO
+                    if (txtLower.includes("ayuda") || txtLower.includes("hago") || txtLower.includes("empezar") || txtLower.includes("aqui")) {
+                        respuesta = "📍 **Estás en el Inicio.** Escribe un país en la barra de búsqueda central, o presiona **Explorar Destinos** arriba para buscar opciones.";
+                    } else if (txtLower.includes("destino") || txtLower.includes("viajar") || txtLower.includes("donde")) {
+                         respuesta = "🌍 Ingresa el país en el buscador de esta pantalla para ver su Guía Preventiva de seguridad.";
+                    } else {
+                        respuesta = "🐾 Desde aquí arranca tu viaje. Escribe un país en el gran buscador del centro o ve a **Explorar Destinos**.";
+                    }
+                } 
+                else if (currentPath === '/explorar') {
+                    // CONTEXTO: EXPLORAR DESTINOS
+                    if (txtLower.includes("ayuda") || txtLower.includes("hago") || txtLower.includes("empezar") || txtLower.includes("aqui")) {
+                        respuesta = "📍 **Estás en Explorar.** Dale clic a cualquier tarjeta con foto para comenzar a planear un viaje hacia allí.";
+                    } else if (txtLower.includes("filtr") || txtLower.includes("presupuesto") || txtLower.includes("buscar")) {
+                        respuesta = "Usa los botones de categorías (amarillos, azules, verdes) arriba para filtrar la lista según tu estilo y dinero.";
+                    } else {
+                        respuesta = "🐾 Navega entre países. Cuando uno te llame la atención, dale clic al botón 'Ver Destino/Continuar' para evaluarlo.";
+                    }
+                }
+                else if (currentPath === '/guia') {
+                    // CONTEXTO: GUIA PREVENTIVA
+                    if (txtLower.includes("ayuda") || txtLower.includes("hago") || txtLower.includes("siguiente") || txtLower.includes("continuar")) {
+                        respuesta = `📍 **Estás evaluando ${destinoActual}.** Revisa los lugares típicos y el riesgo. ¡Si te gusta, haz clic en el gran botón azul **Continuar a Presupuesto** al fondo!`;
+                    } else if (txtLower.includes("seguridad") || txtLower.includes("peligro") || txtLower.includes("riesgo")) {
+                        respuesta = `🛡️ Hemos analizado a ${destinoActual}. Revisa la tarjeta de "Nivel de Riesgo" que encontrarás bajando por la página.`;
+                    } else {
+                        respuesta = `🐾 Estudiemos juntos ${destinoActual}. ¿Te convence? Si es así, presiona "Continuar a Presupuesto" al final de la página.`;
+                    }
+                }
+                else if (currentPath.includes('/dashboard')) {
+                    // CONTEXTO: PRESUPUESTO
+                    if (txtLower.includes("ayuda") || txtLower.includes("hago") || txtLower.includes("siguiente") || txtLower.includes("aqui") || txtLower.includes("continuar")) {
+                        respuesta = `📍 **Presupuestando ${destinoActual}.** Juega con los botones de MODO DE VIAJE. ¡Cuando estés feliz con el total, dale al botón azul **Continuar a Itinerario** en el lado izquierdo!`;
+                    } else if (txtLower.includes("clima") || txtLower.includes("tiempo") || txtLower.includes("llover")) {
+                        respuesta = `⛅ ¡Ahí lo tienes! El clima para ${destinoActual} se encuentra en el **Widget satelital abierto** a la derecha.`;
+                    } else if (txtLower.includes("moneda") || txtLower.includes("dinero") || txtLower.includes("cambio") || txtLower.includes("divisa")) {
+                        respuesta = `💸 ¡Baja un poco más en la pantalla! Hay un Conversor de Divisas en vivo funcionando ahora mismo debajo de ti.`;
+                    } else {
+                         respuesta = `🐾 Aquí hablamos de dinero. Modifica los días (arriba a la izquierda) para ajustar tu cálculo para ${destinoActual} en tiempo real.`;
+                    }
+                }
+                else if (currentPath.includes('/constructor')) {
+                    // CONTEXTO: ITINERARIO
+                    if (txtLower.includes("ayuda") || txtLower.includes("hago") || txtLower.includes("aqui") || txtLower.includes("ruta") || txtLower.includes("escala")) {
+                        respuesta = `📍 **Armando ruta para ${destinoActual}.** Define tus días y **vibes**. Luego haz clic en el botón negro de **Generar Ruta Temporal**. Finalmente, usa "Guardar en Historial".`;
+                    } else if (txtLower.includes("equipaje") || txtLower.includes("maleta") || txtLower.includes("visa") || txtLower.includes("pasaporte") || txtLower.includes("documento")) {
+                        respuesta = `🎒 Si marcas tu país de Origen en la izquierda, la Lista Inteligente abajo te avisará si requieres Pasaporte, VISA o solo INE (DNI) para viajar a ${destinoActual}.`;
+                    } else if (txtLower.includes("guardar")) {
+                        respuesta = `📝 Llena tus días y dale clic a **Guardar en Historial** arriba del mapa. ¡Te daremos una confirmación en toda la pantalla!`;
+                    } else {
+                        respuesta = "🐾 Puedes jugar con los elementos de equipo de tu Mochila virtual para ver cómo se añade a tus cálculos.";
+                    }
+                }
+                else {
+                    // FALLBACK
+                    if (txtLower.includes("clima")) respuesta = "⛅ En la pantalla de Presupuesto podrás ver un clima ultra-local en tiempo real.";
+                    else if (txtLower.includes("presupuesto")) respuesta = "💰 Sigue nuestro flujo (Guía -> Presupuesto -> Itinerario) para hacer cálculos.";
+                    else if (txtLower.includes("equipaje") || txtLower.includes("maleta")) respuesta = "🎒 La lista de maleta automática aparece en el módulo de Itinerario final.";
+                }
+            }
+
+            botMsg.innerHTML = respuesta.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
             chatBody.appendChild(botMsg);
             chatBody.scrollTop = chatBody.scrollHeight;
-        }, 800);
+        }, 1200);
     };
 
     if(sendBtn) sendBtn.addEventListener('click', procesarMensaje);
@@ -1221,6 +1991,140 @@ document.addEventListener("DOMContentLoaded", () => {
         if(e.key === 'Enter') procesarMensaje();
     });
 });
+
+/* =========================================================================
+   MÓDULO: HISTORIAL DE VIAJES
+========================================================================= */
+
+/**
+ * Escucha los valores de ruta y los envía para encriptar mediante SQL en su cuenta
+ */
+window.guardarViajeHistorial = function(btnElement) {
+    const origen = document.getElementById('rutaOrigen')?.value.trim();
+    const destino = document.getElementById('rutaDestino')?.value.trim();
+    const duracion = document.getElementById('rutaDuracion')?.value.trim();
+    const fecha = document.getElementById('rutaFecha')?.value.trim();
+
+    // 1. Recolectar Mochila: IDs + detalle de costos de cada ítem marcado
+    let mochilaIDs = [];
+    let mochilaDetalle = [];
+    const mapaItems = {
+        checkSeguro:    { nombre: '🏥 Seguro Médico de Viaje',         costo: 1200 },
+        checkMaleta:    { nombre: '🧳 Maleta Documentada Extra',        costo: 900  },
+        checkINE:       { nombre: '🧯 Identificación Oficial (INE/ID)', costo: 0    },
+        checkPasaporte: { nombre: '🛂 Pasaporte (Renovación/Trámite)', costo: 3940 },
+        checkVisa:      { nombre: '🗂️ Trámite de Visa',               costo: 3400 },
+    };
+    document.querySelectorAll('#mochilaForm .form-check-input').forEach(cb => {
+        if (cb.checked) {
+            mochilaIDs.push(cb.id);
+            const info = mapaItems[cb.id];
+            if (info) mochilaDetalle.push(info);
+        }
+    });
+    const totalMochila = mochilaDetalle.reduce((s, i) => s + i.costo, 0);
+
+    // 2. Recolectar Vibes
+    let vibesState = window.interesesGlobalesSeleccionados || [];
+
+    // 3. Recolectar Smart Packing List (IDs marcados)
+    let packingIDs = [];
+    document.querySelectorAll('.packing-item.checked').forEach(it => {
+        packingIDs.push(it.id);
+    });
+
+    // 4. Presupuesto original (viene de la URL si se llegó del presupuesto)
+    const urlParams = new URLSearchParams(window.location.search);
+    const presupuestoViaje = urlParams.get('budget') ? parseInt(urlParams.get('budget'), 10) : null;
+
+    // 5. Pasos del itinerario personalizados
+    const itinerarioSteps = (window.travelTimeline || []).map(s => s.replace(/<[^>]*>/g, ''));
+
+    if (!origen || !destino || !duracion || isNaN(duracion) || duracion < 1) {
+        alert("⚠️ Por favor ingresa al menos el Origen, Destino Principal y los Días Totales antes de intentar guardar el viaje.");
+        return;
+    }
+
+    const originalText = btnElement.innerHTML;
+    btnElement.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status"></span>Guardando...';
+    btnElement.disabled = true;
+
+    fetch('/api/save_route', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+        },
+        body: JSON.stringify({
+            origen: origen,
+            destino: destino,
+            duracion_dias: parseInt(duracion, 10),
+            fecha_ideal: fecha || '',
+            mochila_state: JSON.stringify(mochilaIDs),
+            vibes_state: JSON.stringify(vibesState),
+            packing_state: JSON.stringify(packingIDs),
+            // Datos para el email de resumen
+            mochila_detalle: mochilaDetalle,
+            total_mochila: totalMochila,
+            presupuesto_viaje: presupuestoViaje,
+            itinerario_steps: itinerarioSteps
+        })
+    })
+
+    .then(response => {
+        if (!response.ok && response.status === 401) throw new Error('Inicia sesión para poder acceder a la BD central.');
+        return response.json();
+    })
+    .then(data => {
+        if (data && data.success) {
+            btnElement.classList.remove('btn-outline-dark', 'bg-white', 'text-dark');
+            btnElement.classList.add('btn-success', 'text-white');
+            btnElement.innerHTML = '<i class="bi bi-check-circle-fill me-2"></i>Guardado en Historial';
+            
+            // Ventana flotante centralizada
+            const notif = document.createElement('div');
+            notif.innerHTML = `
+                <div style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.6); z-index: 9999; display: flex; justify-content: center; align-items: center; transition: opacity 0.5s ease;" id="overlayGuardado">
+                    <div style="background: white; border: 4px solid #000; box-shadow: 12px 12px 0 0 #000; padding: 40px; text-align: center; max-width: 500px; transform: scale(0.8); animation: popScale 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;">
+                        <i class="bi bi-floppy-fill text-dark mb-3 d-block" style="font-size: 3.5rem;"></i>
+                        <h2 class="fw-black text-uppercase text-dark mb-3">¡Listo, tu viaje está guardado!</h2>
+                        <p class="fw-bold text-muted mb-0">Lo hemos respaldado en tu Historial en la nube.</p>
+                    </div>
+                </div>
+            `;
+            if (!document.getElementById('animPopScale')) {
+                const style = document.createElement('style');
+                style.id = 'animPopScale';
+                style.innerHTML = '@keyframes popScale { to { transform: scale(1); } }';
+                document.head.appendChild(style);
+            }
+            document.body.appendChild(notif);
+            
+            setTimeout(() => { 
+                const overlay = document.getElementById('overlayGuardado');
+                if(overlay) overlay.style.opacity = '0';
+                setTimeout(() => notif.remove(), 500);
+            }, 3500);
+
+            setTimeout(() => {
+                btnElement.classList.remove('btn-success', 'text-white');
+                btnElement.classList.add('btn-outline-dark', 'bg-white', 'text-dark');
+                btnElement.innerHTML = originalText;
+                btnElement.disabled = false;
+            }, 3000);
+        } else {
+            alert("❌ Error: " + (data.message || 'Error guardando en PostgreSQL.'));
+            btnElement.innerHTML = originalText;
+            btnElement.disabled = false;
+        }
+    })
+    .catch(error => {
+        console.error("Error SQL:", error);
+        alert(error.message || "❌ Falla de Red: El servidor no respondió.");
+        btnElement.innerHTML = originalText;
+        btnElement.disabled = false;
+    });
+};
 
 /* =========================================================================
    MÓDULO: ANIMACIONES DE SCROLL (OBSERVER)
@@ -1245,4 +2149,9 @@ document.addEventListener("DOMContentLoaded", () => {
     document.querySelectorAll('.scroll-animate').forEach(el => {
         observer.observe(el);
     });
+
+    // Cargar lista de monedas dinamicamente si estamos en el dashboard
+    if (document.getElementById('fromCurrency')) {
+        cargarListaMonedas();
+    }
 });

@@ -1,26 +1,125 @@
 {% extends "base.html" %}
 {% block content %}
 
+<!-- CSS para impresion/PDF limpio -->
+<style>
+@media print {
+    nav, .navbar, header, footer { display: none !important; }
+    #btnExportarPDF, .btn-toolbar { display: none !important; }
+    .d-flex.border-bottom { display: none !important; height: 0 !important; margin: 0 !important; padding: 0 !important; }
+    body, .card, .card-body { background: white !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .card-header.bg-dark { background: #000 !important; color: white !important; }
+    * { box-shadow: none !important; }
+    #constructorCaptureZone {
+        overflow: visible !important;
+        zoom: 0.55;
+        width: 100% !important;
+    }
+    .card, .row { page-break-inside: avoid !important; }
+    @page { size: A3 landscape; margin: 5mm; }
+}
+</style>
+
 <div
     class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-5 border-bottom border-dark border-3">
     <h1 class="h2 fw-black text-dark text-uppercase tracking-wider" style="font-weight: 900;">
-        <i class="bi bi-tools text-dark me-3"></i>Constructor de Viajes
+        <i class="bi bi-tools text-dark me-3"></i>Itinerario
     </h1>
     <div class="btn-toolbar mb-2 mb-md-0">
         <button type="button" id="btnExportarPDF" class="btn btn-dark fw-bold px-4 rounded-0 border-2 text-uppercase"
-            style="box-shadow: 3px 3px 0 0 #555;" onclick="exportarReportePDF()">
+            style="box-shadow: 3px 3px 0 0 #555;" onclick="window.print()">
             <i class="bi bi-file-earmark-pdf-fill me-2"></i>Exportar PDF
         </button>
     </div>
 </div>
 
 <div id="constructorCaptureZone" class="w-100 overflow-hidden" style="background: white;">
-<!-- ===== FILA 1: Mochila + Intereses ===== -->
-<div class="row g-4 mb-4 m-0">
 
-    <!-- Módulo A: Arma tu Mochila -->
-    <div class="col-lg-5">
-        <div class="card border-dark border-3 rounded-0 h-100" style="box-shadow: 6px 6px 0 0 #000;">
+<!-- ===== Tabs de Navegación del Itinerario ===== -->
+<ul class="nav nav-tabs border-dark border-3 mb-0" id="constructorTabs" role="tablist" style="gap:4px;">
+    <li class="nav-item" role="presentation">
+        <button class="nav-link active fw-black text-uppercase border-dark border-2 rounded-0 px-4 py-2"
+                id="tab-itinerario" data-bs-toggle="tab" data-bs-target="#panelItinerario" type="button" role="tab"
+                style="border-bottom:3px solid #000; letter-spacing:1px;">
+            <span class="badge bg-dark text-white rounded-0 me-2" style="font-size:10px;">1</span>
+            <i class="bi bi-calendar-event me-1"></i>Itinerario
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link fw-black text-uppercase border-dark border-2 rounded-0 px-4 py-2 text-dark"
+                id="tab-mochila" data-bs-toggle="tab" data-bs-target="#panelMochila" type="button" role="tab"
+                style="letter-spacing:1px;">
+            <span class="badge bg-dark text-white rounded-0 me-2" style="font-size:10px;">2</span>
+            <i class="bi bi-backpack-fill me-1"></i>Mochila
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link fw-black text-uppercase border-dark border-2 rounded-0 px-4 py-2 text-dark"
+                id="tab-packing" data-bs-toggle="tab" data-bs-target="#panelPacking" type="button" role="tab"
+                style="letter-spacing:1px;">
+            <span class="badge bg-dark text-white rounded-0 me-2" style="font-size:10px;">3</span>
+            <i class="bi bi-bag-check-fill me-1"></i>Lista de Empaque
+        </button>
+    </li>
+</ul>
+
+<div class="tab-content border border-dark border-3 border-top-0 bg-white p-4" id="constructorTabContent" style="box-shadow: 6px 6px 0 0 #000; min-height: 400px;">
+
+<!-- ===== TAB 1: Planeador de Itinerario ===== -->
+<div class="tab-pane fade show active" id="panelItinerario" role="tabpanel">
+    <div class="row">
+        <div class="col-md-4 border-end border-dark border-2 mb-4 mb-md-0 px-4">
+            <label class="form-label fw-bold text-uppercase small"><i class="bi bi-geo-alt me-1"></i>Punto de Salida</label>
+            <input type="text" id="rutaOrigen" list="rutaDestinosList" 
+                class="form-control global-search-input border-dark border-2 rounded-0 fw-bold mb-3"
+                placeholder="EJ: Tijuana, México" autocomplete="off">
+                
+            <label class="form-label fw-bold text-uppercase small"><i class="bi bi-flag me-1"></i>Destino Principal</label>
+            <input type="text" id="rutaDestino" list="rutaDestinosList" 
+                class="form-control global-search-input border-dark border-2 rounded-0 fw-bold mb-3"
+                placeholder="EJ: Tokio, Japón" autocomplete="off">
+                
+            <label class="form-label fw-bold text-uppercase small"><i class="bi bi-calendar-range me-1"></i>Días Totales de Estadía</label>
+            <input type="number" id="rutaDuracion" min="1" max="90" value="7"
+                class="form-control border-dark border-2 rounded-0 fw-bold mb-3"
+                placeholder="EJ: 7">
+                
+            <label class="form-label fw-bold text-uppercase small"><i class="bi bi-calendar-check me-1"></i>Tentativa de Salida <span class="badge bg-light text-dark ms-1 border border-dark border-2" style="font-size:9px;">OPCIONAL</span></label>
+            <input type="date" id="rutaFecha"
+                class="form-control border-dark border-2 rounded-0 fw-bold mb-4 text-uppercase">
+                
+            <datalist id="rutaDestinosList"></datalist>
+
+            <button class="btn btn-dark rounded-0 fw-bold px-4 py-2 w-100 border-dark border-2 text-uppercase hover-lift mb-2"
+                style="box-shadow: 3px 3px 0 0 rgba(0,0,0,0.5); transition: all 0.2s;"
+                type="button" onclick="if(window.generarRutaInteligente) window.generarRutaInteligente()">
+                <i class="bi bi-magic me-2 text-info"></i>Generar Ruta
+            </button>
+            <p class="small fw-bold text-muted mb-4" style="font-size: 11px;">
+                <i class="bi bi-cpu me-1"></i>El motor detectará regiones y calculará escalas automáticamente.
+            </p>
+
+            <!-- Botón Continuar a Mochila -->
+            <hr class="border-dark border-2">
+            <button class="btn w-100 py-3 fw-black rounded-0 text-uppercase border-2 border-dark hover-lift"
+                    style="background:#000; color:#fff; box-shadow: 4px 4px 0 0 rgba(0,0,0,0.4); letter-spacing:1px;"
+                    type="button" onclick="document.getElementById('tab-mochila').click(); window.scrollTo({top:0,behavior:'smooth'});">
+                Continuar a Mochila <i class="bi bi-arrow-right-circle-fill ms-2"></i>
+            </button>
+        </div>
+        <div class="col-md-8 px-md-5 px-4">
+            <div id="timelineContainer" class="py-2">
+                <p class="text-muted fw-bold text-center py-4">Aún no has definido pasos para tu ruta.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ===== TAB 2: Arma tu Mochila ===== -->
+<div class="tab-pane fade" id="panelMochila" role="tabpanel">
+<div class="row g-4">
+    <div class="col-12">
+        <div class="card border-dark border-3 rounded-0" style="box-shadow: 4px 4px 0 0 #000;">
             <div class="card-header bg-dark text-white py-3 border-dark border-bottom border-3 rounded-0">
                 <h5 class="mb-0 fw-bold text-uppercase tracking-wider">
                     <i class="bi bi-backpack-fill me-2"></i>Arma tu Mochila
@@ -30,15 +129,25 @@
                 <p class="small fw-bold text-dark text-uppercase mb-4">Selecciona los preparativos que necesitas. El
                     total se sumará a tu presupuesto base.</p>
                 <form id="mochilaForm">
-                    <div class="form-check form-switch mb-3 p-3 border border-2 border-dark"
-                        style="box-shadow: 2px 2px 0 0 #000;">
-                        <input class="form-check-input border-dark" type="checkbox" id="checkPasaporte" value="3940"
-                            onchange="calcularMochila()">
-                        <label class="form-check-label fw-bold text-dark" for="checkPasaporte">
-                            🛂 Pasaporte Mexicano 10 Años
-                            <span class="badge bg-dark rounded-0 ms-2">+ $3,940 MXN</span>
-                        </label>
+                    <!-- Selector de Nacionalidad -->
+                    <div class="mb-4 p-3 bg-light border border-2 border-dark" style="box-shadow: 2px 2px 0 0 #000;">
+                        <label class="form-label fw-bold text-dark text-uppercase small mb-2"><i class="bi bi-person-vcard-fill me-2"></i>¿Cuál es tu Nacionalidad?</label>
+                        <select id="nacionalidadUsuario" class="form-select border-dark border-2 rounded-0 fw-bold bg-white" onchange="evaluarDocumentacion()">
+                            <option value="MX" selected>🇲🇽 México / Mexicano</option>
+                            <option value="US">🇺🇸 Estados Unidos / Americano</option>
+                            <option value="ES">🇪🇸 España / Comunitario Europeo</option>
+                            <option value="CO">🇨🇴 Colombia / Colombiano</option>
+                            <option value="AR">🇦🇷 Argentina / Argentino</option>
+                            <option value="OTRO">🌍 Otra Nacionalidad</option>
+                        </select>
+                        <small class="text-muted d-block mt-2" style="font-size: 11px; line-height: 1.2;">
+                            <i class="bi bi-info-circle-fill me-1"></i>Analizaremos tu nacionalidad frente a tu <strong class="text-dark">Origen/Destino</strong> seleccionado para sugerir los documentos obligatorios.
+                        </small>
                     </div>
+
+                    <!-- Items comunes de viaje -->
+                    <h6 class="fw-black text-uppercase mb-3 mt-2 border-bottom border-2 border-dark pb-2">🧳 Equipaje y Extras</h6>
+
                     <div class="form-check form-switch mb-3 p-3 border border-2 border-dark"
                         style="box-shadow: 2px 2px 0 0 #000;">
                         <input class="form-check-input border-dark" type="checkbox" id="checkSeguro" value="1200"
@@ -48,15 +157,7 @@
                             <span class="badge bg-dark rounded-0 ms-2">+ $1,200 MXN</span>
                         </label>
                     </div>
-                    <div class="form-check form-switch mb-3 p-3 border border-2 border-dark"
-                        style="box-shadow: 2px 2px 0 0 #000;">
-                        <input class="form-check-input border-dark" type="checkbox" id="checkVisa" value="3400"
-                            onchange="calcularMochila()">
-                        <label class="form-check-label fw-bold text-dark" for="checkVisa">
-                            🗂️ Trámite de Visa
-                            <span class="badge bg-dark rounded-0 ms-2">+ $3,400 MXN</span>
-                        </label>
-                    </div>
+                    
                     <div class="form-check form-switch mb-4 p-3 border border-2 border-dark"
                         style="box-shadow: 2px 2px 0 0 #000;">
                         <input class="form-check-input border-dark" type="checkbox" id="checkMaleta" value="900"
@@ -67,151 +168,121 @@
                         </label>
                     </div>
 
+                    <!-- Documentación (al final) -->
+                    <h6 class="fw-black text-uppercase mb-3 mt-4 border-bottom border-2 border-dark pb-2">📦 Documentación Oficial</h6>
+                    <div id="contenedorDocumentos">
+                        <!-- Identificación Local (Aparece en viaje nacional) -->
+                        <div class="form-check form-switch mb-3 p-3 border border-2 border-primary bg-primary bg-opacity-10 d-none" id="divCheckINE"
+                            style="box-shadow: 2px 2px 0 0 var(--bs-primary);">
+                            <input class="form-check-input border-primary" type="checkbox" id="checkINE" value="0"
+                                onchange="calcularMochila()" checked>
+                            <label class="form-check-label fw-bold text-primary" for="checkINE" style="font-size: 14px;">
+                                🧯 Identificación Oficial Local (INE/ID)
+                                <span class="badge bg-primary rounded-0 ms-2">Requerido (Gratis)</span>
+                            </label>
+                        </div>
+
+                        <!-- Pasaporte -->
+                        <div class="form-check form-switch mb-3 p-3 border border-2 border-dark" id="divCheckPasaporte"
+                            style="box-shadow: 2px 2px 0 0 #000;">
+                            <input class="form-check-input border-dark" type="checkbox" id="checkPasaporte" value="3940"
+                                onchange="calcularMochila()">
+                            <label class="form-check-label fw-bold text-dark" for="checkPasaporte">
+                                🛂 Pasaporte (Renovación/Trámite)
+                                <span class="badge bg-dark rounded-0 ms-2" id="badgePasaporte">+ $3,940 MXN</span>
+                            </label>
+                        </div>
+                        
+                        <!-- Visa -->
+                        <div class="form-check form-switch mb-3 p-3 border border-2 border-dark" id="divCheckVisa"
+                            style="box-shadow: 2px 2px 0 0 #000;">
+                            <input class="form-check-input border-dark" type="checkbox" id="checkVisa" value="3400"
+                                onchange="calcularMochila()">
+                            <label class="form-check-label fw-bold text-dark" for="checkVisa">
+                                🗂️ Trámite de Visa (Sugerido)
+                                <span class="badge bg-dark rounded-0 ms-2" id="badgeVisa">+ $3,400 MXN</span>
+                            </label>
+                        </div>
+                    </div>
+
                     <hr class="border-dark border-2">
-                    <div class="d-flex justify-content-between align-items-center mt-3">
+                    <div class="d-flex justify-content-between align-items-center mt-3 mb-4">
                         <h6 class="fw-black text-uppercase mb-0">Total Gastos Previos:</h6>
                         <h4 class="fw-black text-primary mb-0" id="totalMochila">$0 MXN</h4>
                     </div>
+
+                    <!-- Botón Continuar a Lista de Empaque -->
+                    <button class="btn w-100 py-3 fw-black rounded-0 text-uppercase border-2 border-dark hover-lift"
+                            style="background:#000; color:#fff; box-shadow: 4px 4px 0 0 rgba(0,0,0,0.4); letter-spacing:1px;"
+                            type="button" onclick="document.getElementById('tab-packing').click(); window.scrollTo({top:0,behavior:'smooth'});">
+                        Continuar a Lista de Empaque <i class="bi bi-arrow-right-circle-fill ms-2"></i>
+                    </button>
                 </form>
             </div>
         </div>
     </div>
-
-    <!-- Módulo B: Selector de Intereses -->
-    <div class="col-lg-7">
-        <div class="card border-dark border-3 rounded-0 h-100" style="box-shadow: 6px 6px 0 0 #000;">
-            <div class="card-header bg-white py-3 border-dark border-bottom border-3 rounded-0">
-                <h5 class="mb-0 fw-bold text-dark text-uppercase tracking-wider">
-                    <i class="bi bi-compass-fill me-2"></i>Selector de Intereses
-                </h5>
-            </div>
-            <div class="card-body p-4 bg-light"
-                style="background-image: radial-gradient(#aaa 1px, transparent 0); background-size: 20px 20px;">
-                <h6 class="fw-bold text-dark text-uppercase bg-white p-2 border border-dark border-2 d-inline-block">
-                    ¿Cuál es tu ambiente (Vibe) ideal?</h6>
-                <div class="d-flex flex-wrap gap-2 mt-3 mb-4">
-                    <button class="btn btn-outline-dark fw-bold rounded-0 border-2 btn-interes"
-                        style="box-shadow: 2px 2px 0 0 #000;" onclick="recomendarDestino('fiesta', this)">
-                        🍹 Fiesta / Vida Nocturna
-                    </button>
-                    <button class="btn btn-outline-dark fw-bold rounded-0 border-2 btn-interes"
-                        style="box-shadow: 2px 2px 0 0 #000;" onclick="recomendarDestino('cultura', this)">
-                        🏛️ Museos / Historia
-                    </button>
-                    <button class="btn btn-outline-dark fw-bold rounded-0 border-2 btn-interes"
-                        style="box-shadow: 2px 2px 0 0 #000;" onclick="recomendarDestino('naturaleza', this)">
-                        🌲 Naturaleza / Aventura
-                    </button>
-                    <button class="btn btn-outline-dark fw-bold rounded-0 border-2 btn-interes"
-                        style="box-shadow: 2px 2px 0 0 #000;" onclick="recomendarDestino('relax', this)">
-                        ☀️ Relajación / Playa
-                    </button>
-                </div>
-
-                <div id="panelDestinoRecomendado" class="w-100 mt-3 p-4 bg-white border border-dark border-3 d-none"
-                    style="box-shadow: 4px 4px 0 0 #000; transition: all 0.3s;">
-                    <div class="d-flex align-items-center mb-3">
-                        <i class="bi bi-geo-alt-fill fs-2 text-danger me-3"></i>
-                        <div>
-                            <h6 class="text-secondary fw-bold text-uppercase mb-0 small">Mejor coincidencia:</h6>
-                            <h3 id="recomendacionTitulo" class="fw-black text-dark text-uppercase tracking-wider mb-0">—
-                            </h3>
-                        </div>
-                    </div>
-                    <p id="recomendacionDesc"
-                        class="fw-medium text-dark border-start border-4 border-primary ps-3 py-1 mb-0 small">—</p>
-                </div>
-            </div>
-        </div>
-    </div>
+</div>
 </div>
 
-<!-- ===== FILA 2: Itinerario de Ruta ===== -->
-<div class="row g-4 mb-5">
-    <div class="col-12">
-        <div class="card border-dark border-3 rounded-0 shadow-none hover-lift"
-            style="box-shadow: 6px 6px 0 0 #000 !important;">
-            <div class="card-header bg-dark text-white py-3 border-dark border-bottom border-3 rounded-0">
-                <h5 class="mb-0 fw-bold text-uppercase tracking-wider"><i
-                        class="bi bi-calendar-event me-2"></i>Planeador de Ruta (Timeline)</h5>
-            </div>
-            <div class="card-body p-4 bg-white">
-                <div class="row">
-                    <div class="col-md-4 border-end border-dark border-2 mb-4 mb-md-0 px-4">
-                        <label class="form-label fw-bold text-uppercase small"><i class="bi bi-geo-alt me-1"></i>Punto de Salida</label>
-                        <input type="text" id="rutaOrigen" list="rutaDestinosList" 
-                            class="form-control global-search-input border-dark border-2 rounded-0 fw-bold mb-3"
-                            placeholder="EJ: Tijuana, México" autocomplete="off">
-                            
-                        <label class="form-label fw-bold text-uppercase small"><i class="bi bi-flag me-1"></i>Destino Principal</label>
-                        <input type="text" id="rutaDestino" list="rutaDestinosList" 
-                            class="form-control global-search-input border-dark border-2 rounded-0 fw-bold mb-3"
-                            placeholder="EJ: Tokio, Japón" autocomplete="off">
-                            
-                        <label class="form-label fw-bold text-uppercase small"><i class="bi bi-calendar-range me-1"></i>Días Totales de Estadía</label>
-                        <input type="number" id="rutaDuracion" min="1" max="90" value="7"
-                            class="form-control border-dark border-2 rounded-0 fw-bold mb-4"
-                            placeholder="EJ: 7">
-                        <datalist id="rutaDestinosList"></datalist>
-
-                        <button class="btn btn-dark rounded-0 fw-bold px-4 py-2 w-100 border-dark border-2 text-uppercase mb-2"
-                            style="box-shadow: 4px 4px 0 0 rgba(0,0,0,0.2); transition: all 0.2s;"
-                            type="button" onclick="if(window.generarRutaInteligente) window.generarRutaInteligente()">
-                            <i class="bi bi-magic me-2 text-info"></i>Generar Ruta Inteligente
-                        </button>
-                        <p class="small fw-bold text-muted mt-3" style="font-size: 11px;"><i
-                                class="bi bi-cpu me-1"></i>El motor detectará regiones geográficas y calculará escalas obligatorias.</p>
-                    </div>
-                    <div class="col-md-8 px-md-5 px-4">
-                        <div id="timelineContainer" class="py-2">
-                            <p class="text-muted fw-bold text-center py-4">Aún no has definido pasos para tu ruta.</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
+<!-- ===== TAB 3: Lista de Empaque ===== -->
+<div class="tab-pane fade" id="panelPacking" role="tabpanel">
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-3">
+        <h5 class="mb-0 fw-bold text-dark text-uppercase tracking-wider">
+            <i class="bi bi-bag-check-fill me-2"></i>Lista de Empaque (Recordatorio)
+            <span class="badge border border-dark border-2 text-dark bg-white ms-2 fw-bold small rounded-0 text-uppercase" id="packingBadge">Sin destino</span>
+        </h5>
+        <span id="packingProgress" class="fw-bold small text-uppercase" style="display:none;">
+            <span id="packingChecked">0</span> / <span id="packingTotal">0</span> listos
+        </span>
     </div>
-</div>
+    <div class="card-body p-2 bg-light border border-dark border-2 text-center mb-3">
+        <p class="small fw-bold text-dark mb-0"><i class="bi bi-info-circle-fill me-1"></i> Usa esta lista interactiva para marcar lo que ya tienes listo en tu maleta antes de viajar.</p>
+    </div>
+    <div id="packingEmpty" class="p-5 bg-white text-center border border-dark border-2">
+        <i class="bi bi-bag-plus-fill text-dark mb-3" style="font-size:4rem; opacity:0.15;"></i>
+        <p class="fw-black text-uppercase text-dark mb-1" style="opacity:0.45;">Genera tu Ruta Inteligente primero</p>
+        <p class="small fw-bold text-dark" style="opacity:0.35;">Ve a la pestaña <strong>Itinerario</strong>, ingresa tu destino y genera la ruta para que aparezca tu lista de empaque aquí.</p>
+        <button class="btn btn-outline-dark fw-bold rounded-0 border-2 mt-3" onclick="document.getElementById('tab-itinerario').click()">
+            <i class="bi bi-arrow-left me-2"></i>Ir a Itinerario
+        </button>
+    </div>
+    <div id="packingGrid" class="d-none">
+        <div class="row g-4" id="packingCategoriesRow"></div>
+        <div class="mt-4 pt-3 border-top border-dark border-2">
+            <div class="d-flex justify-content-between mb-2">
+                <span class="fw-black text-uppercase small">Progreso de Empaque</span>
+                <span class="fw-black small" id="packingPercent">0%</span>
+            </div>
+            <div class="progress rounded-0 border border-dark" style="height:18px;">
+                <div id="packingProgressBar" class="progress-bar bg-dark rounded-0" role="progressbar" style="width:0%"></div>
+            </div>
+            <p class="small fw-bold text-muted mt-2 mb-4" id="packingStatusMsg">Marca los items que ya tienes listos.</p>
 
-<!-- Fila Eliminada: Generador AI Hacker sustituido por Planeador Inteligente -->
-<!-- ===== FILA 4: Smart Packing List ===== -->
-<div class="row g-4 mb-5">
-    <div class="col-12">
-        <div class="card border-dark border-3 rounded-0" style="box-shadow: 6px 6px 0 0 #000;">
-            <div class="card-header bg-white py-3 border-dark border-bottom border-3 rounded-0 d-flex flex-wrap justify-content-between align-items-center gap-2">
-                <h5 class="mb-0 fw-bold text-dark text-uppercase tracking-wider">
-                    <i class="bi bi-bag-check-fill me-2"></i>Smart Packing List
-                    <span class="badge border border-dark border-2 text-dark bg-white ms-2 fw-bold small rounded-0 text-uppercase" id="packingBadge">Sin destino</span>
-                </h5>
-                <div class="d-flex align-items-center gap-3">
-                    <span id="packingProgress" class="fw-bold small text-uppercase" style="display:none;">
-                        <span id="packingChecked">0</span> / <span id="packingTotal">0</span> listos
-                    </span>
-                    <!-- Selector Eliminado: Vinculación Semántica Automática -->
-                </div>
-            </div>
-            <div id="packingEmpty" class="card-body p-5 bg-light text-center">
-                <i class="bi bi-bag-plus-fill text-dark mb-3" style="font-size:4rem; opacity:0.15;"></i>
-                <p class="fw-black text-uppercase text-dark mb-1" style="opacity:0.45;">Genera tu Ruta Inteligente arriba</p>
-                <p class="small fw-bold text-dark" style="opacity:0.35;">El sistema analizará geográficamente tu destino para generar tu lista de equipaje automáticamente.</p>
-            </div>
-            <div id="packingGrid" class="card-body p-4 bg-white d-none">
-                <div class="row g-4" id="packingCategoriesRow"></div>
-                <div class="mt-4 pt-3 border-top border-dark border-2">
-                    <div class="d-flex justify-content-between mb-2">
-                        <span class="fw-black text-uppercase small">Progreso de Empaque</span>
-                        <span class="fw-black small" id="packingPercent">0%</span>
+            <!-- Botón final: Guardar y finalizar viaje -->
+            <div class="p-4 border border-dark border-3 bg-light" style="box-shadow: 4px 4px 0 0 #000;">
+                <div class="d-flex align-items-center mb-3">
+                    <i class="bi bi-check2-circle text-dark fs-3 me-3"></i>
+                    <div>
+                        <h6 class="fw-black text-uppercase mb-0">¡Todo listo para viajar!</h6>
+                        <p class="small text-muted fw-bold mb-0">Guarda tu viaje en el historial para acceder a él después.</p>
                     </div>
-                    <div class="progress rounded-0 border border-dark" style="height:18px;">
-                        <div id="packingProgressBar" class="progress-bar bg-dark rounded-0" role="progressbar" style="width:0%"></div>
-                    </div>
-                    <p class="small fw-bold text-muted mt-2 mb-0" id="packingStatusMsg">Marca los items que ya tienes listos.</p>
                 </div>
+                <button class="btn w-100 py-3 fw-black rounded-0 text-uppercase border-2 border-dark hover-lift"
+                        style="background:#000; color:#fff; box-shadow: 4px 4px 0 0 rgba(0,0,0,0.4); letter-spacing:1px; font-size:15px;"
+                        type="button" onclick="window.guardarViajeHistorial(this)">
+                    <i class="bi bi-floppy-fill me-2"></i>Guardar Viaje en Historial
+                </button>
             </div>
         </div>
     </div>
 </div>
 </div> <!-- Final de constructorCaptureZone -->
+
+
+</div> <!-- /tab-content -->
+</div> <!-- /constructorCaptureZone -->
+
+
 
 <style>
 @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }

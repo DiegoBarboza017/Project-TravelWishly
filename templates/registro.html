@@ -55,8 +55,41 @@
                             Sesión</a>
                     </div>
                 </form>
+
+                <hr class="my-4 border-dark border-2 opacity-100" style="border-style: dashed;">
+                
+                <form action="{{ url_for('magic_login') }}" method="POST">
+                    <div class="text-center mb-3">
+                        <h6 class="fw-bold text-uppercase text-dark m-0">Registro Automático Seguro</h6>
+                        <small class="text-muted fw-bold">Se creará tu usuario de inmediato</small>
+                    </div>
+                    <div class="input-group mb-3">
+                        <span class="input-group-text bg-white border-dark border-2 border-end-0 rounded-0"><i class="bi bi-google text-dark"></i></span>
+                        <input type="email" name="google_email" class="form-control border-dark border-2 border-start-0 ps-0 text-dark rounded-0 fw-bold" placeholder="TU CORREO DE GMAIL..." required>
+                    </div>
+                    <button type="submit" class="btn btn-outline-dark w-100 py-2 fw-bold text-uppercase border-2 border-dark rounded-0 hover-lift d-flex align-items-center justify-content-center" style="transition: all 0.2s; box-shadow: 4px 4px 0 0 #000;"
+                    onmouseover="this.style.boxShadow='2px 2px 0 0 #000'; this.style.transform='translateY(2px)';" onmouseout="this.style.boxShadow='4px 4px 0 0 #000'; this.style.transform='translateY(0)';">
+                        <i class="bi bi-person-hearts me-2 fs-5"></i> Únete Rápido (Vía Gmail)
+                    </button>
+                </form>
             </div>
         </div>
     </div>
 </div>
+
+<script>
+    // Magic Link UX Poller: Observa callado a ver si el usuario ya aprobó la sesión en otra pestaña / celular
+    setInterval(() => {
+        fetch("{{ url_for('api_check_session') }}")
+            .then(res => res.json())
+            .then(data => {
+                if (data.logged_in) {
+                    // Magia! La aprobación pasó vía email en otra ventana. Lo mandamos auto al Inicio.
+                    window.location.href = "{{ url_for('index') }}";
+                }
+            })
+            .catch(e => false);
+    }, 2000);
+</script>
+
 {% endblock %}

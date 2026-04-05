@@ -1,6 +1,30 @@
 {% extends "base.html" %}
 {% block content %}
 
+<!-- CSS para impresion/PDF limpio -->
+<style>
+@media print {
+    /* Ocultar elementos que no deben ir en el pdf */
+    nav, .navbar, header, footer, #btnExportarFinPDF,
+    .btn-toolbar, .border-bottom.mb-5 { display: none !important; }
+    /* Forzar colores correctos en impresion */
+    body, .card, .card-body { background: white !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .card-header.bg-dark { background: #000 !important; color: white !important; }
+    /* Quitar sombras */
+    * { box-shadow: none !important; }
+    /* Escalar todo el contenido al 75% para que quepa en una pagina */
+    #finCaptureZone {
+        width: 133% !important;
+        transform: scale(0.75);
+        transform-origin: top left;
+    }
+    /* Evitar que las tarjetas se corten a la mitad */
+    .card, .row { page-break-inside: avoid !important; }
+    @page { size: A3 landscape; margin: 5mm; }
+}
+</style>
+
+
 <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-5 border-bottom border-dark border-3">
     <div>
         <h1 class="h2 fw-black text-dark text-uppercase tracking-wider mb-1" style="font-weight:900;">
@@ -8,8 +32,15 @@
         </h1>
         <p class="text-dark fw-bold text-uppercase small mb-0">¿No tienes el dinero completo? Calcula tu Plan B con crédito.</p>
     </div>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <button type="button" id="btnExportarFinPDF" class="btn btn-dark fw-bold px-4 rounded-0 border-2 text-uppercase"
+            style="box-shadow: 3px 3px 0 0 #555;" onclick="window.print()">
+            <i class="bi bi-file-earmark-pdf-fill me-2"></i>Exportar PDF
+        </button>
+    </div>
 </div>
 
+<div id="finCaptureZone" style="background: white; padding: 8px;">
 <div class="row g-4 align-items-start">
 
     <!-- ===== Panel izquierdo: Formulario ===== -->
@@ -67,12 +98,6 @@
                     </div>
                     <input type="hidden" id="fMeses" value="12">
                 </div>
-
-                <button class="btn btn-dark w-100 py-3 fw-black text-uppercase rounded-0 border-2 border-dark tracking-wider"
-                    style="box-shadow: 3px 3px 0 0 #555; letter-spacing: 1px;"
-                    onclick="simularCredito()">
-                    <i class="bi bi-calculator-fill me-2"></i>Calcular Plan de Pagos
-                </button>
             </div>
         </div>
 
@@ -170,7 +195,7 @@
             <p class="fw-black text-uppercase text-dark" style="opacity:0.3;">Ingresa los datos y calcula tu plan de pagos</p>
         </div>
 
-    </div>
+</div><!-- fin finCaptureZone -->
 </div>
 
 {% endblock %}

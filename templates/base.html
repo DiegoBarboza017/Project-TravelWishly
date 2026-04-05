@@ -17,7 +17,9 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 
-<body>
+<body data-logged-in="{{ 'true' if session.get('user_id') else 'false' }}"
+      data-user-email="{{ session.get('user_email', '') }}"
+      data-username="{{ session.get('username', '') }}">
     <!-- Menú de Navegación Monocromático -->
     <nav class="navbar navbar-expand-lg navbar-light stick-top py-3">
         <div class="container-fluid px-4 px-xl-5">
@@ -25,6 +27,20 @@
                 <img src="{{ url_for('static', filename='logo.png') }}" alt="TravelWishly Logo" style="height: 55px; object-fit: contain;">
                 TravelWishly
             </a>
+
+            <!-- Selector Global de Idiomas (Funcional i18n) -->
+            <div class="dropdown me-auto d-none d-lg-block">
+                <button class="btn btn-outline-dark fw-bold btn-sm dropdown-toggle rounded-0 text-uppercase tracking-wider py-1 px-2 border-2" type="button" id="langSelectorGlobal" data-bs-toggle="dropdown" aria-expanded="false" style="font-size: 0.75rem;">
+                    <i class="bi bi-translate me-1"></i> IDIOMAS
+                </button>
+                <ul class="dropdown-menu rounded-0 border-dark border-3 py-0 shadow-sm" aria-labelledby="langSelectorGlobal" style="min-width: 140px; margin-top: 5px;">
+                    <li><button class="dropdown-item fw-bold text-dark border-bottom border-dark border-1 py-2 text-center" onclick="cambiarIdioma('es')">ESPAÑOL</button></li>
+                    <li><button class="dropdown-item fw-bold text-dark border-bottom border-dark border-1 py-2 text-center" onclick="cambiarIdioma('en')">INGLÉS</button></li>
+                    <li><button class="dropdown-item fw-bold text-dark border-bottom border-dark border-1 py-2 text-center" onclick="cambiarIdioma('fr')">FRANCÉS</button></li>
+                    <li><button class="dropdown-item fw-bold text-dark border-bottom border-dark border-1 py-2 text-center" onclick="cambiarIdioma('de')">ALEMÁN</button></li>
+                    <li><button class="dropdown-item fw-bold text-dark py-2 text-center" onclick="cambiarIdioma('ja')">JAPONÉS</button></li>
+                </ul>
+            </div>
             <button class="navbar-toggler rounded-0 border-dark" type="button" data-bs-toggle="collapse"
                 data-bs-target="#mainNav" aria-controls="mainNav" aria-expanded="false" aria-label="Toggle navigation">
                 <span class="navbar-toggler-icon"></span>
@@ -35,18 +51,23 @@
                         <a class="nav-link px-2 fw-bold nav-page-link text-nowrap" href="{{ url_for('index') }}">INICIO</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link px-2 fw-bold nav-page-link text-nowrap" href="{{ url_for('guia') }}">GUÍA TURÍSTICA</a>
+                        <a class="nav-link px-2 fw-bold nav-page-link text-nowrap" href="{{ url_for('guia') }}">EXPLORAR DESTINOS</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link px-2 fw-bold nav-page-link text-nowrap" href="{{ url_for('dashboard') }}">DASHBOARD</a>
+                        <a class="nav-link px-2 fw-bold nav-page-link text-nowrap" href="{{ url_for('dashboard') }}">PRESUPUESTO</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link px-2 fw-bold nav-page-link text-nowrap" href="{{ url_for('constructor') }}">CONSTRUCTOR</a>
+                        <a class="nav-link px-2 fw-bold nav-page-link text-nowrap" href="{{ url_for('constructor') }}">ITINERARIO</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link px-2 fw-bold nav-page-link text-nowrap" href="{{ url_for('financiamiento') }}">FINANCIAMIENTO</a>
+                        <a class="nav-link px-2 fw-bold nav-page-link text-nowrap" href="{{ url_for('financiamiento') }}">SIMULADOR DE CRÉDITO</a>
                     </li>
                     {% if session.get('user_id') %}
+                    <li class="nav-item">
+                        <a class="nav-link px-2 fw-bold nav-page-link text-nowrap text-secondary" href="{{ url_for('historial') }}">
+                            <i class="bi bi-clock-history me-1"></i>HISTORIAL
+                        </a>
+                    </li>
                     <li class="nav-item ms-lg-3 d-flex align-items-center">
                         <span class="nav-link fw-bold text-dark text-nowrap text-uppercase me-2"><i class="bi bi-person-circle me-1"></i> {{ session.get('username') }}</span>
                     </li>
@@ -103,8 +124,14 @@
     </footer>
 
     <!-- Floating AI Chat Bot -->
-    <div class="chat-bot-bubble" id="chatBotBubble" title="¡Habla con Leia, tu IA!">
-        <img src="{{ url_for('static', filename='cat_bot.png') }}" alt="Leia Cat Bot">
+    <div class="chat-bot-wrapper" id="chatBotWrapper">
+        <!-- Tooltip "¿Necesitas ayuda?" -->
+        <div class="chat-tooltip" id="chatTooltip">
+            <span>¿Necesitas ayuda? 🐾</span>
+        </div>
+        <div class="chat-bot-bubble" id="chatBotBubble" title="¡Habla con Leia, tu asistente!">
+            <img src="{{ url_for('static', filename='cat_bot.png') }}" alt="Leia Cat Bot">
+        </div>
     </div>
 
     <div class="chat-window shadow-lg border border-3 border-dark" id="chatWindow">
@@ -131,11 +158,39 @@
     <!-- html2pdf.js para la generacion de reportes PDF -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <!-- Script de lógica Frontend (Calculadora / Guía Turística) -->
-    <script src="{{ url_for('static', filename='app.js') }}"></script>
+    <script src="{{ url_for('static', filename='app.js') }}?v={{ range(1, 999999) | random }}"></script>
     <!-- Lógica del Globo Interactivo -->
-    <script src="{{ url_for('static', filename='globe_logic.js') }}"></script>
+    <script src="{{ url_for('static', filename='globe_logic.js') }}?v={{ range(1, 999999) | random }}"></script>
     <!-- AI Route Generator + Smart Packing List -->
-    <script src="{{ url_for('static', filename='ai_packing.js') }}"></script>
+    <script src="{{ url_for('static', filename='ai_packing.js') }}?v={{ range(1, 999999) | random }}"></script>
+    <!-- Motor de Traducciones (Google UI Oculto) -->
+    <div id="google_translate_element" style="display:none;"></div>
+    <script type="text/javascript">
+        function googleTranslateElementInit() {
+            new google.translate.TranslateElement({
+                pageLanguage: 'es', 
+                includedLanguages: 'es,en,fr,de,ja', 
+                autoDisplay: false
+            }, 'google_translate_element');
+        }
+        function cambiarIdioma(langCode) {
+            var selectField = document.querySelector(".goog-te-combo");
+            if(selectField) {
+                selectField.value = langCode;
+                selectField.dispatchEvent(new Event('change'));
+            }
+        }
+    </script>
+    <script type="text/javascript" src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
+
+    <!-- Ocultar iframe de Google intrusivo -->
+    <style>
+        .goog-te-banner-frame.skiptranslate { display: none !important; }
+        body { top: 0px !important; }
+        .goog-tooltip { display: none !important; pointer-events: none !important; }
+        .goog-tooltip:hover { display: none !important; }
+        .goog-text-highlight { background-color: transparent !important; box-shadow: none !important; }
+    </style>
 </body>
 
 </html>

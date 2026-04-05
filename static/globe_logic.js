@@ -91,6 +91,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 document.getElementById('modalTypes').innerText = info.types;
                 document.getElementById('modalAlerts').innerText = `[${info.dangerLevel.toUpperCase()}] - ${info.alerts}`;
 
+                const btnExp = document.getElementById('btnExpedienteCompleto');
+                if (btnExp) {
+                    btnExp.href = `/guia?q=${encodeURIComponent(countryName)}`;
+                }
+
                 const modalEl = document.getElementById('countryModal');
                 if (modalEl) {
                     const modal = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
@@ -151,6 +156,11 @@ document.addEventListener('DOMContentLoaded', () => {
                             document.getElementById('modalTypes').innerText = info.types;
                             document.getElementById('modalAlerts').innerText = `[${info.dangerLevel.toUpperCase()}] - ${info.alerts}`;
             
+                            const btnExp = document.getElementById('btnExpedienteCompleto');
+                            if (btnExp) {
+                                btnExp.href = `/guia?q=${encodeURIComponent(components[0])}`;
+                            }
+
                             world.controls().autoRotate = false; // Detener globo en search
                             
                             const modalEl = document.getElementById('countryModal');
