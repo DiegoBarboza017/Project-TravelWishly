@@ -703,18 +703,18 @@ window.abrirGaleria = function(puntoInteres, ciudadContexto) {
     
     modal.show();
 
-    // Limpiar texto (quitar acentos y caracteres especiales)
+    // Construir keywords limpias (sin acentos)
     const clean = (str) => str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^\w\s]/gi, '').trim();
     const cityKw = clean(ciudadContexto).split(' ')[0] || 'travel';
     const poiKw  = clean(puntoInteres).split(' ').filter(w => w.length >= 3)[0] || 'landmark';
 
-    // Hash determinista de CIUDAD + POI — garantiza seed único por cada combinación de país + punto de interés
-    const fullKey = `${ciudadContexto}::${puntoInteres}`;
-    let combinedHash = 0;
-    for (let c = 0; c < fullKey.length; c++) {
-        combinedHash = ((combinedHash << 5) - combinedHash + fullKey.charCodeAt(c)) | 0;
+    // Hash determinista del nombre de la CIUDAD + POI — garantiza seed ÚNICO por país y punto de interés
+    const hashString = ciudadContexto.toLowerCase() + puntoInteres.toLowerCase();
+    let poiHash = 0;
+    for (let c = 0; c < hashString.length; c++) {
+        poiHash = ((poiHash << 5) - poiHash + hashString.charCodeAt(c)) | 0;
     }
-    combinedHash = Math.abs(combinedHash) % 900000 + 100000;  // número 6 dígitos, siempre positivo
+    poiHash = Math.abs(poiHash) % 900000 + 100000;  // número de 6 dígitos siempre positivo
 
     // Contextos rotativos: cada slot dentro del POI busca un tema diferente
     const ctxWords = ['architecture', 'street photography', 'landscape', 'culture', 'tourism',
@@ -722,11 +722,11 @@ window.abrirGaleria = function(puntoInteres, ciudadContexto) {
 
     let imgHTML = '';
     for (let i = 1; i <= 10; i++) {
-        const ctx      = ctxWords[i - 1];
+        const ctx      = ctxWords[i - 1];                              // contexto único por slot
         const keyword  = encodeURIComponent(`${poiKw} ${cityKw} ${ctx}`);
-        const sig      = combinedHash * 10 + i;                       // único por país+POI+slot
+        const sig      = poiHash * 10 + i;                            // seed diferente por POI y por slot
         const urlReq   = `https://source.unsplash.com/800x600/?${keyword}&sig=${sig}`;
-        const fallback = `https://picsum.photos/seed/${combinedHash + i * 13}/800/600`;
+        const fallback = `https://picsum.photos/seed/${poiHash + i * 13}/800/600`;
         const colSize  = i % 3 === 0 ? 'col-md-12 col-lg-8' : 'col-md-6 col-lg-4';
 
         imgHTML += `
