@@ -22,6 +22,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const p = new URLSearchParams(window.location.search);
         if (p.has('destino')) {
             const dest = p.get('destino');
+            localStorage.setItem('tw_last_destination', dest);
             const destInput = document.getElementById('destinoSugerido');
             if (destInput) {
                 destInput.value = dest;
@@ -33,8 +34,14 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     } else if (currentPath === '/constructor') {
         const p = new URLSearchParams(window.location.search);
+        let dest = null;
         if (p.has('destino')) {
-            const dest = p.get('destino');
+            dest = p.get('destino');
+        } else if (localStorage.getItem('tw_last_destination')) {
+            dest = localStorage.getItem('tw_last_destination');
+        }
+        
+        if (dest) {
             const rutaDest = document.getElementById('rutaDestino');
             if (rutaDest) rutaDest.value = dest;
             if (p.has('budget')) {
@@ -230,6 +237,7 @@ function calcularDistribucion() {
 
     // Guardar estado de la proyección para el modal de recordatorios de ahorro
     const destinoEl2 = document.getElementById('destinoSugerido');
+    if (destinoEl2) localStorage.setItem('tw_last_destination', destinoEl2.value.trim());
     window._lastSavingsCalc = {
         destination:    destinoEl2 ? destinoEl2.value.trim() : '',
         monthlyAmount:  parseFloat(capacidadMonetariaAhorro.toFixed(2)),
@@ -716,26 +724,18 @@ window.abrirGaleria = function(puntoInteres, ciudadContexto) {
     }
     poiHash = Math.abs(poiHash) % 900000 + 100000;  // número de 6 dígitos siempre positivo
 
-    // Contextos rotativos: cada slot dentro del POI busca un tema diferente
-    const ctxWords = ['architecture', 'street photography', 'landscape', 'culture', 'tourism',
-                      'history', 'market', 'monument', 'nature scenery', 'travel'];
-
+    // Ya no usamos URLs falsificadas, inyectamos placeholders que luego llenamos con DuckDuckGo Search 
     let imgHTML = '';
     for (let i = 1; i <= 10; i++) {
-        const ctx      = ctxWords[i - 1];                              // contexto único por slot
-        const keyword  = encodeURIComponent(`${poiKw} ${cityKw} ${ctx}`);
-        const sig      = poiHash * 10 + i;                            // seed diferente por POI y por slot
-        const urlReq   = `https://source.unsplash.com/800x600/?${keyword}&sig=${sig}`;
-        const fallback = `https://picsum.photos/seed/${poiHash + i * 13}/800/600`;
         const colSize  = i % 3 === 0 ? 'col-md-12 col-lg-8' : 'col-md-6 col-lg-4';
 
         imgHTML += `
             <div class="${colSize}">
-                <div class="card h-100 border-dark border-3 rounded-0" style="box-shadow: 4px 4px 0 0 #000; overflow:hidden;">
-                    <img src="${urlReq}"
-                         onerror="this.onerror=null;this.src='${fallback}';"
-                         class="img-fluid w-100 object-fit-cover" alt="Vista ${i}: ${ctx} en ${ciudadContexto}"
-                         loading="lazy" style="min-height: 220px; max-height: 280px;">
+                <div class="card h-100 border-dark border-3 rounded-0" style="box-shadow: 4px 4px 0 0 #000; overflow:hidden; background-color:#111;">
+                    <img id="img_gal_${i}" src="data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22800%22%20height%3D%22600%22%20viewBox%3D%220%200%20800%20600%22%20preserveAspectRatio%3D%22none%22%3E%3Crect%20width%3D%22800%22%20height%3D%22600%22%20fill%3D%22%23222%22%2F%3E%3Ctext%20x%3D%2250%25%22%20y%3D%2250%25%22%20font-family%3D%22monospace%22%20font-size%3D%2224%22%20fill%3D%22%23777%22%20dominant-baseline%3D%22middle%22%20text-anchor%3D%22middle%22%3ECARGANDO%20FOTO...%3C%2Ftext%3E%3C%2Fsvg%3E"
+                         class="img-fluid w-100 object-fit-cover" alt="Vista ${i} en ${ciudadContexto}"
+                         loading="lazy" style="min-height: 220px; max-height: 280px; transition: transform 0.5s;" 
+                         onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
                     <div class="card-footer bg-dark text-white border-top border-3 border-dark py-2 px-3 rounded-0 d-flex justify-content-between align-items-center">
                         <small class="fw-bold tracking-wider text-uppercase" style="font-size: 10px;"><i class="bi bi-camera me-1"></i>VISTA ${i}/10</small>
                         <span class="badge bg-white text-dark rounded-0 fw-black px-2 py-1"><i class="bi bi-check-circle-fill text-success me-1"></i>VERIFICADA</span>
@@ -745,11 +745,37 @@ window.abrirGaleria = function(puntoInteres, ciudadContexto) {
         `;
     }
 
-    setTimeout(() => {
-        grid.innerHTML = imgHTML;
-        spinner.classList.add('d-none');
-        grid.classList.remove('d-none');
-    }, 600);
+    grid.innerHTML = imgHTML;
+
+    // Ejecutar fetch asíncrono nativo usando Wikimedia Commons (100% robusto, sin rate limits para cliente web)
+    const qStr = `${puntoInteres} ${ciudadContexto}`;
+    const wikiUrl = `https://commons.wikimedia.org/w/api.php?action=query&generator=search&gsrsearch=${encodeURIComponent(qStr)}&gsrnamespace=6&gsrlimit=10&prop=imageinfo&iiprop=url&format=json&origin=*`;
+    
+    fetch(wikiUrl)
+        .then(r => r.json())
+        .then(data => {
+            let pages = data.query ? data.query.pages : {};
+            let urls = Object.values(pages).map(p => p.imageinfo && p.imageinfo.length > 0 ? p.imageinfo[0].url : null).filter(u => u);
+            
+            // Rellenar si hay menos de 10 fotos disponibles
+            if (urls.length > 0) {
+                while(urls.length < 10) urls.push(urls[0]);
+                
+                urls.forEach((url, idx) => {
+                    if (idx < 10) {
+                        let imgEl = document.getElementById(`img_gal_${idx + 1}`);
+                        if (imgEl) imgEl.src = url;
+                    }
+                });
+            }
+            spinner.classList.add('d-none');
+            grid.classList.remove('d-none');
+        })
+        .catch(err => {
+            console.error("Fallo obteniendo las imgs desde Wikimedia", err);
+            spinner.classList.add('d-none');
+            grid.classList.remove('d-none');
+        });
 };
 
 
@@ -837,6 +863,46 @@ const TODOS_DESTINOS_DB = [
     { 
       id: 14, ciudad: "Bora Bora", pais: "Polinesia", tags: ["relax", "naturaleza"], desc: "Lujo flotante sobre mares cristalinos, donde solo importa la tranquilidad visual pura y sana.", timezone: "Pacific/Tahiti", moneda: "XPF (Franco)", climaBase: 28,
       galeria: [{n:"Bungalows sobre el agua",q:"borabora,bungalow"},{n:"Monte Otemanu",q:"otemanu,mountain"},{n:"Playa Matira",q:"matirabeach"},{n:"Laguna de Bora Bora",q:"borabora,lagoon"},{n:"Arrecifes de coral",q:"borabora,reef"},{n:"Motos de agua",q:"jetski,ocean"},{n:"Vuelos escénicos",q:"borabora,aerial"},{n:"Buceo con tiburones",q:"borabora,shark"},{n:"Pueblo Vaitape",q:"vaitape,tahiti"},{n:"Atardeceres del Pacífico",q:"borabora,sunset"}]
+    },
+    { 
+      id: 15, ciudad: "Ámsterdam", pais: "Países Bajos", tags: ["cultura", "fiesta", "mochilero", "arquitectura"], desc: "Canales impresionantes por el día y clubes icónicos de electro-house por las noches.", timezone: "Europe/Amsterdam", moneda: "EUR (€)", climaBase: 10,
+      galeria: [{n:"Canales de Ámsterdam",q:"amsterdam,canal"},{n:"Plaza Dam",q:"damsquare"},{n:"Museo Van Gogh",q:"vangoghmuseum"},{n:"Barrio Rojo",q:"redlightdistrict"},{n:"Vondelpark",q:"vondelpark"},{n:"Casa de Ana Frank",q:"annefrankhouse"},{n:"Rijksmuseum",q:"rijksmuseum"},{n:"Heineken Experience",q:"heinekenexperience"},{n:"Zaanse Schans",q:"zaanseschans"},{n:"Estación Central",q:"amsterdam,station"}]
+    },
+    { 
+      id: 16, ciudad: "Sídney", pais: "Australia", tags: ["relax", "naturaleza", "fiesta", "arquitectura", "gastronomia"], desc: "Playas perfectas para surfear conviviendo con hitos urbanos modernísimos.", timezone: "Australia/Sydney", moneda: "AUD ($)", climaBase: 18,
+      galeria: [{n:"Ópera de Sídney",q:"sydneyoperahouse"},{n:"Puente del Puerto",q:"sydneyharbourbridge"},{n:"Playa Bondi",q:"bondibeach"},{n:"Darling Harbour",q:"darlingharbour"},{n:"Royal Botanic Garden",q:"botanicgarden,sydney"},{n:"Torre de Sídney",q:"sydneytower"},{n:"Taronga Zoo",q:"tarongazoo"},{n:"Montañas Azules",q:"bluemountains,australia"},{n:"Barrio The Rocks",q:"therocks,sydney"},{n:"Playa Manly",q:"manlybeach"}]
+    },
+    { 
+      id: 17, ciudad: "Dubai", pais: "E.A.U.", tags: ["compras", "relax", "arquitectura", "lujo", "fiesta"], desc: "Futurismo total en medio del desierto. Los centros comerciales más magnos del globo.", timezone: "Asia/Dubai", moneda: "AED (Dirham)", climaBase: 33,
+      galeria: [{n:"Burj Khalifa",q:"burjkhalifa"},{n:"Palm Jumeirah",q:"palmjumeirah"},{n:"Dubai Mall",q:"dubaimall"},{n:"Burj Al Arab",q:"burjalarab"},{n:"Dubai Fuente",q:"dubaifountain"},{n:"Dubai Marina",q:"dubaimarina"},{n:"Zoco de Oro",q:"goldensouk,dubai"},{n:"Desierto de Safari",q:"desert,dubai"},{n:"Dubai Frame",q:"dubaiframe"},{n:"Global Village",q:"globalvillage,dubai"}]
+    },
+    { 
+      id: 18, ciudad: "Reykjavik", pais: "Islandia", tags: ["naturaleza", "nieve", "mochilero", "aventura", "relax"], desc: "Auroras boreales místicas y baños termales naturales sacados de cuentos de hadas.", timezone: "Atlantic/Reykjavik", moneda: "ISK (Corona)", climaBase: -1,
+      galeria: [{n:"Blue Lagoon",q:"bluelagoon,iceland"},{n:"Auroras Boreales",q:"northernlights,iceland"},{n:"Iglesia Hallgrímskirkja",q:"hallgrimskirkja"},{n:"Círculo Dorado",q:"goldencircle,iceland"},{n:"Cascada Gullfoss",q:"gullfoss"},{n:"Géisers",q:"geyser,iceland"},{n:"Parque Nacional Thingvellir",q:"thingvellir"},{n:"Cascada Skógafoss",q:"skogafoss"},{n:"Playa Diamante",q:"diamondbeach,iceland"},{n:"Harpa Concert Hall",q:"harpa,iceland"}]
+    },
+    { 
+      id: 19, ciudad: "Bangkok", pais: "Tailandia", tags: ["cultura", "mochilero", "espiritual", "gastronomia", "fiesta"], desc: "Mercados flotantes llenos de sabor y vida, y la capital absoluta del sureste asiático.", timezone: "Asia/Bangkok", moneda: "THB (Baht)", climaBase: 29,
+      galeria: [{n:"Gran Palacio Real",q:"grandpalace,bangkok"},{n:"Wat Arun",q:"watarun"},{n:"Wat Pho",q:"watpho"},{n:"Mercado Chatuchak",q:"chatuchak"},{n:"Khaosan Road",q:"khaosanroad"},{n:"Mercado Flotante",q:"floatingmarket,bangkok"},{n:"Parque Lumphini",q:"lumphinipark"},{n:"Río Chao Phraya",q:"chaophraya"},{n:"Santuario Erawan",q:"erawanshrine"},{n:"Barrio Chino (Yaowarat)",q:"chinatown,bangkok"}]
+    },
+    { 
+      id: 20, ciudad: "Múnich", pais: "Alemania", tags: ["cultura", "fiesta", "gastronomia", "nieve"], desc: "Cunas de la cerveza mundial y tecnología alemana empapada de folklore y Alpes nevados.", timezone: "Europe/Berlin", moneda: "EUR (€)", climaBase: 8,
+      galeria: [{n:"Marienplatz",q:"marienplatz"},{n:"Castillo Neuschwanstein",q:"neuschwanstein"},{n:"Oktoberfest (Theresienwiese)",q:"oktoberfest,munich"},{n:"Englischer Garten",q:"englishgarden,munich"},{n:"Olympiapark",q:"olympiapark,munich"},{n:"Catedral Frauenkirche",q:"frauenkirche,munich"},{n:"Palacio de Nymphenburg",q:"nymphenburg"},{n:"Viktualienmarkt",q:"viktualienmarkt"},{n:"BMW Welt",q:"bmwwelt"},{n:"Residencia de Múnich",q:"munich,residence"}]
+    },
+    { 
+      id: 21, ciudad: "Río de Janeiro", pais: "Brasil", tags: ["fiesta", "relax", "naturaleza", "cultura"], desc: "La samba y el carnaval viviendo 365 días al año. Naturaleza y metrópolis juntas.", timezone: "America/Sao_Paulo", moneda: "BRL (Real)", climaBase: 26,
+      galeria: [{n:"Cristo Redentor",q:"cristoredentor"},{n:"Playa Copacabana",q:"copacabana"},{n:"Pan de Azúcar",q:"sugarloaf,rio"},{n:"Ipanema",q:"ipanema"},{n:"Escaleras Selarón",q:"selaron,steps"},{n:"Estadio Maracaná",q:"maracana"},{n:"Jardín Botánico",q:"botanicgarden,rio"},{n:"Barrio Santa Teresa",q:"santateresa,rio"},{n:"Parque Nacional Tijuca",q:"tijuca,forest"},{n:"Museo del Mañana",q:"museumoftomorrow"}]
+    },
+    { 
+      id: 22, ciudad: "Milán", pais: "Italia", tags: ["compras", "arquitectura", "cultura"], desc: "La meca innegable del estilo mundial y catedrales góticas imponentes.", timezone: "Europe/Rome", moneda: "EUR (€)", climaBase: 13,
+      galeria: [{n:"El Duomo",q:"duomo,milan"},{n:"Galería Vittorio Emanuele II",q:"vittorioemanuele"},{n:"Castillo Sforzesco",q:"sforza,castle"},{n:"La Scala",q:"lascala,milan"},{n:"Pinacoteca di Brera",q:"brera,milan"},{n:"Navigli (Canales)",q:"navigli,milan"},{n:"La Última Cena (Da Vinci)",q:"lastsupper,milan"},{n:"Estadio San Siro",q:"sansiro"},{n:"Cuadrilátero de la Moda",q:"fashiondistrict,milan"},{n:"Parque Sempione",q:"sempione,park"}]
+    },
+    { 
+      id: 23, ciudad: "Hawái (Oahu)", pais: "EE.UU.", tags: ["relax", "naturaleza", "aventura", "mochilero"], desc: "La cuna del surf pacífico, montañas volcánicas activas y luau nativos.", timezone: "Pacific/Honolulu", moneda: "USD ($)", climaBase: 27,
+      galeria: [{n:"Playa Waikiki",q:"waikiki"},{n:"Diamond Head",q:"diamondhead"},{n:"Pearl Harbor",q:"pearlharbor"},{n:"Bahía Hanauma",q:"hanaumabay"},{n:"North Shore",q:"northshore,oahu"},{n:"Kualoa Ranch",q:"kualoaranch"},{n:"Cascadas de Manoa",q:"manoafalls"},{n:"Centro Polinesio",q:"polynesian,center"},{n:"Valle de Waimea",q:"waimeavalley"},{n:"Sunset Beach",q:"sunsetbeach,hawaii"}]
+    },
+    { 
+      id: 24, ciudad: "Praga", pais: "Chequia", tags: ["cultura", "arquitectura", "fiesta", "mochilero"], desc: "Un museo mágico al aire libre con precios ajustados y castillos medievales altísimos.", timezone: "Europe/Prague", moneda: "CZK (Corona)", climaBase: 9,
+      galeria: [{n:"Puente de Carlos",q:"charlesbridge"},{n:"Castillo de Praga",q:"praguecastle"},{n:"Plaza de la Ciudad Vieja",q:"oldtownsquare,prague"},{n:"Reloj Astronómico",q:"astronomicalclock,prague"},{n:"Catedral de San Vito",q:"stvitus,cathedral"},{n:"Muro de John Lennon",q:"lennonwall"},{n:"Casa Danzante",q:"dancinghouse"},{n:"Barrio Judío (Josefov)",q:"josefov,prague"},{n:"Monte Petřín",q:"petrin,hill"},{n:"Río Moldava",q:"vltava,river"}]
     }
 ];
 
@@ -921,31 +987,77 @@ window.recomendarDestinoGuia = function(interesStr, btnElement) {
     }
 
     const panel = document.getElementById('guiaPanelRecomendado');
-    const titulo = document.getElementById('guiaRecomendacionTitulo');
-    const desc = document.getElementById('guiaRecomendacionDesc');
-    if (!panel || !titulo || !desc) return;
+    const grid = document.getElementById('guiaResultadosGrid');
+    const countText = document.getElementById('guiaRecomendacionCounter');
+    if (!panel || !grid) return;
 
     if (_guiaInteresesSeleccionados.length === 0) { panel.classList.add('d-none'); return; }
 
-    let matches = TODOS_DESTINOS_DB.map(d => {
+    let allScored = TODOS_DESTINOS_DB.map(d => {
         let sc = 0;
-        d.tags.forEach(t => { if (_guiaInteresesSeleccionados.includes(t)) sc++; });
-        return { ...d, score: sc };
-    }).filter(d => d.score > 0).sort((a, b) => b.score - a.score);
+        let pMatch = [];
+        d.tags.forEach(t => { 
+            if (_guiaInteresesSeleccionados.includes(t)) { sc++; pMatch.push(t); } 
+        });
+        return { ...d, score: sc, pMatch: pMatch };
+    }).sort((a, b) => b.score - a.score);
 
-    if (matches.length === 0) matches = TODOS_DESTINOS_DB.slice(0, 3);
+    // Mínimo de 7 resultados, max 15
+    let matches = allScored.filter(d => d.score > 0);
+    if (matches.length < 7) {
+        matches = allScored.slice(0, 7);
+    } else {
+        if(matches.length > 15) matches = matches.slice(0, 15);
+    }
 
-    _guiaDestinoSeleccionado = matches[0];
-    titulo.innerText = `${matches[0].ciudad}, ${matches[0].pais}`;
-    desc.innerText = matches[0].desc;
+    if (countText) countText.innerText = `(${matches.length} COINCIDENCIAS)`;
+
+    let htmlInjection = '';
+    matches.forEach((d) => {
+        let percent = (d.score / _guiaInteresesSeleccionados.length) * 100;
+        if(percent > 100) percent = 100;
+        if(d.score === 0) percent = 10;
+        let bgScore = percent >= 80 ? 'bg-success' : percent >= 45 ? 'bg-warning text-dark' : 'bg-dark text-white opacity-75';
+        
+        let matchTags = d.pMatch && d.pMatch.length > 0 ? 
+            `<small class="text-danger fw-black text-uppercase d-block mb-2" style="font-size: 10px; letter-spacing:1px;"><i class="bi bi-crosshair me-1"></i> TAGS: ${d.pMatch.join(', ')}</small>` 
+            : `<small class="text-secondary fw-bold text-uppercase d-block mb-2" style="font-size: 10px; letter-spacing:1px;">RECOMENDACIÓN ALTERNATIVA</small>`;
+
+        htmlInjection += `
+        <div class="col-10 col-md-5 col-lg-3 d-flex" style="min-width: 260px;">
+            <div class="card border-dark border-3 rounded-0 shadow-none d-flex flex-column w-100 position-relative hover-lift overflow-hidden" 
+                 style="box-shadow: 4px 4px 0 0 #000 !important; cursor:pointer;" 
+                 onclick="window.enviarElegidoAlBuscador('${d.ciudad}, ${d.pais}')">
+                
+                <div class="position-absolute top-0 end-0 m-2 z-3 text-end" style="pointer-events: none;">
+                    <span class="badge ${bgScore} border border-dark border-2 rounded-0 shadow-sm px-2 py-1">${percent.toFixed(0)}% <br>MATCH</span>
+                </div>
+                
+                <div class="card-body bg-light p-3 pb-2 flex-grow-1">
+                    <h5 class="fw-black text-dark text-uppercase tracking-wider mb-1"><i class="bi bi-geo-alt-fill text-danger me-1"></i> ${d.ciudad}</h5>
+                    <p class="small fw-bold text-muted mb-2 text-uppercase">${d.pais}</p>
+                    ${matchTags}
+                    <p class="text-dark lh-sm border-start border-4 border-dark ps-2 mb-0 fw-semibold" style="font-size:12px; opacity: 0.85;">${d.desc}</p>
+                </div>
+                
+                <div class="mt-auto border-top border-dark border-3 mt-1">
+                    <button class="btn btn-dark w-100 rounded-0 border-0 fw-black text-uppercase text-white py-2 shadow-none hover-yellow transition-all" style="font-size: 11px; letter-spacing: 1px;">
+                        Ver Guía Visual <i class="bi bi-arrow-right ms-1"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+        `;
+    });
+
+    grid.innerHTML = htmlInjection;
     panel.classList.remove('d-none');
 }
 
-window.enviarDestinoAlBuscador = function() {
-    if (!_guiaDestinoSeleccionado) return;
+window.enviarElegidoAlBuscador = function(destinoStr) {
     const input = document.getElementById('destinosDropdown');
     if (input) {
-        input.value = _guiaDestinoSeleccionado.ciudad;
+        input.value = destinoStr;
         input.dispatchEvent(new Event('input'));
         input.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
@@ -965,8 +1077,8 @@ window.mostrarDetallesDestino = function(id) {
             let active = i === 0 ? 'active' : '';
             galeriaHtml += `
                 <div class="carousel-item ${active}">
-                    <img src="https://loremflickr.com/800/400/${foto.q}/all?random=${Math.random().toFixed(4)}" class="d-block w-100" style="height: 350px; object-fit: cover; background-color: #eee;" alt="${foto.n}">
-                    <div class="carousel-caption d-none d-md-block p-0 p-2" style="background: rgba(0,0,0,0.7); backdrop-filter: blur(2px); bottom: 20px; border: 2px solid white;">
+                    <img id="img_dest_${d.id}_${i}" src="data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22800%22%20height%3D%22400%22%20viewBox%3D%220%200%20800%20400%22%20preserveAspectRatio%3D%22none%22%3E%3Crect%20width%3D%22800%22%20height%3D%22400%22%20fill%3D%22%23222%22%2F%3E%3Ctext%20x%3D%2250%25%22%20y%3D%2250%25%22%20font-family%3D%22monospace%22%20font-size%3D%2224%22%20fill%3D%22%23777%22%20dominant-baseline%3D%22middle%22%20text-anchor%3D%22middle%22%3ECARGANDO%20FOTO...%3C%2Ftext%3E%3C%2Fsvg%3E" class="d-block w-100" style="height: 350px; object-fit: cover; background-color: #111;" alt="${foto.n}">
+                    <div class="carousel-caption d-none d-md-block p-0 p-2" style="background: rgba(0,0,0,0.7); backdrop-filter: blur(2px); bottom: 20px; border: 2px solid white; pointer-events:none;">
                         <h5 class="fw-black mb-0 text-uppercase tracking-wider fs-5">${foto.n}</h5>
                         <p class="small mb-0 fw-bold">${i+1} / 10</p>
                     </div>
@@ -974,6 +1086,24 @@ window.mostrarDetallesDestino = function(id) {
             `;
         });
         galeriaEl.innerHTML = galeriaHtml;
+
+        // Fetch asíncrono individual desde Wikimedia Commons para cada punto de interés real
+        d.galeria.forEach((foto, i) => {
+            const qStr = `${foto.n} ${d.ciudad} landmark`;
+            const wikiUrl = `https://commons.wikimedia.org/w/api.php?action=query&generator=search&gsrsearch=${encodeURIComponent(qStr)}&gsrnamespace=6&gsrlimit=1&prop=imageinfo&iiprop=url&format=json&origin=*`;
+            
+            fetch(wikiUrl)
+                .then(r => r.json())
+                .then(data => {
+                    let pages = data.query ? data.query.pages : {};
+                    let urls = Object.values(pages).map(p => p.imageinfo && p.imageinfo.length > 0 ? p.imageinfo[0].url : null).filter(u => u);
+                    if (urls.length > 0 && urls[0]) {
+                        let imgEl = document.getElementById(`img_dest_${d.id}_${i}`);
+                        if (imgEl) imgEl.src = urls[0];
+                    }
+                })
+                .catch(err => console.error("Error cargando image", err));
+        });
     }
 
     document.getElementById('modalDestinoDesc').innerText = d.desc;

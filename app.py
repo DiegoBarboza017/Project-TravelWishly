@@ -2,7 +2,12 @@
 TravelWishly - Lógica principal del servidor web (Flask)
 Estructura según lineamientos de calidad para mantenibilidad (ISO/IEC 25010)
 """
+
+from dotenv import load_dotenv
 import os
+
+load_dotenv()  # <--- Esta línea es la que hace la magia
+
 import uuid
 import requests
 from flask import Flask, render_template, request, redirect, url_for, flash, session
@@ -32,9 +37,9 @@ def create_app():
     app.config['MAIL_SERVER'] = 'smtp.gmail.com'
     app.config['MAIL_PORT'] = 587
     app.config['MAIL_USE_TLS'] = True
-    app.config['MAIL_USERNAME'] = 'travelwishly.bot@gmail.com'
-    app.config['MAIL_PASSWORD'] = 'crdudnuprbwngito'
-    app.config['MAIL_DEFAULT_SENDER'] = 'travelwishly.bot@gmail.com'
+    app.config['MAIL_USERNAME'] = os.environ.get('MAIL_USERNAME', 'travelwishly.bot@gmail.com')
+    app.config['MAIL_PASSWORD'] = os.environ.get('MAIL_PASSWORD')
+    app.config['MAIL_DEFAULT_SENDER'] = os.environ.get('MAIL_USERNAME', 'travelwishly.bot@gmail.com')
     mail = Mail(app)
 
     # ============================================================
@@ -99,7 +104,7 @@ def create_app():
 
     # Use SQLite by default for easy local execution without needing PostgreSQL setup
   # Configuración para MySQL en la Nube (Clever Cloud)
-    app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://u6wvnic50rzyhxn1:tjsmM6Y9O0ZLfTfnU49M@buatnltezoxagpbswdbx-mysql.services.clever-cloud.com:3306/buatnltezoxagpbswdbx'
+    app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///instance/travelwishly.db')
 
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
@@ -518,9 +523,56 @@ def create_app():
         if not ruta:
             return jsonify({'success': False, 'message': 'Ruta no encontrada o acceso denegado'}), 404
             
-        db.session.delete(ruta)
         db.session.commit()
         return jsonify({'success': True})
+
+    @app.route('/api/send_finance_summary', methods=['POST'])
+    def send_finance_summary():
+        if 'user_id' not in session:
+            return jsonify({'success': False, 'message': 'Debes iniciar sesión para recibir este correo.'}), 401
+            
+        data = request.get_json()
+        if not data:
+            return jsonify({'success': False, 'message': 'Datos inválidos.'}), 400
+            
+        usuario = User.query.get(session['user_id'])
+        if not usuario:
+            return jsonify({'success': False, 'message': 'Usuario no encontrado.'}), 404
+            
+        destino = data.get('destino', 'Tu próximo viaje')
+        monto = data.get('monto', 0)
+        enganche = data.get('enganche', 0)
+        tasa = data.get('tasa', 0)
+        meses = data.get('meses', 0)
+        cuota = data.get('cuota', 0)
+        total_pagar = data.get('total_pagar', 0)
+        intereses = data.get('intereses', 0)
+        
+        cuerpo = (
+            f"Hola {usuario.username} ✈️\n\n"
+            f"Aquí tienes el resumen de tu simulación de crédito para {destino}:\n\n"
+            f"💰 Costo Total: ${monto:,.2f} MXN\n"
+            f"💵 Enganche Pagado: ${enganche:,.2f} MXN\n"
+            f"📈 Tasa de Interés: {tasa}%\n"
+            f"📅 Plazo: {meses} meses\n"
+            f"➡️ Pago Mensual: ${cuota:,.2f} MXN\n"
+            f"🔥 Intereses Proyectados: ${intereses:,.2f} MXN\n"
+            f"💳 Gran Total a Pagar: ${total_pagar:,.2f} MXN\n\n"
+            f"Sigue planificando tu aventura con nosotros en TravelWishly 🌍\n\n"
+            f"— El equipo de TravelWishly"
+        )
+        
+        try:
+            msg = Message(
+                subject=f"📊 Resumen de Financiamiento para {destino} — TravelWishly",
+                recipients=[usuario.email],
+                body=cuerpo
+            )
+            mail.send(msg)
+            return jsonify({'success': True, 'message': 'Resumen enviado exitosamente a tu correo.'})
+        except Exception as e:
+            print(f"[FINANCE_SUMMARY] Error enviando correo: {e}")
+            return jsonify({'success': False, 'message': 'Hubo un problema al enviar el correo.'}), 500
 
     # ============================================================
     # RUTAS API: PLANES DE AHORRO CON RECORDATORIOS POR EMAIL
@@ -715,6 +767,39 @@ def create_app():
         if 'user_id' in session and 'username' in session:
             return jsonify({'logged_in': True, 'username': session['username']})
         return jsonify({'logged_in': False})
+
+    # ===== IMAGE SEARCH PROXY ENDPOINT =====
+    _image_cache = {}
+
+    @app.route('/api/get_image')
+    def api_get_image():
+        query = request.args.get('query', '')
+        limit = int(request.args.get('limit', 1))
+        
+        if not query:
+            return jsonify({'urls': ['https://images.unsplash.com/photo-1503220317375-aaad61436b1b?w=800&q=80'] * limit})
+
+        cache_key = f"{query}_{limit}"
+        if cache_key in _image_cache:
+            return jsonify({'urls': _image_cache[cache_key]})
+
+        try:
+            from duckduckgo_search import DDGS
+            with DDGS() as ddgs:
+                results = list(ddgs.images(query, max_results=limit))
+                if results and len(results) > 0:
+                    urls = [img['image'] for img in results]
+                    # Fill if not enough
+                    while len(urls) < limit:
+                        urls.append(urls[0])
+                    _image_cache[cache_key] = urls
+                    return jsonify({'urls': urls})
+        except Exception as e:
+            print(f"[IMAGE SEARCH ERROR] {query}: {e}")
+
+        # Fallbacks genéricos
+        fb = 'https://images.unsplash.com/photo-1488646953014-c8cb2c610e75?w=800&q=80'
+        return jsonify({'urls': [fb] * limit})
 
     return app
 

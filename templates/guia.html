@@ -11,10 +11,10 @@
 
 <!-- Selector de Intereses — ¿No sabes a dónde ir? -->
 <div class="p-4 mb-4 bg-light border border-dark border-3" style="box-shadow: 6px 6px 0 0 #000;">
-    <h6 class="fw-black text-uppercase mb-3 border-bottom border-dark border-2 pb-2">
-        <i class="bi bi-compass-fill me-2"></i>¿No sabes a dónde viajar? Elige tus intereses
-    </h6>
-    <div class="d-flex flex-wrap gap-2 mb-3">
+    <h4 class="fw-black text-uppercase mb-4 border-bottom border-dark border-2 pb-3 text-center" style="font-size: 1.6rem; letter-spacing: 1px;">
+        <i class="bi bi-compass-fill me-2 text-danger"></i>¿No sabes a dónde viajar? Elige tus intereses
+    </h4>
+    <div class="d-flex flex-wrap justify-content-center gap-2 mb-3">
         <button class="btn btn-outline-dark fw-bold rounded-0 border-2 btn-interes"
             style="box-shadow: 2px 2px 0 0 #000;" onclick="recomendarDestinoGuia('fiesta', this)">
             🍹 Fiesta / Vida Nocturna
@@ -56,22 +56,14 @@
             🎒 Ruta de Mochilero
         </button>
     </div>
-    <!-- Panel de recomendación con botón de envío al buscador -->
-    <div id="guiaPanelRecomendado" class="d-none p-3 bg-white border border-dark border-2" style="box-shadow: 3px 3px 0 0 #000;">
-        <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
-            <div class="d-flex align-items-center gap-3">
-                <i class="bi bi-geo-alt-fill fs-3 text-danger"></i>
-                <div>
-                    <p class="text-muted fw-bold text-uppercase mb-0 small">Mejor coincidencia:</p>
-                    <h5 id="guiaRecomendacionTitulo" class="fw-black text-dark text-uppercase mb-0">—</h5>
-                    <p id="guiaRecomendacionDesc" class="small fw-bold text-muted mb-0">—</p>
-                </div>
-            </div>
-            <button class="btn btn-dark fw-black rounded-0 border-2 px-4 py-2 text-uppercase border-dark hover-lift"
-                    style="box-shadow: 3px 3px 0 0 rgba(0,0,0,0.4);"
-                    onclick="enviarDestinoAlBuscador()">
-                <i class="bi bi-search me-2"></i>Ver Guía de este Destino
-            </button>
+    <!-- Panel de recomendación con Grid Inteligente de mínimo 7 destinos -->
+    <div id="guiaPanelRecomendado" class="d-none mt-4 p-4 bg-white border border-dark border-3" style="box-shadow: 6px 6px 0 0 #000;">
+        <h6 class="fw-black text-dark text-uppercase tracking-wider mb-4 border-bottom border-dark border-2 pb-2">
+            <i class="bi bi-stars text-warning me-2"></i>Tus Destinos Ideales <span class="ms-1" id="guiaRecomendacionCounter"></span>
+        </h6>
+        <!-- Contenedor inyectado por JS -->
+        <div id="guiaResultadosGrid" class="row g-4 flex-nowrap overflow-auto pb-3" style="scroll-snap-type: x mandatory;">
+            <!-- Render tarjetas -->
         </div>
     </div>
 </div>

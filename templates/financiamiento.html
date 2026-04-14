@@ -32,7 +32,10 @@
         </h1>
         <p class="text-dark fw-bold text-uppercase small mb-0">¿No tienes el dinero completo? Calcula tu Plan B con crédito.</p>
     </div>
-    <div class="btn-toolbar mb-2 mb-md-0">
+    <div class="btn-toolbar mb-2 mb-md-0 d-flex gap-2">
+        <button type="button" id="btnEnviarResumen" class="btn btn-outline-primary fw-bold px-4 rounded-0 border-2 text-uppercase" style="box-shadow: 3px 3px 0 0 #000;" onclick="enviarResumenFinanciamiento()">
+            <i class="bi bi-envelope-paper-fill me-2"></i>Enviar a mi Correo
+        </button>
         <button type="button" id="btnExportarFinPDF" class="btn btn-dark fw-bold px-4 rounded-0 border-2 text-uppercase"
             style="box-shadow: 3px 3px 0 0 #555;" onclick="window.print()">
             <i class="bi bi-file-earmark-pdf-fill me-2"></i>Exportar PDF
@@ -194,8 +197,55 @@
             <i class="bi bi-credit-card text-dark mb-3" style="font-size: 5rem; opacity: 0.2;"></i>
             <p class="fw-black text-uppercase text-dark" style="opacity:0.3;">Ingresa los datos y calcula tu plan de pagos</p>
         </div>
-
+    </div> <!-- fin col-lg-7 -->
+</div> <!-- fin row -->
 </div><!-- fin finCaptureZone -->
+
+<div class="d-flex justify-content-end mt-4 mb-5">
+    <a href="{{ url_for('constructor') }}" class="btn btn-primary fw-black text-uppercase rounded-0 px-5 py-3 border-2 border-dark" style="box-shadow: 6px 6px 0 0 #000; font-size: 1.1rem;">
+        Continuar a Itinerario <i class="bi bi-arrow-right ms-2 fw-bold"></i>
+    </a>
 </div>
+
+<script>
+function enviarResumenFinanciamiento() {
+    const monto = parseFloat(document.getElementById('fMonto')?.value) || 0;
+    if (!monto) {
+        alert("⚠️ Por favor, ingresa los datos y calcula un crédito antes de enviártelo.");
+        return;
+    }
+    const enganche = parseFloat(document.getElementById('fEnganche')?.value) || 0;
+    const tasa = parseFloat(document.getElementById('fTasa')?.value) || 0;
+    const meses = document.getElementById('fMeses')?.value || 12;
+    
+    const parseCurrency = (id) => parseFloat(document.getElementById(id).innerText.replace(/[^0-9.-]+/g,"")) || 0;
+    const cuota = parseCurrency('kpiMensual');
+    const total_pagar = parseCurrency('kpiTotal');
+    const intereses = parseCurrency('kpiIntereses');
+    
+    // Obtenemos el destino inteligente
+    const destino = localStorage.getItem('tw_last_destination') || 'tu viaje';
+    
+    const btn = document.getElementById('btnEnviarResumen');
+    const originalHtml = btn.innerHTML;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Enviando...';
+    btn.disabled = true;
+    
+    fetch('/api/send_finance_summary', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            destino, monto, enganche, tasa, meses, cuota, total_pagar, intereses
+        })
+    }).then(r => r.json()).then(data => {
+        alert(data.success ? `✅ ${data.message}` : `❌ ${data.message}`);
+    }).catch(err => {
+        alert("❌ Ocurrió un error al intentar enviar el correo. Revisa tu conexión a internet.");
+    }).finally(() => {
+        btn.innerHTML = originalHtml;
+        btn.disabled = false;
+    });
+}
+</script>
 
 {% endblock %}
