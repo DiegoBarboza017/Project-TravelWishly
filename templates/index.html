@@ -89,6 +89,149 @@
 
 <hr class="border-dark border-3 opacity-100 my-5">
 
+<!-- ¿No sabes a dónde viajar? Selector de Intereses — HOME -->
+<div class="p-4 mb-4 bg-light border border-dark border-3" style="box-shadow: 6px 6px 0 0 #000;">
+    <h4 class="fw-black text-uppercase mb-4 border-bottom border-dark border-2 pb-3 text-center" style="font-size: 1.6rem; letter-spacing: 1px;">
+        <i class="bi bi-compass-fill me-2 text-danger"></i>¿No sabes a dónde viajar? Elige tus intereses
+    </h4>
+    <div class="d-flex flex-wrap justify-content-center gap-2 mb-3">
+        <button class="btn btn-outline-dark fw-bold rounded-0 border-2 btn-interes-home"
+            style="box-shadow: 2px 2px 0 0 #000;" onclick="recomendarDestinoHome('fiesta', this)">
+            🍹 Fiesta / Vida Nocturna
+        </button>
+        <button class="btn btn-outline-dark fw-bold rounded-0 border-2 btn-interes-home"
+            style="box-shadow: 2px 2px 0 0 #000;" onclick="recomendarDestinoHome('cultura', this)">
+            🏛️ Museos / Historia
+        </button>
+        <button class="btn btn-outline-dark fw-bold rounded-0 border-2 btn-interes-home"
+            style="box-shadow: 2px 2px 0 0 #000;" onclick="recomendarDestinoHome('naturaleza', this)">
+            🌲 Naturaleza / Aventura
+        </button>
+        <button class="btn btn-outline-dark fw-bold rounded-0 border-2 btn-interes-home"
+            style="box-shadow: 2px 2px 0 0 #000;" onclick="recomendarDestinoHome('relax', this)">
+            ☀️ Relajación / Playa
+        </button>
+        <button class="btn btn-outline-dark fw-bold rounded-0 border-2 btn-interes-home"
+            style="box-shadow: 2px 2px 0 0 #000;" onclick="recomendarDestinoHome('gastronomia', this)">
+            🌮 Gastronomía Local
+        </button>
+        <button class="btn btn-outline-dark fw-bold rounded-0 border-2 btn-interes-home"
+            style="box-shadow: 2px 2px 0 0 #000;" onclick="recomendarDestinoHome('compras', this)">
+            🛍️ Compras y Moda
+        </button>
+        <button class="btn btn-outline-dark fw-bold rounded-0 border-2 btn-interes-home"
+            style="box-shadow: 2px 2px 0 0 #000;" onclick="recomendarDestinoHome('nieve', this)">
+            🏔️ Nieve e Invierno
+        </button>
+        <button class="btn btn-outline-dark fw-bold rounded-0 border-2 btn-interes-home"
+            style="box-shadow: 2px 2px 0 0 #000;" onclick="recomendarDestinoHome('arquitectura', this)">
+            🏰 Arquitectura &amp; Arte
+        </button>
+        <button class="btn btn-outline-dark fw-bold rounded-0 border-2 btn-interes-home"
+            style="box-shadow: 2px 2px 0 0 #000;" onclick="recomendarDestinoHome('espiritual', this)">
+            🧘 Retiro Espiritual
+        </button>
+        <button class="btn btn-outline-dark fw-bold rounded-0 border-2 btn-interes-home"
+            style="box-shadow: 2px 2px 0 0 #000;" onclick="recomendarDestinoHome('mochilero', this)">
+            🎒 Ruta de Mochilero
+        </button>
+    </div>
+
+    <!-- Panel de resultados — inyectado por JS -->
+    <div id="homePanelRecomendado" class="d-none mt-4 p-4 bg-white border border-dark border-3" style="box-shadow: 6px 6px 0 0 #000;">
+        <h6 class="fw-black text-dark text-uppercase tracking-wider mb-4 border-bottom border-dark border-2 pb-2">
+            <i class="bi bi-stars text-warning me-2"></i>Tus Destinos Ideales <span class="ms-1" id="homeRecomendacionCounter"></span>
+        </h6>
+        <div id="homeResultadosGrid" class="row g-4 flex-nowrap overflow-auto pb-3" style="scroll-snap-type: x mandatory;">
+            <!-- Tarjetas inyectadas por JS -->
+        </div>
+        <p class="small fw-bold text-center text-muted mt-3 mb-0">
+            <i class="bi bi-arrow-right-circle me-1"></i>Haz clic en cualquier destino para explorar su guía completa.
+        </p>
+    </div>
+</div>
+
+<script>
+// ===== Selector de Intereses en el HOME =====
+// Reutiliza TODOS_DESTINOS_DB de app.js (cargado en base.html)
+(function() {
+    let _homeIntereses = [];
+
+    window.recomendarDestinoHome = function(interes, btn) {
+        const idx = _homeIntereses.indexOf(interes);
+        if (idx > -1) {
+            _homeIntereses.splice(idx, 1);
+            if (btn) { btn.classList.remove('btn-dark', 'text-white'); btn.classList.add('btn-outline-dark'); }
+        } else {
+            _homeIntereses.push(interes);
+            if (btn) { btn.classList.remove('btn-outline-dark'); btn.classList.add('btn-dark', 'text-white'); }
+        }
+
+        const panel = document.getElementById('homePanelRecomendado');
+        const grid  = document.getElementById('homeResultadosGrid');
+        const count = document.getElementById('homeRecomendacionCounter');
+        if (!panel || !grid) return;
+
+        if (_homeIntereses.length === 0) { panel.classList.add('d-none'); return; }
+
+        // Esperar a que TODOS_DESTINOS_DB esté disponible (cargado por app.js)
+        function _render() {
+            if (typeof TODOS_DESTINOS_DB === 'undefined') { setTimeout(_render, 100); return; }
+
+            let scored = TODOS_DESTINOS_DB.map(d => {
+                let sc = 0, pMatch = [];
+                d.tags.forEach(t => { if (_homeIntereses.includes(t)) { sc++; pMatch.push(t); } });
+                return { ...d, score: sc, pMatch };
+            }).sort((a, b) => b.score - a.score);
+
+            let matches = scored.filter(d => d.score > 0);
+            if (matches.length < 7) matches = scored.slice(0, 7);
+            else if (matches.length > 15) matches = matches.slice(0, 15);
+
+            if (count) count.innerText = `(${matches.length} COINCIDENCIAS)`;
+
+            let html = '';
+            matches.forEach(d => {
+                let pct = Math.min(100, (d.score / _homeIntereses.length) * 100);
+                if (d.score === 0) pct = 10;
+                let bgScore = pct >= 80 ? 'bg-success' : pct >= 45 ? 'bg-warning text-dark' : 'bg-dark text-white opacity-75';
+                let matchTags = d.pMatch && d.pMatch.length > 0
+                    ? `<small class="text-danger fw-black text-uppercase d-block mb-2" style="font-size:10px;letter-spacing:1px;"><i class="bi bi-crosshair me-1"></i>TAGS: ${d.pMatch.join(', ')}</small>`
+                    : `<small class="text-secondary fw-bold text-uppercase d-block mb-2" style="font-size:10px;">RECOMENDACIÓN ALTERNATIVA</small>`;
+
+                html += `
+                <div class="col-10 col-md-5 col-lg-3 d-flex" style="min-width:260px;">
+                    <div class="card border-dark border-3 rounded-0 shadow-none d-flex flex-column w-100 position-relative hover-lift overflow-hidden"
+                         style="box-shadow:4px 4px 0 0 #000 !important; cursor:pointer;"
+                         onclick="window.location.href='/guia?destino=${encodeURIComponent(d.ciudad + ', ' + d.pais)}'">
+                        <div class="position-absolute top-0 end-0 m-2 z-3 text-end" style="pointer-events:none;">
+                            <span class="badge ${bgScore} border border-dark border-2 rounded-0 shadow-sm px-2 py-1">${pct.toFixed(0)}%<br>MATCH</span>
+                        </div>
+                        <div class="card-body bg-light p-3 pb-2 flex-grow-1">
+                            <h5 class="fw-black text-dark text-uppercase tracking-wider mb-1"><i class="bi bi-geo-alt-fill text-danger me-1"></i>${d.ciudad}</h5>
+                            <p class="small fw-bold text-muted mb-2 text-uppercase">${d.pais}</p>
+                            ${matchTags}
+                            <p class="text-dark lh-sm border-start border-4 border-dark ps-2 mb-0 fw-semibold" style="font-size:12px;opacity:0.85;">${d.desc}</p>
+                        </div>
+                        <div class="mt-auto border-top border-dark border-3">
+                            <div class="btn btn-dark w-100 rounded-0 border-0 fw-black text-uppercase text-white py-2 shadow-none" style="font-size:11px;letter-spacing:1px;">
+                                Ver Guía Completa <i class="bi bi-arrow-right ms-1"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>`;
+            });
+
+            grid.innerHTML = html;
+            panel.classList.remove('d-none');
+        }
+        _render();
+    };
+})();
+</script>
+
+<hr class="border-dark border-3 opacity-100 my-5">
+
 <!-- Features Rápidas -->
 <div class="row g-5 py-5 row-cols-1 row-cols-lg-3 text-center">
     <div class="col-md-4 mb-4 mb-md-0">

@@ -11,6 +11,80 @@
 .choices__input { border-bottom: 2px solid #000 !important; font-weight: 700; background: #f8f9fa !important; width: 100% !important; }
 .choices__list--dropdown .choices__item--selectable.is-highlighted { background: #000 !important; color: #fff; }
 .choices[data-type*=select-one] .choices__inner { padding-bottom: 2px !important; }
+
+/* Kit de Supervivencia — botones en amarillo suave en lugar de negro */
+#survivalKitGrid .btn-outline-dark:hover,
+#survivalKitGrid .btn-outline-dark:focus,
+#survivalKitGrid .btn-outline-dark:active,
+#survivalKitGrid .btn-outline-dark.active {
+    background-color: #fff9c4 !important;
+    border-color: #000 !important;
+    color: #000 !important;
+    box-shadow: 2px 2px 0 0 #bba800 !important;
+}
+
+/* Barra de búsqueda interna del mapa */
+#mapSearchBox {
+    position: absolute;
+    top: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 1000;
+    width: calc(100% - 80px);
+    max-width: 440px;
+    display: flex;
+    gap: 0;
+    filter: drop-shadow(3px 3px 0px rgba(0,0,0,0.55));
+}
+#mapSearchInput {
+    flex: 1;
+    border: 2px solid #000;
+    border-right: none;
+    border-radius: 0;
+    padding: 7px 12px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    background: rgba(255,255,255,0.97);
+    outline: none;
+}
+#mapSearchInput::placeholder { color: #777; font-weight: 600; }
+#mapSearchBtn {
+    border: 2px solid #000;
+    border-radius: 0;
+    background: #000;
+    color: #fff;
+    padding: 7px 14px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    transition: background 0.2s;
+}
+#mapSearchBtn:hover { background: #ff3b3b; border-color: #ff3b3b; }
+
+/* Autocomplete dropdown del mapa */
+#mapSearchSuggestions {
+    position: absolute;
+    top: calc(100% + 2px);
+    left: 0;
+    right: 0;
+    background: #fff;
+    border: 2px solid #000;
+    border-top: none;
+    z-index: 1001;
+    max-height: 200px;
+    overflow-y: auto;
+    display: none;
+}
+#mapSearchSuggestions .sugg-item {
+    padding: 8px 12px;
+    font-size: 0.78rem;
+    font-weight: 700;
+    cursor: pointer;
+    border-bottom: 1px solid #eee;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+}
+#mapSearchSuggestions .sugg-item:hover { background: #fff9c4; }
 </style>
 <!-- CSS para impresion/PDF limpio -->
 <style>
@@ -362,6 +436,18 @@
                 <h5 class="mb-0 fw-bold text-uppercase tracking-wider"><i class="bi bi-geo-alt-fill me-2 text-danger"></i>Mapa de Puntos Clave</h5>
             </div>
             <div class="card-body p-0 bg-light" style="min-height: 300px; position: relative;">
+                <!-- Barra de búsqueda interna del mapa -->
+                <div id="mapSearchBox">
+                    <div style="position:relative; flex:1; display:flex;">
+                        <input id="mapSearchInput" type="text" placeholder="Buscar zona, calle o lugar..." autocomplete="off"
+                               oninput="window.onMapSearchInput(this.value)"
+                               onkeydown="if(event.key==='Enter') window.ejecutarMapSearch()">
+                        <div id="mapSearchSuggestions"></div>
+                    </div>
+                    <button id="mapSearchBtn" onclick="window.ejecutarMapSearch()" title="Buscar">
+                        <i class="bi bi-search"></i>
+                    </button>
+                </div>
                 <div id="itineraryMap" style="height: 100%; width: 100%; min-height: 350px;"></div>
                 <div id="mapOverlayText" class="position-absolute top-50 start-50 translate-middle text-center w-100 px-3" style="z-index: 1000; pointer-events:none;">
                     <p class="text-dark fw-black text-uppercase border border-dark border-3 bg-white d-inline-block px-4 py-2" style="box-shadow: 4px 4px 0 0 #000;">

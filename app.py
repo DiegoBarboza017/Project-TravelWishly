@@ -371,7 +371,8 @@ def create_app():
     @app.route('/guia')
     def guia():
         """Guía Turística: Visualización de información cultural inteligente"""
-        destino_inicial = request.args.get('q', '').strip()
+        # Acepta ?destino= (desde inicio/home) o ?q= (legacy desde buscador)
+        destino_inicial = request.args.get('destino', '').strip() or request.args.get('q', '').strip()
         return render_template('guia.html', destino_inicial=destino_inicial)
 
     @app.route('/historial')

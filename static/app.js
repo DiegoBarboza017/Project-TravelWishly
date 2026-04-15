@@ -1148,6 +1148,126 @@ window.pintarMapaLeaflet = async function(destinoString) {
     }
 };
 
+// ============================================================
+//  BÚSQUEDA INTERNA DEL MAPA (Nominatim geocode con debounce)
+// ============================================================
+(function() {
+    let _searchDebounceTimer = null;
+    let _searchMarker = null;           // marcador extra para búsquedas manuales
+    let _lastViewBbox = null;           // bbox del destino principal {minLat,maxLat,minLon,maxLon}
+
+    // Guarda la bbox del mapa principal cada vez que se mueve
+    function _updateBbox() {
+        if (!mapInstance) return;
+        const b = mapInstance.getBounds();
+        _lastViewBbox = {
+            minLat: b.getSouth(), maxLat: b.getNorth(),
+            minLon: b.getWest(),  maxLon: b.getEast()
+        };
+    }
+
+    // Llama a Nominatim con el texto escrito y la bbox del destino actual
+    async function _fetchSuggestions(query) {
+        if (!query || query.length < 3) return [];
+        let url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=6&addressdetails=0`;
+        if (_lastViewBbox) {
+            // viewbox restringe resultados al país/área visible
+            url += `&viewbox=${_lastViewBbox.minLon},${_lastViewBbox.maxLat},${_lastViewBbox.maxLon},${_lastViewBbox.minLat}&bounded=1`;
+        }
+        try {
+            const r = await fetch(url, { headers: { 'Accept-Language': 'es' } });
+            const data = await r.json();
+            return data;
+        } catch(e) { return []; }
+    }
+
+    function _showSuggestions(items) {
+        const box = document.getElementById('mapSearchSuggestions');
+        if (!box) return;
+        if (!items || items.length === 0) { box.style.display = 'none'; return; }
+        box.innerHTML = items.map((item, i) =>
+            `<div class="sugg-item" data-lat="${item.lat}" data-lon="${item.lon}" data-idx="${i}">
+                ${item.display_name}
+            </div>`
+        ).join('');
+        box.style.display = 'block';
+
+        box.querySelectorAll('.sugg-item').forEach(el => {
+            el.addEventListener('click', () => {
+                const lat = parseFloat(el.dataset.lat);
+                const lon = parseFloat(el.dataset.lon);
+                const name = el.textContent.trim();
+                _flyTo(lat, lon, name);
+                document.getElementById('mapSearchInput').value = name;
+                box.style.display = 'none';
+            });
+        });
+    }
+
+    function _flyTo(lat, lon, label) {
+        if (!mapInstance) return;
+        mapInstance.flyTo([lat, lon], 16, { animate: true, duration: 1.2 });
+
+        // Quitar marcador anterior de búsqueda
+        if (_searchMarker) { mapInstance.removeLayer(_searchMarker); _searchMarker = null; }
+
+        // Pin rojo de búsqueda
+        const redIcon = L.divIcon({
+            className: '',
+            html: '<div style="width:14px;height:14px;background:#ff3b3b;border:3px solid #000;border-radius:50%;box-shadow:2px 2px 0 #000;"></div>',
+            iconSize: [14, 14], iconAnchor: [7, 7]
+        });
+        _searchMarker = L.marker([lat, lon], { icon: redIcon })
+            .addTo(mapInstance)
+            .bindPopup(`<b style="font-size:0.8rem;text-transform:uppercase;">${label}</b>`, { maxWidth: 260 })
+            .openPopup();
+    }
+
+    // Input con debounce
+    window.onMapSearchInput = function(val) {
+        clearTimeout(_searchDebounceTimer);
+        const box = document.getElementById('mapSearchSuggestions');
+        if (!val || val.length < 3) { if (box) box.style.display = 'none'; return; }
+        _searchDebounceTimer = setTimeout(async () => {
+            const results = await _fetchSuggestions(val);
+            _showSuggestions(results);
+        }, 380);
+    };
+
+    // Búsqueda al presionar Enter o el botón
+    window.ejecutarMapSearch = async function() {
+        const input = document.getElementById('mapSearchInput');
+        if (!input || !input.value.trim()) return;
+        const results = await _fetchSuggestions(input.value.trim());
+        if (results && results.length > 0) {
+            _flyTo(parseFloat(results[0].lat), parseFloat(results[0].lon), results[0].display_name);
+            const box = document.getElementById('mapSearchSuggestions');
+            if (box) box.style.display = 'none';
+        }
+    };
+
+    // Cerrar dropdown al hacer click fuera
+    document.addEventListener('click', (e) => {
+        const box = document.getElementById('mapSearchSuggestions');
+        const wrap = document.getElementById('mapSearchBox');
+        if (box && wrap && !wrap.contains(e.target)) box.style.display = 'none';
+    });
+
+    // Actualizar bbox cada vez que se mueva el mapa (se inicializa tras pintarMapaLeaflet)
+    const _origPintar = window.pintarMapaLeaflet;
+    window.pintarMapaLeaflet = async function(destinoString) {
+        await _origPintar(destinoString);
+        // Limpiar input/marcador anterior al cambiar destino principal
+        const inp = document.getElementById('mapSearchInput');
+        if (inp) inp.value = '';
+        if (_searchMarker && mapInstance) { mapInstance.removeLayer(_searchMarker); _searchMarker = null; }
+        if (mapInstance) {
+            _updateBbox();
+            mapInstance.on('moveend', _updateBbox);
+        }
+    };
+})();
+
 window.convertCurrency = function() {
     const fromSelect = document.getElementById('fromCurrency');
     const toSelect = document.getElementById('toCurrency');
