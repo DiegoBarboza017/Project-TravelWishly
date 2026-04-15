@@ -237,14 +237,47 @@ function calcularDistribucion() {
 
     // Guardar estado de la proyección para el modal de recordatorios de ahorro
     const destinoEl2 = document.getElementById('destinoSugerido');
-    if (destinoEl2) localStorage.setItem('tw_last_destination', destinoEl2.value.trim());
+    const destinoString = destinoEl2 ? destinoEl2.value.trim() : '';
+    if (destinoEl2) localStorage.setItem('tw_last_destination', destinoString);
     window._lastSavingsCalc = {
-        destination:    destinoEl2 ? destinoEl2.value.trim() : '',
+        destination:    destinoString,
         monthlyAmount:  parseFloat(capacidadMonetariaAhorro.toFixed(2)),
         totalMonths:    mesesParaAhorrarAprox,
         currency:       divisaSelec,
         currencySymbol: conversion.simbolo
     };
+
+    // Actualizar Módulos de Survival Kit y Mapa
+    if (window.generarKitVocabulario) window.generarKitVocabulario(destinoString);
+    if (window.pintarMapaLeaflet) window.pintarMapaLeaflet(destinoString);
+    
+    // Auto-actualizar Divisa base del Conversor Local
+    const fromSelect = document.getElementById('fromCurrency');
+    const toSelect = document.getElementById('toCurrency');
+    if (fromSelect && toSelect) {
+        // En base a la moneda del presupuesto meta
+        fromSelect.value = divisaSelec;
+        // Asignar divisa destino en base a la DB (extraer país)
+        let monedaTargetStr = "USD"; 
+        if (typeof TODOS_DESTINOS_DB !== 'undefined') {
+            let targetCtry = destinoString.includes(',') ? destinoString.split(',')[1].trim() : destinoString;
+            const bdDestino = TODOS_DESTINOS_DB.find(db => db.pais === targetCtry || db.ciudad === targetCtry);
+            if(bdDestino && bdDestino.moneda) {
+                monedaTargetStr = bdDestino.moneda.split(' ')[0].trim(); // "JPY (Yen)" -> "JPY"
+            }
+        }
+        
+        // Agregar option dinamicamente si no existe
+        let opts = Array.from(toSelect.options).map(o => o.value);
+        if(!opts.includes(monedaTargetStr)) {
+            let nOpt = document.createElement('option');
+            nOpt.value = monedaTargetStr;
+            nOpt.text = monedaTargetStr;
+            toSelect.add(nOpt);
+        }
+        toSelect.value = monedaTargetStr;
+        if(window.convertCurrency) window.convertCurrency();
+    }
 
     // Activar Botón de Flujo Continuo a Itinerario
     const btnFlujo = document.getElementById('btnContinuarItinerario');
@@ -620,7 +653,29 @@ window.cargarGuiaSegura = function cargarGuiaSegura() {
     // Inyección de Strings Base
     document.getElementById('panelTitulo').innerText = `${destinoObj.ciudad}, ${destinoObj.pais}`;
     document.getElementById('panelCultura').innerText = destinoObj.cultura;
-    document.getElementById('panelEvitar').innerText = destinoObj.zonasRojas;
+    
+    const panelEvitar = document.getElementById('panelEvitar');
+    if (panelEvitar) {
+        let rulesArr = [];
+        if (typeof ALERTA_CONDUCTA_DB !== 'undefined' && ALERTA_CONDUCTA_DB[destinoObj.pais]) {
+            rulesArr = ALERTA_CONDUCTA_DB[destinoObj.pais];
+        } else if (typeof ALERTA_CONDUCTA_DB !== 'undefined' && ALERTA_CONDUCTA_DB['Generico']) {
+            rulesArr = ALERTA_CONDUCTA_DB['Generico'];
+            // Injecting the specific red zones as tip #1
+            rulesArr[0] = destinoObj.zonasRojas || rulesArr[0];
+        } else {
+            rulesArr = [destinoObj.zonasRojas, "Respeta las normas.", "Revisa voltaje."];
+        }
+
+        let htmlRules = '';
+        rulesArr.forEach(tip => {
+            htmlRules += `<li class="list-group-item bg-dark text-white border-secondary d-flex align-items-start gap-2 py-3">
+                            <i class="bi bi-shield-exclamation text-warning mt-1"></i>
+                            <span>${tip}</span>
+                          </li>`;
+        });
+        panelEvitar.innerHTML = htmlRules;
+    }
 
     // Fetch Dinamico de Idiomas Mundiales (Primary, Secondary)
     const panelIdioma = document.getElementById('panelIdiomas');
@@ -806,6 +861,344 @@ function calcularMochila() {
         }, 150);
     }
 }
+
+
+const ALERTA_CONDUCTA_DB = {
+    "Japón": [
+        "Estrictamente prohibido hablar por teléfono en el transporte público.",
+        "Masticar chicle en público es mal visto y escupirlo conlleva fuertes multas.",
+        "No dejar propina en ningún establecimiento (es considerado un insulto).",
+        "Siempre quitarse los zapatos antes de entrar a un hogar o templo tradicional.",
+        "No clavar ni apuntar con los palillos al comer arroz.",
+        "Mantener silencio en espacios públicos y formarse ordenadamente en cualquier fila.",
+        "Está prohibido fumar en la calle fuera de las 'Smoking Areas' designadas.",
+        "Los tatuajes deben ser cubiertos al usar baños públicos (Onsen) o gimnasios.",
+        "No suenes tu nariz fuerte en público, usa el baño para ello.",
+        "Reverencia leve al agradecer o saludar, sin forzar apretones de mano."
+    ],
+    "Polinesia": [
+        "Aplica el sentido común: Bora Bora tiene riesgos estándar marítimos, atiende indicaciones de capitanía.",
+        "Masticar y pegar chicle está gravemente penalizado por daño a los arrecifes.",
+        "Prohibido llevarse coral, arena o fauna como 'souvenir' bajo riesgo cárcel.",
+        "No dar la espalda ni sentarte encima de altares marae (templos sagrados).",
+        "Saluda siempre con 'Ia orana', la cultura de cortesía oral es un mandato cívico.",
+        "La ropa de baño es exclusiva de la playa, no andes descamisado por pueblos.",
+        "Revisa el voltaje de carga (mayormente europeo estándar de 220V).",
+        "Aplica filtro solar solo que indique 'Reef-friendly' biodegradable.",
+        "Nunca toques ni persigas rayas o tiburones en excursiones marítimas.",
+        "Protege tu cámara u aparatos, el índice de humedad arruina lentes no sellados."
+    ],
+    "Francia": [
+        "Cuidado con los 'Pickpockets' (carteristas) alrededor del Louvre y Metro.",
+        "No alzar la voz en restaurantes ni pedir hielo extra; el ambiente es reservado.",
+        "Saluda siempre al entrar a una tienda con un 'Bonjour' cortés y directo.",
+        "El agua del grifo es gratis y potable, pídela como 'Une carafe d'eau'.",
+        "Evitar estafas de brazaletes de la amistad cerca a la basílica de Sacré-Cœur.",
+        "La cuenta incluye propina (Service Compris), pero dejar un 5% es bien visto.",
+        "Evita caminar comiendo por la calle rápidamente (la comida es de disfrute).",
+        "En escaleras mecánicas, siempre párate a la derecha y camina a la izquierda.",
+        "No pidas modificaciones excesivas a platos de la alta cocina (es desprecio al chef).",
+        "Resguardar pertenencias cerradas en cafés al aire libre en montmartre."
+    ],
+    "EE.UU.": [
+        "Es virtualmente OBLIGATORIO dejar propina (del 18% al 25% del total).",
+        "No abrir consumo de alcohol en las vías públicas o playas.",
+        "Masticar chicle y tronarlo de manera grosera en áreas silenciosas está mal visto.",
+        "Mantén una distancia de 1 metro al interactuar físicamente (burbuja personal).",
+        "No fumar ni vapear a menos de 5 metros de las entradas a recintos comerciales.",
+        "Portar siempre Pasaporte Digital o Físico (Las licencias de otro país no siempre sirven en bares).",
+        "Evitar usar lenguaje clasista u opinar sobre las agendas sociopolíticas externas.",
+        "Los precios marcados NO incluyen el Tax (impuesto); calcula un 8-10% extra siempre.",
+        "Pide el agua con bastante hielo si así lo deseas, esto allí es la norma vital.",
+        "Prohibido saltarse vallas o cruzar carriles (Jaywalking), puede llevar multas automáticas."
+    ],
+    "México": [
+        "Precaución de carteristas en el metro o zócalos concurridos.",
+        "El chile (picante) puede no parecer fuerte para los locales, pero prueba con cuidado.",
+        "No bebas bajo ninguna circunstancia agua directo del grifo.",
+        "En mercados masivos negocia siempre los precios y cuida tus pertenencias de bolsillo.",
+        "Existen multas de cultura cívica severas (e incluso detenciones) por insultar la bandera.",
+        "La propina típica oscila amablemente entre el 10% y el 15%.",
+        "Procura viajar por carreteras de peaje ('de cuota') durante el día por tu seguridad.",
+        "Lleva siempre algo de efectivo, el pago con tarjeta en locales pequeños falla mucho.",
+        "Regla de cortesía base: Siempre responde a un 'Gracias' con un 'De nada'.",
+        "Revisa bien los convertidores eléctricos si viajas desde Europa hacia México (110V)."
+    ],
+    "Italia": [
+        "Sentido común en Roma y Venecia: Ojo con carteristas en atracciones fuertes.",
+        "Tirar basura o sentarse en fuentes históricas o escalinatas (Ej. Piazza di Spagna) genera fuertes multas.",
+        "NO ordenar Capuccino después de las 11:00 am (es una falta cultural severa).",
+        "No exigir modificaciones estrictas a las recetas tradicionales ni pedir Ketchup para la pasta.",
+        "Los boletos de transporte público deben ser 'Validados' en la máquina amarilla antes de subir.",
+        "Zonas estrictamente peatonales (ZTL) prohiben la entrada libre a carros rentados.",
+        "Vestimenta modesta (tapando hombros y rodillas) requerida para entrar a capillas o al Vaticano.",
+        "El servicio (coperto) viene incluído en el ticket de restaurante como cobro base.",
+        "Ten cuidado con palomas, alimentarlas en las grandes plazas está prohibido.",
+        "Para un italiano, alzar las manos es expresividad natural, no te asustes ante gestos bruscos."
+    ],
+    "España": [
+        "Evitar distracciones de objetos de lujo en callejones cerrados, riesgo de carteristas alto.",
+        "Los almuerzos y cenas son mucho más tarde; almorzar a las 14:00 o cenar a las 22:00.",
+        "Jamás te vayas sin pedir una 'Tapa' al beber, y no esperes mesas solitarias inmensas.",
+        "Masticar chicle es admitido legalmente pero en charlas es considerado una descortesía masiva.",
+        "No esperes tiendas abiertas continuas (muchas guardan su horario de 'Siesta' por la tarde).",
+        "El regateo es tomado como un insulto fuerte en comercios fijos y cerrados.",
+        "En las playas, cerciorarse de las áreas textiles vs no-textiles para evitar sobresaltos.",
+        "La propina es netamente un acto generoso sin porcentaje ni obligación estipulada.",
+        "Siempre mantente en silencio dentro de templos o presenciando corridas/procesiones.",
+        "Respeta el ciclo ciclista: los peatones NO deben invadir jamás las rojas sendas del 'Bicing'."
+    ],
+    "Brasil": [
+        "Exposición a robo exprés elevado en capitales: Evitar teléfonos de gama alta en la acera.",
+        "Se estila 'Dar beijinho' (beso sutil o roce de mejilla) para saludar amigablemente.",
+        "Evitar transitar playas famosas al adentrarse el atarecer sin custodia colectiva.",
+        "Obligatorio hacer la señal de '+' (pulgar arriba) para interactuar socialmente OK.",
+        "El agua no potable de grifo en Brasil genera indigestiones fuertes; consume agua filtrada.",
+        "El 'Jetinho brasileiro' implica gran impuntualidad tolerada (hasta 1 hora de retraso es normal).",
+        "Al hablar de Fútbol, no insultes fuertemente equipos; el nivel pasional puede detonar peleas.",
+        "Favelas turísticas son áreas con códigos invisibles de mando, no explores sin guia reconocido.",
+        "La vestimenta micro en las playas cariocas es ley: la modestia excesiva llamará atención visual.",
+        "Dejar sueltos tickets y envolturas al terminar agua de coco provoca altas multas de playa ecológica."
+    ],
+    "Generico": [
+        "Aplica siempre el Sentido Común de Seguridad Internacional ante aglomeraciones.",
+        "Revisa previamente el clima y el código de vestimenta civil estipulado localmente.",
+        "Cuidado con tus posesiones, nunca coloques tu móvil en los bordes de la mesa exterior.",
+        "Cerciórate de la compatibilidad de carga y el voltaje de clavija en este destino antes de conectar dispositivos.",
+        "Evita realizar comportamientos escandalosos: las normas cívicas de silencio deben ser honradas en templos u espacios cerrados comunitarios.",
+        "No subas ni accedas a tours de dudosa procedencia ofrecidos a pie en la calle.",
+        "Nunca realices fotografías o tomas explícitas de autoridades o figuras de seguridad nacional en fronteras y aeropuertos.",
+        "Regatear siempre de manera amable si estás en un mercado abierto, pero con absoluto respeto al trabajo manual y sin tocar descaradamente los productos ajenos.",
+        "Si te emiten un sello de migración de estadía limitada, ten a la mano siempre pasaporte o visado escaneado de emergencia o la app habilitada del Travelwishly.",
+        "La salud digital es esencial: utiliza una VPN sólida o prefiere no conectar la laptop en cafeterías y aeropuertos dudosos durante este viaje."
+    ]
+};
+
+// ==========================================
+// MÓDULOS DEL DASHBOARD AVANZADO (V2.0)
+// ==========================================
+
+const SURVIVAL_DB = {
+    "Japón": { lang: "ja-JP", phrases: [
+        {"es": "Hola", "local": "Konnichiwa (こんにちは)"},
+        {"es": "Gracias", "local": "Arigatō (ありがとう)"},
+        {"es": "Disculpe", "local": "Sumimasen (すみません)"},
+        {"es": "¿Dónde está el baño?", "local": "Toire wa doko desu ka? (トイレはどこですか)"},
+        {"es": "Ayuda", "local": "Tasukete (助けて)"},
+        {"es": "¿Cuánto cuesta?", "local": "Ikura desu ka? (いくらですか)"}
+    ]},
+    "Francia": { lang: "fr-FR", phrases: [
+        {"es": "Hola", "local": "Bonjour"},
+        {"es": "Gracias", "local": "Merci"},
+        {"es": "Disculpe", "local": "Excusez-moi / Pardon"},
+        {"es": "¿Dónde está el baño?", "local": "Où sont les toilettes?"},
+        {"es": "Ayuda", "local": "Au secours !"},
+        {"es": "La cuenta, por favor", "local": "L'addition, s'il vous plaît"}
+    ]},
+    "Brasil": { lang: "pt-BR", phrases: [
+        {"es": "Hola", "local": "Olá / Oi"},
+        {"es": "Gracias", "local": "Obrigado/a"},
+        {"es": "Disculpe", "local": "Desculpe / Com licença"},
+        {"es": "¿Dónde está el baño?", "local": "Onde fica o banheiro?"},
+        {"es": "Ayuda", "local": "Socorro!"},
+        {"es": "La cuenta, por favor", "local": "A conta, por favor"}
+    ]},
+    "Italia": { lang: "it-IT", phrases: [
+        {"es": "Hola / Adiós", "local": "Ciao"},
+        {"es": "Gracias", "local": "Grazie"},
+        {"es": "Disculpe", "local": "Mi scusi"},
+        {"es": "¿Dónde está el baño?", "local": "Dov'è il bagno?"},
+        {"es": "Ayuda", "local": "Aiuto!"},
+        {"es": "La cuenta, por favor", "local": "Il conto, per favore"}
+    ]},
+    "Alemania": { lang: "de-DE", phrases: [
+        {"es": "Hola", "local": "Hallo"},
+        {"es": "Gracias", "local": "Danke"},
+        {"es": "Disculpe", "local": "Entschuldigung"},
+        {"es": "¿Dónde está el baño?", "local": "Wo ist die Toilette?"},
+        {"es": "Ayuda", "local": "Hilfe!"},
+        {"es": "La cuenta, por favor", "local": "Die Rechnung, bitte"}
+    ]},
+    "EE.UU.": { lang: "en-US", phrases: [
+        {"es": "Hola", "local": "Hello"},
+        {"es": "Gracias", "local": "Thank you"},
+        {"es": "Disculpe", "local": "Excuse me"},
+        {"es": "¿Dónde está el baño?", "local": "Where is the restroom?"},
+        {"es": "Ayuda", "local": "Help!"},
+        {"es": "La cuenta, por favor", "local": "Check, please"}
+    ]}
+};
+
+window.hablarSintesis = function(texto, idioma) {
+    if ('speechSynthesis' in window) {
+        // Limpiamos pronunciaciones (solo pronunciamos fonetica local sin la traduccion al espanol)
+        let textoAhablar = texto;
+        if(texto.includes('(')) {
+            // Extraer el kanji/kana si existe
+            textoAhablar = texto.split('(')[1].replace(')', '');
+        } else if (texto.includes(' / ')) {
+            textoAhablar = texto.split(' / ')[0];
+        }
+
+        const msg = new SpeechSynthesisUtterance();
+        msg.text = textoAhablar;
+        msg.lang = idioma;
+        msg.rate = 0.85; // Un poco más lento para entender la pronunciación
+        window.speechSynthesis.speak(msg);
+    } else {
+        alert("Tu navegador no soporta Texto-a-Voz.");
+    }
+};
+
+window.generarKitVocabulario = function(destinoString) {
+    const grid = document.getElementById('survivalKitGrid');
+    if(!grid) return;
+
+    if(!destinoString) return;
+    let targetCountry = "Internacional";
+    if(destinoString.includes(',')) {
+        targetCountry = destinoString.split(',')[1].trim();
+    } else {
+        targetCountry = destinoString;
+    }
+
+    // Default to English if not found
+    let langData = SURVIVAL_DB[targetCountry] || { lang: 'en-US', phrases: SURVIVAL_DB["EE.UU."].phrases };
+
+    let html = '';
+    langData.phrases.forEach(phrase => {
+        // El boton invoca a window.hablarSintesis con comillas escapadas evitando inyecciones de string roto
+        const safeLocalStr = phrase.local.replace(/'/g, "\\'");
+        html += `
+        <div class="col-6 mb-2">
+            <button class="btn btn-outline-dark w-100 text-start d-flex justify-content-between align-items-center h-100 rounded-0 border-2 text-uppercase fw-bold p-2" 
+                    onclick="window.hablarSintesis('${safeLocalStr}', '${langData.lang}')" style="font-size:0.75rem;">
+                <div class="text-truncate me-2">
+                    <div class="text-muted" style="font-size:0.6rem;">${phrase.es}</div>
+                    <div class="text-dark fs-6">${phrase.local.split('(')[0].trim()}</div>
+                </div>
+                <i class="bi bi-volume-up-fill fs-5 text-primary"></i>
+            </button>
+        </div>
+        `;
+    });
+    grid.innerHTML = html;
+};
+
+// Variable Global para retener la instancia de Leaflet
+let mapInstance = null;
+let currentMarker = null;
+
+window.pintarMapaLeaflet = async function(destinoString) {
+    const mapContainer = document.getElementById('itineraryMap');
+    const overlay = document.getElementById('mapOverlayText');
+    if(!mapContainer) return;
+
+    if (!destinoString) {
+        if(overlay) overlay.style.display = 'block';
+        return;
+    }
+
+    if(overlay) {
+        overlay.style.display = 'block';
+        overlay.querySelector('p').innerText = "CALCULANDO COORDENADAS GEOGRÁFICAS...";
+    }
+
+    try {
+        // Consultar Nominatim para Latitud/Longitud real
+        const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(destinoString)}&format=json&limit=1`);
+        const data = await res.json();
+
+        if (data && data.length > 0) {
+            const lat = parseFloat(data[0].lat);
+            const lon = parseFloat(data[0].lon);
+
+            if (!mapInstance) {
+                // Instanciar por primera vez
+                mapInstance = L.map('itineraryMap', { zoomControl: true }).setView([lat, lon], 12);
+                L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+                    maxZoom: 19,
+                    attribution: '&copy; OpenStreetMap &copy; CARTO'
+                }).addTo(mapInstance);
+            } else {
+                // Mover mapa actual
+                mapInstance.setView([lat, lon], 12);
+            }
+
+            // Mover/Crear marcador
+            if (currentMarker) {
+                currentMarker.setLatLng([lat, lon]);
+            } else {
+                currentMarker = L.marker([lat, lon]).addTo(mapInstance);
+            }
+
+            // Ocultar overlay
+            if(overlay) overlay.style.display = 'none';
+
+            // Forzar resize para evitar glitch gris de renderizado
+            setTimeout(() => {
+                mapInstance.invalidateSize();
+            }, 300);
+        } else {
+            if(overlay) overlay.querySelector('p').innerText = "UBICACIÓN NO ENCONTRADA MUNDIALMENTE";
+        }
+    } catch(err) {
+        console.error("Leaflet Map Error", err);
+        if(overlay) overlay.querySelector('p').innerText = "ERROR AL CARGAR MAPA LOCAL";
+    }
+};
+
+window.convertCurrency = function() {
+    const fromSelect = document.getElementById('fromCurrency');
+    const toSelect = document.getElementById('toCurrency');
+    const amtInput = document.getElementById('currencyAmount');
+    const resultElement = document.getElementById('currencyResult');
+    const updatedTag = document.getElementById('currencyUpdated');
+    
+    if (!fromSelect || !toSelect || !amtInput || !resultElement) return;
+    
+    const amount = parseFloat(amtInput.value) || 0;
+    const from = fromSelect.value;
+    const to = toSelect.value;
+
+    function formatDiv(val, curr) {
+        return new Intl.NumberFormat('en-US', { style: 'currency', currency: curr, minimumFractionDigits: 2 }).format(val);
+    }
+
+    // Si ya estamos usando la proxy interna de las tasas reales
+    if (window.TASAS_CAMBIO && window.TASAS_CAMBIO[to] && typeof window.TASAS_CAMBIO[from] !== 'undefined') {
+        const mxnFrom = from === 'MXN' ? 1 : (1 / window.TASAS_CAMBIO[from].tasa);
+        const toValMxn = to === 'MXN' ? 1 : window.TASAS_CAMBIO[to].tasa;
+        
+        const finalRate = mxnFrom * toValMxn;
+        const finalResult = amount * finalRate;
+        
+        resultElement.innerText = formatDiv(finalResult, to);
+        if(updatedTag) updatedTag.innerText = "Calculado localmente";
+        return;
+    }
+
+    // Fallback: usar API Externa en vivo si no tenemos los datos pre-cargados localmente
+    fetch(`https://api.exchangerate-api.com/v4/latest/${from}`)
+        .then(res => res.json())
+        .then(data => {
+            if(data && data.rates && data.rates[to]) {
+                const rate = data.rates[to];
+                const calcObj = amount * rate;
+                resultElement.innerText = formatDiv(calcObj, to);
+                if(updatedTag) {
+                    const d = new Date(data.time_last_updated * 1000);
+                    updatedTag.innerText = `Última act. API: ${d.toLocaleTimeString()}`;
+                }
+            } else {
+                resultElement.innerText = "Error API";
+            }
+        })
+        .catch(err => {
+            console.error("Exchange API Falló", err);
+            resultElement.innerText = "Modo Offline";
+        });
+};
 
 const TODOS_DESTINOS_DB = [
     { 

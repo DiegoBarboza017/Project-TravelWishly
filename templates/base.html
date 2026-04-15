@@ -15,6 +15,12 @@
     <script src="https://unpkg.com/globe.gl"></script>
     <!-- CSS Propio -->
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="/manifest.json">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <meta name="apple-mobile-web-app-title" content="TravelWishly">
+    <link rel="apple-touch-icon" href="{{ url_for('static', filename='cat_bot.png') }}">
 </head>
 
 <body data-logged-in="{{ 'true' if session.get('user_id') else 'false' }}"
@@ -191,6 +197,21 @@
         .goog-tooltip:hover { display: none !important; }
         .goog-text-highlight { background-color: transparent !important; box-shadow: none !important; }
     </style>
+
+    <!-- PWA Service Worker Registration -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js')
+                    .then(registration => {
+                        console.log('SW registrado con éxito:', registration.scope);
+                    })
+                    .catch(err => {
+                        console.log('Falló el registro del SW:', err);
+                    });
+            });
+        }
+    </script>
 </body>
 
 </html>

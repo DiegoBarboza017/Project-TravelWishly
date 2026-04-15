@@ -10,10 +10,11 @@ load_dotenv()  # <--- Esta línea es la que hace la magia
 
 import uuid
 import requests
-from flask import Flask, render_template, request, redirect, url_for, flash, session
+from flask import Flask, render_template, request, redirect, url_for, flash, session, make_response, send_from_directory
 from itsdangerous import URLSafeTimedSerializer
 from flask_mail import Mail, Message
 from database import db
+from sqlalchemy.pool import NullPool
 import threading
 import webbrowser
 from models import User, TripBudget, DestinationGuide, SavedRoute, SavingsReminder
@@ -107,6 +108,13 @@ def create_app():
     app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///instance/travelwishly.db')
 
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+    
+    # Prevenir Caídas por Max_User_Connections imponiendo cierre inmediato
+    if "mysql" in app.config['SQLALCHEMY_DATABASE_URI']:
+        app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
+            'poolclass': NullPool,
+            'pool_pre_ping': True
+        }
 
     # Inicialización de la Base de Datos
     db.init_app(app)
@@ -643,6 +651,20 @@ def create_app():
             print(f"[SAVINGS] Error enviando correo inicial: {e}")
 
         return jsonify({'success': True, 'message': f'Plan de ahorro activado. ¡Revisá tu correo {usuario.email}!', 'plan_id': nuevo_plan.id})
+
+    # ==========================================
+    # RUTAS PWA (OFFLINE MODE)
+    # ==========================================
+    @app.route('/sw.js')
+    def service_worker():
+        response = make_response(send_from_directory('static', 'sw.js'))
+        response.headers['Content-Type'] = 'application/javascript'
+        response.headers['Service-Worker-Allowed'] = '/'
+        return response
+
+    @app.route('/manifest.json')
+    def manifest():
+        return send_from_directory('static', 'manifest.json')
 
     @app.route('/api/savings_plans', methods=['GET'])
     def get_savings_plans():
