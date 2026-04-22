@@ -714,28 +714,7 @@ window.cargarGuiaSegura = function cargarGuiaSegura() {
     // Save for Flow
     window._guiaDestinoActual = `${destinoObj.ciudad}, ${destinoObj.pais}`;
 
-    // Fetch Dinamico de Idiomas Mundiales (Primary, Secondary)
-    const panelIdioma = document.getElementById('panelIdiomas');
-    if (panelIdioma) {
-        panelIdioma.innerHTML = `<span class="spinner-border spinner-border-sm" role="status"></span> Calculando Lenguajes...`;
-        fetch(`https://restcountries.com/v3.1/name/${encodeURIComponent(destinoObj.pais)}`)
-            .then(r => r.json())
-            .then(data => {
-                if (data && data[0] && data[0].languages) {
-                    const l = Object.values(data[0].languages);
-                    const mainStr = l[0] || "REGIONAL";
-                    const secStr = l[1] || "INGLÉS";
-                    panelIdioma.innerHTML = `<i class="bi bi-translate me-2"></i> IDIOMAS: 1. ${mainStr.toUpperCase()} | 2. ${secStr.toUpperCase()}`;
-                } else {
-                    panelIdioma.innerHTML = `<i class="bi bi-translate me-2"></i> IDIOMAS: ESPAÑOL Y LENGUAS LOCALES`;
-                }
-            }).catch(e => {
-                panelIdioma.innerHTML = `<i class="bi bi-translate me-2"></i> IDIOMAS: ESPAÑOL Y LENGUAS LOCALES`;
-            });
-    }
 
-    // Save for Flow
-    window._guiaDestinoActual = `${destinoObj.ciudad}, ${destinoObj.pais}`;
 
     // Poblamiento Dinámico Iterativo de Checklist Beneficiosa
     const listaHtmlUl = document.getElementById('panelRecomendaciones');
