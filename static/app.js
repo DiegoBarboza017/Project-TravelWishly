@@ -576,8 +576,21 @@ const INTELIGENCIA_DESTINOS_DB = [
     { ciudad: "Londres", pais: "Reino Unido", cultura: "Fusión monárquica clásica y diversidad extrema global. Respeta a rajatabla las filas cívicas formadas al esperar.", puntosInteres: ["El Ojo de Londres", "Museo Británico", "El Támesis", "Torre de Londres", "Big Ben", "Abadía de Westminster", "Hyde Park", "Palacio Buckingham", "Piccadilly Circus", "Trafalgar Square"], zonasRojas: "Aglomeraciones turísticas altas cerca de Piccadilly Circus y el tubo subterráneo central están plagadas de distracciones." },
     { ciudad: "Río de Janeiro", pais: "Brasil", cultura: "Capital incansable con samba en las venas. La interacción es cariñosamente táctil y muy expresiva. ¡Usa protector!", puntosInteres: ["Cristo Redentor", "Pan de Azúcar", "Playa Copacabana", "Ipanema", "Escalera Selarón", "Estadio Maracaná", "Jardín Botánico", "Parque Lage", "Barrio Santa Teresa", "Museo del Mañana"], zonasRojas: "Pasear de noche solitariamente por las playas. Las Favelas son prohibidas si no tienes un contacto oficial." },
     { ciudad: "Lima", pais: "Perú", cultura: "Capital en un acantilado del pacífico, cima indiscutible de comida criolla de exportación e historia incaica.", puntosInteres: ["Malecón de Miraflores", "Plaza de Armas", "Circuito del Agua", "Huaca Pucllana", "Barranco", "Museo Larco", "Parque del Amor", "Mercado Surquillo", "Catedral de Lima", "Callao Monumental"], zonasRojas: "Barrios como Callao y el centro norte cuando empieza a bajar el sol radicalmente." },
-    { ciudad: "Bogotá", pais: "Colombia", cultura: "Urbe elevadísima cerca de las nubes, capital cafetera y un foco inmenso de la cultura de galerías artísticas.", puntosInteres: ["Museo del Oro", "Cerro de Monserrate", "La Candelaria", "Plaza de Bolívar", "Museo Botero", "Usaquén", "Jardín Botánico", "Parque de la 93", "Mercado Paloquemao", "Teatro Colón"], zonasRojas: "Las fronteras sureñas de la ciudad sin razón aparente. Usa Apps de transporte tarde." }
+    { ciudad: "Bogotá", pais: "Colombia", cultura: "Urbe elevadísima cerca de las nubes, capital cafetera y un foco inmenso de la cultura de galerías artísticas.", puntosInteres: ["Museo del Oro", "Cerro de Monserrate", "La Candelaria", "Plaza de Bolívar", "Museo Botero", "Usaquén", "Jardín Botánico", "Parque de la 93", "Mercado Paloquemao", "Teatro Colón"], zonasRojas: "Las fronteras sureñas de la ciudad sin razón aparente. Usa Apps de transporte tarde." },
+    { ciudad: "Bangkok", pais: "Tailandia", cultura: "La capital de las sonrisas. Tensión de caos y espiritualidad masiva. Viste con modestia en los templos.", puntosInteres: ["Gran Palacio", "Wat Arun", "Mercado Chatuchak", "Khao San Road", "Wat Pho", "Ayutthaya", "Mercado Flotante", "China Town", "Parque Lumphini", "Río Chao Phraya"], zonasRojas: "Ten extremo cuidado con las estafas en tuk-tuks, los viajes 'fuera de registro', y los carteristas en Khian Kha."}
 ];
+
+// Módulo de Salud y Visados Global
+const SALUD_DESTINOS_DB = {
+    "mexico": "🏥 Sistema básico. No hay vacunas legalmente obligatorias para entrar en territorio mexicano. Recomendable repelente ecológico en costa.",
+    "colombia": "🏥 Vacuna de Fiebre Amarilla es altamente documentable al aterrizar e ingresar por fronteras amazónicas. Seguros médicos se sugieren fuertemente.",
+    "tailandia": "🩸 Obligatorio disponer del carnet de vacunación certificado contra la Fiebre Amarilla. Prevención contra mosquito portador de Dengue indispensable.",
+    "brasil": "🩸 OBLIGACIÓN sanitaria internacional de certificado validado de Fiebre Amarilla, más altamente sugerido tratamiento profiláctico de Malaria en el lado norte.",
+    "peru": "🏥 Zonas montañosas altas pueden causar 'Soroche' (mal de altura), se aconseja té de coca y Pastillas aclimatadoras al arribo. Fiebre Amarilla sugerida en jungla.",
+    "japon": "🩺 Sistema Médico Ultra Seguro pero los precios a turistas son abismales sin la documentación o un seguro de viajero total. Visado usualmente de tránsito por 90 días.",
+    "francia": "🛡️ Siendo de territorio 'Schengen' Europeo obligatorio arribar con pre-vuelos de salida y reservas garantizadas de hotel para evadir deportaciones aéreas express.",
+    "reino unido": "🛡️ Frontera estricta del First World. Exigen itinerario completo documentable, tarjeta de crédito y seguro médico extenso bajo juramento consuetudinario."
+};
 
 document.addEventListener("DOMContentLoaded", () => {
     // Poblar datalist global dinámicamente
@@ -656,25 +669,26 @@ window.cargarGuiaSegura = function cargarGuiaSegura() {
     
     const panelEvitar = document.getElementById('panelEvitar');
     if (panelEvitar) {
-        let rulesArr = [];
-        if (typeof ALERTA_CONDUCTA_DB !== 'undefined' && ALERTA_CONDUCTA_DB[destinoObj.pais]) {
-            rulesArr = ALERTA_CONDUCTA_DB[destinoObj.pais];
-        } else if (typeof ALERTA_CONDUCTA_DB !== 'undefined' && ALERTA_CONDUCTA_DB['Generico']) {
-            rulesArr = ALERTA_CONDUCTA_DB['Generico'];
-            // Injecting the specific red zones as tip #1
-            rulesArr[0] = destinoObj.zonasRojas || rulesArr[0];
-        } else {
-            rulesArr = [destinoObj.zonasRojas, "Respeta las normas.", "Revisa voltaje."];
-        }
+        // Render simple for redzones
+        const warnStr = destinoObj.zonasRojas || "Respeta estrictamente las normas sociales y cuida bien de tus pertenencias de extremo valor.";
+        panelEvitar.innerHTML = `<li class="list-group-item bg-dark text-white border-secondary fw-bold" style="line-height:1.6;"><i class="bi bi-shield-exclamation text-warning fs-5 me-2"></i> ${warnStr}</li>`;
+    }
 
-        let htmlRules = '';
-        rulesArr.forEach(tip => {
-            htmlRules += `<li class="list-group-item bg-dark text-white border-secondary d-flex align-items-start gap-2 py-3">
-                            <i class="bi bi-shield-exclamation text-warning mt-1"></i>
-                            <span>${tip}</span>
-                          </li>`;
-        });
-        panelEvitar.innerHTML = htmlRules;
+    // Procesamiento Sistema de Salud/Visados UI
+    const docPaisLower = destinoObj.pais.toLowerCase()
+        .normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+
+    const healthBox = document.getElementById('healthAlertBox');
+    const healthText = document.getElementById('healthAlertText');
+    if (healthBox && healthText) {
+        let notaSaludEncontrada = "";
+        if(SALUD_DESTINOS_DB[docPaisLower]) {
+            notaSaludEncontrada = SALUD_DESTINOS_DB[docPaisLower];
+        } else {
+            notaSaludEncontrada = `ℹ️ Para el territorio de ${destinoObj.pais}, se aconseja viajar con un Seguro Gastos Médicos de Cobertura Amplia. Los visados dependen expresamente de los tratados de comercio con tu pasaporte.`;
+        }
+        healthText.innerText = notaSaludEncontrada;
+        healthBox.classList.remove('d-none');
     }
 
     // Fetch Dinamico de Idiomas Mundiales (Primary, Secondary)
@@ -2527,106 +2541,43 @@ document.addEventListener("DOMContentLoaded", () => {
         chatBody.appendChild(typingMsg);
         chatBody.scrollTop = chatBody.scrollHeight;
 
-        setTimeout(() => {
+        // Mandar petición Fetch real a nuestro backend de Gemini
+        const currentPath = window.location.pathname;
+        const destinoActual = window._guiaDestinoActual || "Ningún destino seleccionado";
+        const contextStr = "App Module: " + currentPath + " | Localidad activa: " + destinoActual;
+
+        fetch('/api/gemini_chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ message: text, contexto: contextStr })
+        })
+        .then(res => res.json())
+        .then(data => {
             const ind = document.getElementById("typingIndicator");
-            if (ind) ind.remove();
+            if(ind) ind.remove();
 
             const botMsg = document.createElement('div');
             botMsg.className = "chat-message bot shadow-sm";
             
-            const txtLower = text.toLowerCase();
-            let respuesta = "¡Miau! 🐾 Aún estoy aprendiendo, pero puedo guiarte paso a paso. Prueba preguntarme '¿Qué hago aquí?', 'ayuda', o 'siguiente'.";
+            // Format MD bold and new lines to simple basic HTML
+            let formattedReply = (data.reply || "").replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+            formattedReply = formattedReply.replace(/\n/g, '<br>');
 
-            // 1. Obtener contexto actual
-            const currentPath = window.location.pathname;
-            const destinoActual = window._guiaDestinoActual || "tu destino";
-            
-            // 2. Intenciones Universales
-            if (txtLower.includes("hola") || txtLower.includes("saludos") || txtLower.includes("hey")) {
-                respuesta = "¡Hola viajero! 👋 Soy Leia. ¿En qué parte del proceso te puedo ayudar hoy? Di 'ayuda' si estás perdido.";
-            } else if (txtLower.includes("gracias") || txtLower.includes("ok") || txtLower.includes("perfecto")) {
-                respuesta = "¡De nada! Aquí sigo por si necesitas más ayuda. 🐱✈️";
-            } else if (txtLower.includes("historial") || txtLower.includes("guardado") || txtLower.includes("pdf")) {
-                respuesta = "📂 Todos tus viajes se guardan en el **Historial**. Ve allá para revisarlos, imprimirlos en PDF o borrarlos.";
-            } else if (txtLower.includes("prestamo") || txtLower.includes("credito") || txtLower.includes("financiamiento") || txtLower.includes("pagar")) {
-                respuesta = "💳 ¿Presupuesto ajustado? Usa nuestro **Simulador de Crédito** (en el menú superior) para calcular pagos parciales transparentes.";
-            } 
-            // 3. Intenciones de Redirección Cruzada
-            else if ((txtLower.includes("clima") || txtLower.includes("tiempo") || txtLower.includes("llover")) && !currentPath.includes('/dashboard')) {
-                respuesta = "⛅ El widget de clima en vivo se encuentra en la pantalla de **Presupuesto**. ¡Inicia tu viaje buscando un destino para llegar ahí!";
-            } else if ((txtLower.includes("moneda") || txtLower.includes("dinero") || txtLower.includes("cambio") || txtLower.includes("divisa") || txtLower.includes("presupuesto") || txtLower.includes("costo") || txtLower.includes("costar")) && !currentPath.includes('/dashboard')) {
-                respuesta = "💰 El Conversor de Divisas global y la calculadora de viáticos se encuentran en la sección **Presupuesto**. ¡Busca un destino en Inicio y sigue el flujo para llegar ahí!";
-            } else if ((txtLower.includes("equipaje") || txtLower.includes("maleta") || txtLower.includes("visa") || txtLower.includes("pasaporte")) && !currentPath.includes('/constructor')) {
-                respuesta = "🎒 La Lista Inteligente de Empaque (Smart Packing List) y avisos de VISA te aparecerán automáticamente en el paso final: el **Itinerario (Constructor)**.";
-            }
-            // 4. Intenciones Contextuales
-            else {
-                if (currentPath === '/' || currentPath === '/inicio' || currentPath === '') {
-                    // CONTEXTO: INICIO
-                    if (txtLower.includes("ayuda") || txtLower.includes("hago") || txtLower.includes("empezar") || txtLower.includes("aqui")) {
-                        respuesta = "📍 **Estás en el Inicio.** Escribe un país en la barra de búsqueda central, o presiona **Explorar Destinos** arriba para buscar opciones.";
-                    } else if (txtLower.includes("destino") || txtLower.includes("viajar") || txtLower.includes("donde")) {
-                         respuesta = "🌍 Ingresa el país en el buscador de esta pantalla para ver su Guía Preventiva de seguridad.";
-                    } else {
-                        respuesta = "🐾 Desde aquí arranca tu viaje. Escribe un país en el gran buscador del centro o ve a **Explorar Destinos**.";
-                    }
-                } 
-                else if (currentPath === '/explorar') {
-                    // CONTEXTO: EXPLORAR DESTINOS
-                    if (txtLower.includes("ayuda") || txtLower.includes("hago") || txtLower.includes("empezar") || txtLower.includes("aqui")) {
-                        respuesta = "📍 **Estás en Explorar.** Dale clic a cualquier tarjeta con foto para comenzar a planear un viaje hacia allí.";
-                    } else if (txtLower.includes("filtr") || txtLower.includes("presupuesto") || txtLower.includes("buscar")) {
-                        respuesta = "Usa los botones de categorías (amarillos, azules, verdes) arriba para filtrar la lista según tu estilo y dinero.";
-                    } else {
-                        respuesta = "🐾 Navega entre países. Cuando uno te llame la atención, dale clic al botón 'Ver Destino/Continuar' para evaluarlo.";
-                    }
-                }
-                else if (currentPath === '/guia') {
-                    // CONTEXTO: GUIA PREVENTIVA
-                    if (txtLower.includes("ayuda") || txtLower.includes("hago") || txtLower.includes("siguiente") || txtLower.includes("continuar")) {
-                        respuesta = `📍 **Estás evaluando ${destinoActual}.** Revisa los lugares típicos y el riesgo. ¡Si te gusta, haz clic en el gran botón azul **Continuar a Presupuesto** al fondo!`;
-                    } else if (txtLower.includes("seguridad") || txtLower.includes("peligro") || txtLower.includes("riesgo")) {
-                        respuesta = `🛡️ Hemos analizado a ${destinoActual}. Revisa la tarjeta de "Nivel de Riesgo" que encontrarás bajando por la página.`;
-                    } else {
-                        respuesta = `🐾 Estudiemos juntos ${destinoActual}. ¿Te convence? Si es así, presiona "Continuar a Presupuesto" al final de la página.`;
-                    }
-                }
-                else if (currentPath.includes('/dashboard')) {
-                    // CONTEXTO: PRESUPUESTO
-                    if (txtLower.includes("ayuda") || txtLower.includes("hago") || txtLower.includes("siguiente") || txtLower.includes("aqui") || txtLower.includes("continuar")) {
-                        respuesta = `📍 **Presupuestando ${destinoActual}.** Juega con los botones de MODO DE VIAJE. ¡Cuando estés feliz con el total, dale al botón azul **Continuar a Itinerario** en el lado izquierdo!`;
-                    } else if (txtLower.includes("clima") || txtLower.includes("tiempo") || txtLower.includes("llover")) {
-                        respuesta = `⛅ ¡Ahí lo tienes! El clima para ${destinoActual} se encuentra en el **Widget satelital abierto** a la derecha.`;
-                    } else if (txtLower.includes("moneda") || txtLower.includes("dinero") || txtLower.includes("cambio") || txtLower.includes("divisa")) {
-                        respuesta = `💸 ¡Baja un poco más en la pantalla! Hay un Conversor de Divisas en vivo funcionando ahora mismo debajo de ti.`;
-                    } else {
-                         respuesta = `🐾 Aquí hablamos de dinero. Modifica los días (arriba a la izquierda) para ajustar tu cálculo para ${destinoActual} en tiempo real.`;
-                    }
-                }
-                else if (currentPath.includes('/constructor')) {
-                    // CONTEXTO: ITINERARIO
-                    if (txtLower.includes("ayuda") || txtLower.includes("hago") || txtLower.includes("aqui") || txtLower.includes("ruta") || txtLower.includes("escala")) {
-                        respuesta = `📍 **Armando ruta para ${destinoActual}.** Define tus días y **vibes**. Luego haz clic en el botón negro de **Generar Ruta Temporal**. Finalmente, usa "Guardar en Historial".`;
-                    } else if (txtLower.includes("equipaje") || txtLower.includes("maleta") || txtLower.includes("visa") || txtLower.includes("pasaporte") || txtLower.includes("documento")) {
-                        respuesta = `🎒 Si marcas tu país de Origen en la izquierda, la Lista Inteligente abajo te avisará si requieres Pasaporte, VISA o solo INE (DNI) para viajar a ${destinoActual}.`;
-                    } else if (txtLower.includes("guardar")) {
-                        respuesta = `📝 Llena tus días y dale clic a **Guardar en Historial** arriba del mapa. ¡Te daremos una confirmación en toda la pantalla!`;
-                    } else {
-                        respuesta = "🐾 Puedes jugar con los elementos de equipo de tu Mochila virtual para ver cómo se añade a tus cálculos.";
-                    }
-                }
-                else {
-                    // FALLBACK
-                    if (txtLower.includes("clima")) respuesta = "⛅ En la pantalla de Presupuesto podrás ver un clima ultra-local en tiempo real.";
-                    else if (txtLower.includes("presupuesto")) respuesta = "💰 Sigue nuestro flujo (Guía -> Presupuesto -> Itinerario) para hacer cálculos.";
-                    else if (txtLower.includes("equipaje") || txtLower.includes("maleta")) respuesta = "🎒 La lista de maleta automática aparece en el módulo de Itinerario final.";
-                }
-            }
-
-            botMsg.innerHTML = respuesta.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+            botMsg.innerHTML = formattedReply;
             chatBody.appendChild(botMsg);
             chatBody.scrollTop = chatBody.scrollHeight;
-        }, 1200);
+        })
+        .catch(err => {
+            console.error("Error en AI", err);
+            const ind = document.getElementById("typingIndicator");
+            if(ind) ind.remove();
+            
+            const botMsg = document.createElement('div');
+            botMsg.className = "chat-message bot shadow-sm";
+            botMsg.innerHTML = "⚠️ Miau, mi núcleo de IA falló o mi tiempo de espera expiró. Checa la consola.";
+            chatBody.appendChild(botMsg);
+            chatBody.scrollTop = chatBody.scrollHeight;
+        });
     };
 
     if(sendBtn) sendBtn.addEventListener('click', procesarMensaje);

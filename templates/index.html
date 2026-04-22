@@ -4,7 +4,7 @@
 <div class="px-4 py-5 my-0 text-center bg-white border border-0">
     <div class="col-lg-12 mx-auto">
         <div class="mb-5 d-flex flex-column align-items-center mt-3">
-            <img src="{{ url_for('static', filename='logo.png') }}" class="img-fluid mb-4" alt="TravelWishly Logo Principal" style="max-height: 220px; object-fit: contain;">
+        <img src="{{ url_for('static', filename='logo.png') }}" class="img-fluid hero-logo mb-4" alt="TravelWishly Logo Principal" style="max-height: 220px; object-fit: contain;">
             <span class="fs-6 text-muted fw-bold text-uppercase tracking-wider border border-2 border-dark px-3 py-1 bg-light">Diseñado para el viajero independiente</span>
         </div>
         
@@ -17,7 +17,7 @@
         <div class="d-flex flex-column align-items-center mb-5 mt-4 w-100">
             <!-- Interactive Globe Container -->
             <div id="globeContainer" class="border border-3 border-dark mx-auto"
-                style="width: 100%; max-width: 800px; height: 500px; position: relative; display: block; background-color: #ffffff;">
+                style="width: 100%; max-width: 800px; height: clamp(300px, 45vw, 500px); position: relative; display: block; background-color: #ffffff;">
                 <div id="globeLoader"
                     class="position-absolute top-50 start-50 translate-middle fw-bold fs-4 text-uppercase">Cargando
                     Mundo...</div>

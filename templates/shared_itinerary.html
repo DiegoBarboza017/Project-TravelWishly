@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card border-dark border-4 rounded-0" style="box-shadow: 8px 8px 0 0 #000;">
+                
+                <div class="card-header bg-dark text-white p-4 d-flex justify-content-between align-items-center rounded-0">
+                    <div>
+                        <h4 class="mb-0 fw-black text-uppercase tracking-wider">
+                            <i class="bi bi-airplane-fill me-2"></i> Viaje Compartido
+                        </h4>
+                        <p class="mb-0 small fw-bold text-uppercase opacity-75 mt-1">Creado en TravelWishly</p>
+                    </div>
+                    <div>
+                        <span class="badge border border-2 border-white bg-transparent p-2 text-uppercase fw-bold rounded-0">
+                            Solo Lectura
+                        </span>
+                    </div>
+                </div>
+                
+                <div class="card-body p-4 p-md-5 bg-white position-relative">
+                    <img src="{{ url_for('static', filename='logo.png') }}" alt="Watermark" style="position: absolute; right: 2rem; top: 2rem; width: 60px; opacity: 0.1;">
+                    
+                    <h2 class="fw-black text-uppercase display-6 border-bottom border-dark border-3 pb-3 mb-4">
+                        {{ ruta.destino }}
+                    </h2>
+                    
+                    <div class="row g-4 mb-5">
+                        <div class="col-md-4">
+                            <div class="p-3 border border-dark border-2 bg-light h-100" style="box-shadow: 4px 4px 0 0 #000;">
+                                <span class="d-block text-muted small fw-black text-uppercase mb-1">Origen</span>
+                                <span class="fs-5 fw-bold">{{ ruta.origen }}</span>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="p-3 border border-dark border-2 bg-light h-100" style="box-shadow: 4px 4px 0 0 #000;">
+                                <span class="d-block text-muted small fw-black text-uppercase mb-1">Duración</span>
+                                <span class="fs-5 fw-bold">{{ ruta.duracion_dias }} días totales</span>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="p-3 border border-dark border-2 bg-light h-100" style="box-shadow: 4px 4px 0 0 #000;">
+                                <span class="d-block text-muted small fw-black text-uppercase mb-1">Fecha</span>
+                                <span class="fs-5 fw-bold">{{ ruta.fecha_ideal or 'Flexible' }}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-dark text-white p-4 border border-dark border-3 mt-4 rounded-0 text-center">
+                        <h4 class="fw-black text-uppercase mb-3">¡Crea el tuyo gratis!</h4>
+                        <p class="fw-bold fs-6">Con TravelWishly puedes diseñar presupuestos inteligentes, estimar viajes, revisar alertas sanitarias y calcular tu ahorro mensual.</p>
+                        <a href="{{ url_for('registro') }}" class="btn btn-outline-light rounded-0 px-4 py-2 border-2 fw-black text-uppercase mt-2 tracking-wider hover-lift">
+                            Regístrate Ahora
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

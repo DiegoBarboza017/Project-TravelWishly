@@ -27,37 +27,24 @@
       data-user-email="{{ session.get('user_email', '') }}"
       data-username="{{ session.get('username', '') }}">
     <!-- Menú de Navegación Monocromático -->
-    <nav class="navbar navbar-expand-lg navbar-light stick-top py-3">
-        <div class="container-fluid px-4 px-xl-5">
-            <a class="navbar-brand fw-bold fs-4 d-flex align-items-center gap-3 text-uppercase tracking-wider me-5" href="{{ url_for('index') }}">
-                <img src="{{ url_for('static', filename='logo.png') }}" alt="TravelWishly Logo" style="height: 55px; object-fit: contain;">
-                TravelWishly
+    <nav class="navbar navbar-expand-xl navbar-light stick-top py-2">
+        <div class="container-fluid px-3 px-xxl-5">
+            <a class="navbar-brand d-flex align-items-center" href="{{ url_for('index') }}" title="TravelWishly — Inicio">
+                <img src="{{ url_for('static', filename='logo.png') }}" alt="TravelWishly Logo" style="height: 44px; object-fit: contain;">
             </a>
 
-            <!-- Selector Global de Idiomas (Funcional i18n) -->
-            <div class="dropdown me-auto d-none d-lg-block">
-                <button class="btn btn-outline-dark fw-bold btn-sm dropdown-toggle rounded-0 text-uppercase tracking-wider py-1 px-2 border-2" type="button" id="langSelectorGlobal" data-bs-toggle="dropdown" aria-expanded="false" style="font-size: 0.75rem;">
-                    <i class="bi bi-translate me-1"></i> IDIOMAS
-                </button>
-                <ul class="dropdown-menu rounded-0 border-dark border-3 py-0 shadow-sm" aria-labelledby="langSelectorGlobal" style="min-width: 140px; margin-top: 5px;">
-                    <li><button class="dropdown-item fw-bold text-dark border-bottom border-dark border-1 py-2 text-center" onclick="cambiarIdioma('es')">ESPAÑOL</button></li>
-                    <li><button class="dropdown-item fw-bold text-dark border-bottom border-dark border-1 py-2 text-center" onclick="cambiarIdioma('en')">INGLÉS</button></li>
-                    <li><button class="dropdown-item fw-bold text-dark border-bottom border-dark border-1 py-2 text-center" onclick="cambiarIdioma('fr')">FRANCÉS</button></li>
-                    <li><button class="dropdown-item fw-bold text-dark border-bottom border-dark border-1 py-2 text-center" onclick="cambiarIdioma('de')">ALEMÁN</button></li>
-                    <li><button class="dropdown-item fw-bold text-dark py-2 text-center" onclick="cambiarIdioma('ja')">JAPONÉS</button></li>
-                </ul>
-            </div>
-            <button class="navbar-toggler rounded-0 border-dark" type="button" data-bs-toggle="collapse"
+            <button class="navbar-toggler rounded-0 border-dark ms-auto" type="button" data-bs-toggle="collapse"
                 data-bs-target="#mainNav" aria-controls="mainNav" aria-expanded="false" aria-label="Toggle navigation">
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="mainNav">
-                <ul class="navbar-nav ms-auto align-items-lg-center gap-lg-3" id="mainNavList">
+                <!-- Pestañas Principales en el Centro -->
+                <ul class="navbar-nav mx-auto align-items-xl-center justify-content-center gap-xl-3" id="mainNavList">
                     <li class="nav-item">
                         <a class="nav-link px-2 fw-bold nav-page-link text-nowrap" href="{{ url_for('index') }}">INICIO</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link px-2 fw-bold nav-page-link text-nowrap" href="{{ url_for('guia') }}">EXPLORAR DESTINOS</a>
+                        <a class="nav-link px-2 fw-bold nav-page-link text-nowrap" href="{{ url_for('guia') }}">EXPLORAR</a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link px-2 fw-bold nav-page-link text-nowrap" href="{{ url_for('dashboard') }}">PRESUPUESTO</a>
@@ -66,32 +53,82 @@
                         <a class="nav-link px-2 fw-bold nav-page-link text-nowrap" href="{{ url_for('constructor') }}">ITINERARIO</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link px-2 fw-bold nav-page-link text-nowrap" href="{{ url_for('financiamiento') }}">SIMULADOR DE CRÉDITO</a>
+                        <a class="nav-link px-2 fw-bold nav-page-link text-nowrap" href="{{ url_for('financiamiento') }}">FINANCIAMIENTO</a>
                     </li>
                     {% if session.get('user_id') %}
-                    <li class="nav-item">
+                    <li class="nav-item border-xl-start border-2 border-dark ps-xl-3 ms-xl-2 mt-2 mt-xl-0">
                         <a class="nav-link px-2 fw-bold nav-page-link text-nowrap text-secondary" href="{{ url_for('historial') }}">
                             <i class="bi bi-clock-history me-1"></i>HISTORIAL
                         </a>
                     </li>
-                    <li class="nav-item ms-lg-3 d-flex align-items-center">
-                        <span class="nav-link fw-bold text-dark text-nowrap text-uppercase me-2"><i class="bi bi-person-circle me-1"></i> {{ session.get('username') }}</span>
+                    {% endif %}
+                </ul>
+
+                <!-- Utilidades y Cuenta a la Derecha -->
+                <ul class="navbar-nav ms-auto align-items-xl-center gap-xl-2 mt-3 mt-xl-0">
+                    <!-- Selector Global de Idiomas -->
+                    <li class="nav-item">
+                        <div class="dropdown">
+                            <button class="btn btn-outline-dark fw-bold btn-sm dropdown-toggle rounded-0 text-uppercase py-1 px-2 border-2" type="button" id="langSelectorGlobal" data-bs-toggle="dropdown" aria-expanded="false" style="font-size: 0.72rem;">
+                                <i class="bi bi-translate me-1"></i> IDIOMAS
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-end rounded-0 border-dark border-3 py-0 shadow-sm" aria-labelledby="langSelectorGlobal" style="min-width: 140px; margin-top: 5px;">
+                                <li><button class="dropdown-item fw-bold text-dark border-bottom border-dark border-1 py-2 text-center" onclick="cambiarIdioma('es')">ESPAÑOL</button></li>
+                                <li><button class="dropdown-item fw-bold text-dark border-bottom border-dark border-1 py-2 text-center" onclick="cambiarIdioma('en')">INGLÉS</button></li>
+                                <li><button class="dropdown-item fw-bold text-dark border-bottom border-dark border-1 py-2 text-center" onclick="cambiarIdioma('fr')">FRANCÉS</button></li>
+                                <li><button class="dropdown-item fw-bold text-dark border-bottom border-dark border-1 py-2 text-center" onclick="cambiarIdioma('de')">ALEMÁN</button></li>
+                                <li><button class="dropdown-item fw-bold text-dark py-2 text-center" onclick="cambiarIdioma('ja')">JAPONÉS</button></li>
+                            </ul>
+                        </div>
                     </li>
-                    <li class="nav-item mt-2 mt-lg-0">
-                        <a class="btn btn-outline-danger px-4 rounded-0 fw-bold text-nowrap border-2 border-danger" href="{{ url_for('logout') }}">CERRAR SESIÓN</a>
+                    {% if session.get('user_id') %}
+                    <li class="nav-item d-flex align-items-center ms-xl-2 mt-2 mt-xl-0">
+                        <span class="nav-link fw-bold text-dark text-nowrap text-uppercase"><i class="bi bi-person-circle me-1"></i> {{ session.get('username') }}</span>
+                    </li>
+                    <li class="nav-item ms-xl-2 mt-2 mt-xl-0">
+                        <a class="btn btn-outline-danger px-3 rounded-0 fw-bold text-nowrap border-2 border-danger" href="{{ url_for('logout') }}">CERRAR SESIÓN</a>
                     </li>
                     {% else %}
-                    <li class="nav-item ms-lg-3">
-                        <a class="btn btn-outline-dark px-4 rounded-0 fw-bold text-nowrap" href="{{ url_for('login') }}">INICIAR SESIÓN</a>
+                    <li class="nav-item ms-xl-2 mt-2 mt-xl-0">
+                        <a class="btn btn-outline-dark px-3 rounded-0 fw-bold text-nowrap border-2 border-dark" href="{{ url_for('login') }}">INICIAR SESIÓN</a>
                     </li>
-                    <li class="nav-item ms-lg-2 mt-2 mt-lg-0">
-                        <a class="btn btn-dark fw-bold px-4 rounded-0 text-nowrap" href="{{ url_for('registro') }}">REGISTRARSE</a>
+                    <li class="nav-item ms-xl-2 mt-2 mt-xl-0">
+                        <a class="btn btn-dark fw-bold px-3 rounded-0 text-nowrap" href="{{ url_for('registro') }}">REGISTRARSE</a>
                     </li>
                     {% endif %}
                 </ul>
             </div>
         </div>
     </nav>
+
+    <!-- ===== BARRA DE PROGRESO DEL FLUJO ===== -->
+    <div id="flowProgressBar">
+        <div class="container-fluid px-3 px-xxl-5">
+            <div class="flow-progress-inner" id="flowProgressInner">
+                <a href="/guia" class="flow-step" data-step="1" id="fstep1">
+                    <span class="step-num">1</span>
+                    <i class="bi bi-map-fill"></i> Explorar
+                </a>
+                <a href="/dashboard" class="flow-step" data-step="2" id="fstep2">
+                    <span class="step-num">2</span>
+                    <i class="bi bi-wallet2"></i> Presupuesto
+                </a>
+                <a href="/financiamiento" class="flow-step" data-step="3" id="fstep3">
+                    <span class="step-num" style="font-size: 0.65rem; letter-spacing: -0.5px;">2.5</span>
+                    <i class="bi bi-credit-card"></i> Financiamiento <small>(Opc)</small>
+                </a>
+                <a href="/constructor" class="flow-step" data-step="4" id="fstep4">
+                    <span class="step-num">3</span>
+                    <i class="bi bi-map"></i> Itinerario
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== BANNER OFFLINE ===== -->
+    <div id="offlineBanner">
+        <i class="bi bi-wifi-off me-2"></i> Sin conexión — mostrando datos guardados
+    </div>
 
     <!-- Área principal de inyección de contenido -->
     <main class="container py-5 my-2 flex-grow-1">
@@ -132,10 +169,11 @@
     <!-- Floating AI Chat Bot -->
     <div class="chat-bot-wrapper" id="chatBotWrapper">
         <!-- Tooltip "¿Necesitas ayuda?" -->
-        <div class="chat-tooltip" id="chatTooltip">
+        <div class="chat-tooltip" id="chatTooltip" style="display:flex; align-items:center;">
             <span>¿Necesitas ayuda? 🐾</span>
+            <button onclick="document.getElementById('chatTooltip').style.display='none'" title="Minimizar hint" style="background:none;border:none;color:#fff;font-size:1rem;margin-left:8px;padding:0;cursor:pointer;opacity:0.8;"><i class="bi bi-dash-lg"></i></button>
         </div>
-        <div class="chat-bot-bubble" id="chatBotBubble" title="¡Habla con Leia, tu asistente!">
+        <div class="chat-bot-bubble" id="chatBotBubble" title="¡Habla con Leia, tu asistente!" onclick="abrirChat()">
             <img src="{{ url_for('static', filename='cat_bot.png') }}" alt="Leia Cat Bot">
         </div>
     </div>
@@ -146,7 +184,13 @@
                 <img src="{{ url_for('static', filename='cat_bot.png') }}" alt="Leia Bot" style="width:24px; height:24px; border-radius:50%; margin-right:10px; object-fit: cover; background: white; border: 1px solid black;">
                 Leia
             </span>
-            <button type="button" class="btn-close btn-close-white" id="closeChatBtn" aria-label="Cerrar"></button>
+            <div class="d-flex align-items-center gap-2">
+                <button type="button" id="minimizeChatBtn" title="Minimizar" onclick="minimizarChat()"
+                    style="background:none;border:none;color:#fff;font-size:1.1rem;line-height:1;cursor:pointer;opacity:0.8;">
+                    <i class="bi bi-dash-lg"></i>
+                </button>
+                <button type="button" class="btn-close btn-close-white" id="closeChatBtn" aria-label="Cerrar"></button>
+            </div>
         </div>
         <div class="chat-body" id="chatBody">
             <div class="chat-message bot shadow-sm">¡Miau! Soy Leia, tu asistente inteligente de TravelWishly. ¿En qué destino te puedo ayudar a presupuestar hoy? 🐾</div>
@@ -154,6 +198,25 @@
         <div class="chat-footer">
             <input type="text" id="chatInput" class="form-control border-dark border-2 rounded-0 fw-bold" placeholder="Escribe un mensaje...">
             <button class="btn btn-dark fw-bold rounded-0" id="sendChatBtn"><i class="bi bi-send-fill"></i></button>
+        </div>
+    </div>
+
+    <!-- ===== ONBOARDING GUIDE BUBBLE ===== -->
+    <div class="guide-bot-wrapper" id="guideBotWrapper">
+        <div class="guide-bot-bubble" id="guideBotBubble" title="Guía de flujo" onclick="toggleGuideMobile()">
+            <i class="bi bi-compass-fill"></i>
+        </div>
+        <div class="guide-tooltip-box" id="guideTooltipBox">
+            <div class="d-flex justify-content-between align-items-start gap-2">
+                <div>
+                    <span class="guide-label">Siguiente paso →</span>
+                    <span id="guideText">Selecciona un destino en el mapa para comenzar</span>
+                </div>
+                <button onclick="minimizarGuia()" title="Minimizar" 
+                    style="background:none;border:none;color:#fff;font-size:1rem;line-height:1;cursor:pointer;opacity:0.7;flex-shrink:0;padding:0 0 0 6px;">
+                    <i class="bi bi-dash-lg"></i>
+                </button>
+            </div>
         </div>
     </div>
 
@@ -211,6 +274,205 @@
                     });
             });
         }
+    </script>
+
+    <!-- ===== FEATURES JS: NAVBAR ACTIVE + FLOW BAR + GUIDE + OFFLINE ===== -->
+    <script>
+    (function() {
+        const path = window.location.pathname;
+
+        // --- 1. NAVBAR ACTIVE LINK ---
+        document.querySelectorAll('.navbar .nav-link').forEach(link => {
+            try {
+                const href = link.getAttribute('href');
+                if (!href) return;
+                const linkPath = new URL(href, window.location.origin).pathname;
+                if (linkPath === path || (linkPath !== '/' && path.startsWith(linkPath))) {
+                    link.classList.add('tw-active');
+                }
+            } catch(e) {}
+        });
+
+        // --- 2. FLOW PROGRESS BAR ---
+        const flowMap = {
+            '/guia': 1, '/dashboard': 2, '/financiamiento': 3, '/constructor': 4
+        };
+        const flowSteps = ['/guia', '/dashboard', '/financiamiento', '/constructor'];
+        const activeStep = flowMap[path] || 0;
+
+        // Only show progress bar on flow pages
+        const progressBar = document.getElementById('flowProgressBar');
+        if (progressBar) {
+            if (activeStep === 0) {
+                progressBar.style.display = 'none';
+            } else {
+                progressBar.style.display = 'block';
+                for (let i = 1; i <= 4; i++) {
+                    const el = document.getElementById('fstep' + i);
+                    if (!el) continue;
+                    if (i < activeStep) el.classList.add('done');
+                    else if (i === activeStep) el.classList.add('active');
+                    // else: remains grey (pending)
+                }
+            }
+        }
+
+        // --- 3. GUIDE BOT CONTEXTUAL TIPS ---
+        const guideMessages = {
+            '/':           'Empieza explorando un destino en el globo interactivo 🌍',
+            '/guia':       'Selecciona un destino y luego toca «Continuar a Presupuesto» →',
+            '/dashboard':  'Completa la calculadora y sigue a Itinerario para planear tu ruta →',
+            '/constructor':'Arma tu itinerario día a día y guárdalo en tu Historial →',
+            '/financiamiento': 'Simula un crédito si el presupuesto es ajustado 💳',
+            '/historial':  'Aquí están todos tus viajes guardados. ¡Abre uno para continuar!'
+        };
+        const guideTextEl = document.getElementById('guideText');
+        if (guideTextEl) {
+            const msg = guideMessages[path] || guideMessages['/'];
+            guideTextEl.textContent = msg;
+        }
+
+        window.toggleGuideMobile = function() {
+            const box = document.getElementById('guideTooltipBox');
+            if (!box) return;
+            // Si está minimizado, restaurar; si está visible, minimizar
+            if (box.classList.contains('is-minimized')) {
+                box.classList.remove('is-minimized');
+            } else {
+                box.classList.add('is-minimized');
+            }
+        };
+
+        // --- 4. OFFLINE BANNER ---
+        const banner = document.getElementById('offlineBanner');
+        function showOffline() {
+            if (banner) banner.classList.add('visible');
+        }
+        function showOnline() {
+            if (banner) {
+                banner.innerHTML = '<i class="bi bi-wifi me-2"></i> Conexión restaurada';
+                banner.style.borderBottomColor = '#28a745';
+                setTimeout(() => banner.classList.remove('visible'), 2500);
+            }
+        }
+        if (!navigator.onLine) showOffline();
+        window.addEventListener('offline', showOffline);
+        window.addEventListener('online', showOnline);
+    })();
+
+    // ===== MINIMIZAR GUIA =====
+    window.minimizarGuia = function() {
+        const box = document.getElementById('guideTooltipBox');
+        if (box) box.classList.add('is-minimized');
+    };
+
+    // ===== MINIMIZAR Y ABRIR CHATBOT =====
+    window.abrirChat = function() {
+        const win = document.getElementById('chatWindow');
+        const wrapper = document.getElementById('chatBotWrapper');
+        if (wrapper) wrapper.style.display = 'none';
+        if (win) {
+            win.classList.add('active'); // Muestra la ventana
+            win.classList.remove('minimized');
+        }
+    };
+    
+    window.minimizarChat = function() {
+        const win = document.getElementById('chatWindow');
+        const wrapper = document.getElementById('chatBotWrapper');
+        if (win) win.classList.remove('active'); // Oculta la ventana
+        if (wrapper) wrapper.style.display = 'block'; // Muestra burbuja inicial
+    };
+
+    // Hacer que el header del chat también restaure al hacer click cuando está minimizado
+    document.addEventListener('DOMContentLoaded', function() {
+        const header = document.querySelector('.chat-header');
+        if (header) {
+            header.addEventListener('click', function(e) {
+                const win = document.getElementById('chatWindow');
+                // Solo restaurar si está minimizado y el click NO fue en un botón
+                if (win && win.classList.contains('minimized') && e.target.tagName !== 'BUTTON' && !e.target.closest('button')) {
+                    window.minimizarChat();
+                }
+            });
+        }
+    });
+
+    // ===== LÓGICA DE ARRASTRE (DRAGGABLE) =====
+    function makeDraggable(el, handleEl) {
+        if (!el) return;
+        let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
+        const header = handleEl || el;
+        
+        header.style.cursor = 'grab';
+        
+        header.onmousedown = dragMouseDown;
+        header.ontouchstart = dragMouseDown;
+
+        function dragMouseDown(e) {
+            // No iniciar arrastre si se hace clic en un botón o input
+            if (['BUTTON', 'INPUT', 'TEXTAREA'].includes(e.target.tagName) || e.target.closest('button')) return;
+            
+            e = e || window.event;
+            if (e.type === 'mousedown') e.preventDefault();
+            
+            // Fija la ventana en el frame absoluto exacto para que no "salte" al quitar constraints de CSS
+            const rect = el.getBoundingClientRect();
+            el.style.left = rect.left + "px";
+            el.style.top = rect.top + "px";
+            el.style.bottom = 'auto';
+            el.style.right = 'auto';
+            el.style.transform = 'none'; // Previene que transforms locales del CSS rompan las coordenadas fijadas
+            
+            pos3 = e.clientX || (e.touches && e.touches[0] ? e.touches[0].clientX : 0);
+            pos4 = e.clientY || (e.touches && e.touches[0] ? e.touches[0].clientY : 0);
+            
+            document.onmouseup = closeDragElement;
+            document.ontouchend = closeDragElement;
+            
+            document.onmousemove = elementDrag;
+            document.ontouchmove = elementDrag;
+            
+            header.style.cursor = 'grabbing';
+            // Elevar el z-index para que sea siempre clickeado por encima de todo
+            el.style.zIndex = 9999;
+        }
+
+        function elementDrag(e) {
+            e = e || window.event;
+            // Prevenir el scroll de página al arrastrar en táctil
+            if (e.type === 'touchmove') e.preventDefault({ passive: false });
+            
+            const clientX = e.clientX || (e.touches && e.touches[0] ? e.touches[0].clientX : 0);
+            const clientY = e.clientY || (e.touches && e.touches[0] ? e.touches[0].clientY : 0);
+            
+            pos1 = pos3 - clientX;
+            pos2 = pos4 - clientY;
+            pos3 = clientX;
+            pos4 = clientY;
+            
+            // Asignar nuevas coordenadas top/left
+            el.style.top = (el.offsetTop - pos2) + "px";
+            el.style.left = (el.offsetLeft - pos1) + "px";
+        }
+
+        function closeDragElement() {
+            document.onmouseup = null;
+            document.onmousemove = null;
+            document.ontouchend = null;
+            document.ontouchmove = null;
+            header.style.cursor = 'grab';
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        // Chatbot Burbuja (arrastrable por cualquier parte de la burbuja)
+        makeDraggable(document.getElementById('chatBotWrapper'));
+        // Chatbot Ventana (arrastrable solo por la cabecera oscura)
+        makeDraggable(document.getElementById('chatWindow'), document.querySelector('.chat-header'));
+        // Guia Del Flujo (arrastrable)
+        makeDraggable(document.getElementById('guideBotWrapper'));
+    });
     </script>
 </body>
 

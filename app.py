@@ -19,7 +19,7 @@ import threading
 import webbrowser
 from models import User, TripBudget, DestinationGuide, SavedRoute, SavingsReminder
 from werkzeug.security import generate_password_hash, check_password_hash
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from flask import jsonify
 from apscheduler.schedulers.background import BackgroundScheduler
 
@@ -50,7 +50,7 @@ def create_app():
         """Job que revisa y envía recordatorios de ahorro mensuales pendientes"""
         with app.app_context():
             try:
-                ahora = datetime.utcnow()
+                ahora = datetime.now(timezone.utc)
                 planes = SavingsReminder.query.filter(
                     SavingsReminder.is_active == True,
                     SavingsReminder.next_reminder <= ahora,
@@ -396,6 +396,8 @@ def create_app():
             return jsonify({'success': False, 'message': 'Datos incompletos'}), 400
             
         try:
+            import uuid
+            token = uuid.uuid4().hex
             nueva_ruta = SavedRoute(
                 user_id=session['user_id'],
                 origen=data.get('origen'),
@@ -404,7 +406,9 @@ def create_app():
                 fecha_ideal=data.get('fecha_ideal', ''),
                 mochila_state=data.get('mochila_state', '[]'),
                 vibes_state=data.get('vibes_state', '[]'),
-                packing_state=data.get('packing_state', '[]')
+                packing_state=data.get('packing_state', '[]'),
+                is_draft=bool(data.get('is_draft', False)),
+                share_token=token
             )
             db.session.add(nueva_ruta)
             db.session.commit()
@@ -531,9 +535,70 @@ def create_app():
         ruta = SavedRoute.query.filter_by(id=route_id, user_id=session['user_id']).first()
         if not ruta:
             return jsonify({'success': False, 'message': 'Ruta no encontrada o acceso denegado'}), 404
-            
+
+        db.session.delete(ruta)
         db.session.commit()
         return jsonify({'success': True})
+
+    @app.route('/api/save_draft', methods=['POST'])
+    def save_draft():
+        """API: Guardar borrador de viaje (sin enviar email)"""
+        if 'user_id' not in session:
+            return jsonify({'success': False, 'message': 'No autenticado'}), 401
+
+        data = request.get_json()
+        if not data or not data.get('destino'):
+            return jsonify({'success': False, 'message': 'Datos incompletos'}), 400
+
+        try:
+            # Si ya existe un draft para este destino del usuario, actualizarlo
+            existing = SavedRoute.query.filter_by(
+                user_id=session['user_id'],
+                destino=data.get('destino'),
+                is_draft=True
+            ).first()
+
+            if existing:
+                existing.origen = data.get('origen', existing.origen)
+                existing.duracion_dias = int(data.get('duracion_dias', existing.duracion_dias))
+                existing.fecha_ideal = data.get('fecha_ideal', existing.fecha_ideal)
+                existing.mochila_state = data.get('mochila_state', existing.mochila_state)
+                existing.vibes_state = data.get('vibes_state', existing.vibes_state)
+                existing.packing_state = data.get('packing_state', existing.packing_state)
+                db.session.commit()
+                return jsonify({'success': True, 'message': 'Borrador actualizado.', 'route_id': existing.id})
+            else:
+                borrador = SavedRoute(
+                    user_id=session['user_id'],
+                    origen=data.get('origen', 'Por definir'),
+                    destino=data.get('destino'),
+                    duracion_dias=int(data.get('duracion_dias', 1)),
+                    fecha_ideal=data.get('fecha_ideal', ''),
+                    mochila_state=data.get('mochila_state', '[]'),
+                    vibes_state=data.get('vibes_state', '[]'),
+                    packing_state=data.get('packing_state', '[]'),
+                    is_draft=True
+                )
+                db.session.add(borrador)
+                db.session.commit()
+                return jsonify({'success': True, 'message': 'Borrador guardado.', 'route_id': borrador.id})
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({'success': False, 'message': str(e)}), 500
+
+    @app.route('/api/finalize_route/<int:route_id>', methods=['POST'])
+    def finalize_route(route_id):
+        """API: Convertir borrador a viaje definitivo"""
+        if 'user_id' not in session:
+            return jsonify({'success': False, 'message': 'No autenticado'}), 401
+
+        ruta = SavedRoute.query.filter_by(id=route_id, user_id=session['user_id']).first()
+        if not ruta:
+            return jsonify({'success': False, 'message': 'Ruta no encontrada'}), 404
+
+        ruta.is_draft = False
+        db.session.commit()
+        return jsonify({'success': True, 'message': 'Viaje finalizado y guardado en tu historial.'})
 
     @app.route('/api/send_finance_summary', methods=['POST'])
     def send_finance_summary():
@@ -606,7 +671,7 @@ def create_app():
         if not destination or monthly_amount <= 0 or total_months < 1:
             return jsonify({'success': False, 'message': 'Datos del plan incompletos o inválidos.'}), 400
 
-        ahora = datetime.utcnow()
+        ahora = datetime.now(timezone.utc)
         # El PRIMER recordatorio se envía ahora mismo; el siguiente en 30 días
         nuevo_plan = SavingsReminder(
             user_id        = session['user_id'],
@@ -721,7 +786,8 @@ def create_app():
             'fecha_ideal': ruta.fecha_ideal,
             'mochila_state': ruta.mochila_state,
             'vibes_state': ruta.vibes_state,
-            'packing_state': ruta.packing_state
+            'packing_state': ruta.packing_state,
+            'is_draft': ruta.is_draft
         })
 
     # Instanciación automática de las tablas para ambiente de desarrollo local
@@ -730,6 +796,41 @@ def create_app():
             db.create_all()
         except Exception as e:
             print(f"Aviso de BD: {e}")
+        # Migración suave: añadir is_draft si no existe — compatible SQLite y MySQL
+        try:
+            from sqlalchemy import text, inspect as sa_inspect
+            inspector = sa_inspect(db.engine)
+            existing_cols = [c['name'] for c in inspector.get_columns('saved_routes')]
+            if 'is_draft' not in existing_cols:
+                with db.engine.connect() as conn:
+                    db_dialect = db.engine.dialect.name  # 'sqlite' o 'mysql'
+                    if db_dialect == 'sqlite':
+                        conn.execute(text("ALTER TABLE saved_routes ADD COLUMN is_draft BOOLEAN NOT NULL DEFAULT 0"))
+                    else:
+                        conn.execute(text("ALTER TABLE saved_routes ADD COLUMN is_draft TINYINT(1) NOT NULL DEFAULT 0"))
+                    conn.commit()
+                print("[MIGRATION] Columna is_draft añadida a saved_routes.")
+            else:
+                print("[MIGRATION] Columna is_draft ya existe — OK.")
+
+            if 'share_token' not in existing_cols:
+                with db.engine.connect() as conn:
+                    db_dialect = db.engine.dialect.name
+                    conn.execute(text("ALTER TABLE saved_routes ADD COLUMN share_token VARCHAR(36) UNIQUE"))
+                    conn.commit()
+                print("[MIGRATION] Columna share_token añadida a saved_routes. Asignando UUIDs a las antiguas...")
+                # Llenar tokens antiguos
+                with app.app_context():
+                    import uuid
+                    rutas = SavedRoute.query.filter_by(share_token=None).all()
+                    for r in rutas:
+                        r.share_token = uuid.uuid4().hex
+                    if rutas:
+                        db.session.commit()
+            else:
+                print("[MIGRATION] Columna share_token ya existe — OK.")
+        except Exception as e:
+            print(f"[MIGRATION] Aviso: {e}")
 
     # ===== WEATHER PROXY ENDPOINT =====
     @app.route('/api/weather')
@@ -823,6 +924,66 @@ def create_app():
         # Fallbacks genéricos
         fb = 'https://images.unsplash.com/photo-1488646953014-c8cb2c610e75?w=800&q=80'
         return jsonify({'urls': [fb] * limit})
+
+    # =======================================================
+    # NUEVOS MÓDULOS (SHARING & LEIA 2.0 AI)
+    # =======================================================
+
+    @app.route('/shared/<token>')
+    def shared_itinerary(token):
+        """Módulo Compartición: Ver viaje de modo solo lectura usando token unico."""
+        ruta = SavedRoute.query.filter_by(share_token=token).first_or_404()
+        return render_template('shared_itinerary.html', ruta=ruta)
+
+    @app.route('/api/gemini_chat', methods=['POST'])
+    def gemini_chat():
+        """Backend Leia 2.0 — usa HTTP REST a Gemini (compatible con free tier)."""
+        gemini_key = os.environ.get('GEMINI_API_KEY', '').strip()
+        if not gemini_key:
+            return jsonify({'reply': '⚠️ Hola! Para que Leia pueda ayudarte necesito que el administrador configure la clave de inteligencia artificial (GEMINI_API_KEY) en el servidor. 🐾'})
+
+        data = request.get_json()
+        user_message = data.get('message', '')
+        contexto = data.get('contexto', 'Navegando TravelWishly')
+
+        system_instruction = (
+            f"Eres Leia, una asistente virtual de viajes amigable y profesional, diseñada exclusivamente para TravelWishly. "
+            f"Personalidad: cálida, empática y servicial. Ocasionalmente puedes usar un emoji de gata (🐾). "
+            f"Contexto actual del usuario: '{contexto}'. "
+            f"ESTRUCTURA DE TRAVELWISHLY: Los menús superiores son 'Inicio', 'Explorar' (para ver el globo y destinos), "
+            f"'Presupuesto' (para calcular costos), 'Itinerario' (rutas), 'Financiamiento' (planes de ahorro) e 'Historial' (donde se guardan los viajes). "
+            f"IMPORTANTE: No inventes iconos (como corazones) o secciones que no existen. Tus respuestas deben ser exactas, amigables, cortas (máx 80 palabras) en español y sin dar rodeos. "
+            f"Usa formato Markdown solo cuando sea útil (listas, negritas)."
+        )
+
+        # Mensaje combinado: instruccion de sistema + pregunta del usuario
+        full_prompt = f"{system_instruction}\n\nUsuario: {user_message}"
+
+        try:
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key={gemini_key}"
+            payload = {
+                "contents": [{"parts": [{"text": full_prompt}]}],
+                "generationConfig": {
+                    "temperature": 0.5,
+                    "maxOutputTokens": 2048
+                }
+            }
+            res = requests.post(url, json=payload, timeout=30)
+            res_data = res.json()
+
+            if 'candidates' in res_data and len(res_data['candidates']) > 0:
+                txt = res_data['candidates'][0]['content']['parts'][0]['text']
+                return jsonify({'reply': txt})
+            else:
+                print(f"[API GEMINI ERROR] {res_data}")
+                err_msg = res_data.get('error', {}).get('message', 'Sin respuesta del modelo.')
+                if 'quota' in err_msg.lower() or '429' in str(res.status_code):
+                    return jsonify({'reply': '🐾 Estoy recibiendo muchas consultas en este momento. Espera un par de minutos e inténtalo de nuevo, ¿de acuerdo?'})
+                return jsonify({'reply': f'🐾 No pude obtener respuesta: {err_msg}'})
+        except requests.exceptions.Timeout:
+            return jsonify({'reply': '🐾 Mi conexión tardó demasiado. Por favor inténtalo de nuevo en un momento.'})
+        except Exception as e:
+            return jsonify({'reply': '🐾 Ocurrió un error inesperado. Inténtalo de nuevo en unos segundos.'})
 
     return app
 

@@ -4,7 +4,7 @@ Se cumplen las especificaciones de: Usuarios, Presupuestos y Destinos.
 """
 from database import db
 
-from datetime import datetime
+from datetime import datetime, timezone
 from werkzeug.security import generate_password_hash, check_password_hash
 
 class User(db.Model):
@@ -13,7 +13,7 @@ class User(db.Model):
     username = db.Column(db.String(50), unique=True, nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=False)
     password_hash = db.Column(db.String(256), nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     
     # Relación con presupuestos
     budgets = db.relationship('TripBudget', backref='user', lazy=True)
@@ -60,7 +60,9 @@ class SavedRoute(db.Model):
     mochila_state = db.Column(db.Text)
     vibes_state = db.Column(db.Text)
     packing_state = db.Column(db.Text)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    is_draft = db.Column(db.Boolean, default=False, nullable=False, server_default='0')
+    share_token = db.Column(db.String(36), unique=True, nullable=True)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
 
 
 class SavingsReminder(db.Model):
@@ -73,7 +75,7 @@ class SavingsReminder(db.Model):
     total_months = db.Column(db.Integer, nullable=False)
     currency = db.Column(db.String(10), nullable=False, default='MXN')
     currency_symbol = db.Column(db.String(10), nullable=False, default='$')
-    start_date = db.Column(db.DateTime, default=datetime.utcnow)
+    start_date = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     next_reminder = db.Column(db.DateTime, nullable=False)
     reminders_sent = db.Column(db.Integer, default=0)
     is_active = db.Column(db.Boolean, default=True)

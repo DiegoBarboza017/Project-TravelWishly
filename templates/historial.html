@@ -25,14 +25,17 @@
 <div class="row g-4" id="historialGrid">
     {% for ruta in rutas %}
     <div class="col-12">
-        <div class="card h-100 border-dark border-3 rounded-0 hover-lift d-flex flex-md-row flex-column" style="box-shadow: 6px 6px 0 0 #000;">
+        <div class="card h-100 border-dark border-3 rounded-0 hover-lift d-flex flex-md-row flex-column {% if ruta.is_draft %}draft-card{% endif %}" style="{% if not ruta.is_draft %}box-shadow: 6px 6px 0 0 #000;{% endif %}">
             <!-- Izquierda: Índice y Destino -->
-            <div class="card-header bg-dark text-white p-4 border-dark border-end border-3 text-center d-flex flex-column justify-content-center align-items-center" style="min-width: 250px;">
+            <div class="card-header p-4 border-dark border-end border-3 text-center d-flex flex-column justify-content-center align-items-center {% if ruta.is_draft %}draft-card-header{% else %}bg-dark{% endif %}" style="min-width: 250px;">
+                {% if ruta.is_draft %}
+                <span class="draft-badge"><i class="bi bi-pencil-fill"></i> Borrador</span>
+                {% endif %}
                 <h1 class="display-4 fw-black text-warning mb-0">#{{ loop.index }}</h1>
-                <h4 class="mb-0 fw-black text-uppercase tracking-wider text-truncate w-100 mt-2" title="{{ ruta.destino }}">
+                <h4 class="mb-0 fw-black text-uppercase tracking-wider text-truncate w-100 mt-2 text-white" title="{{ ruta.destino }}">
                     <i class="bi bi-geo-alt-fill me-2 text-danger"></i>{{ ruta.destino }}
                 </h4>
-                <small class="text-white-50 mt-1" style="font-size: 11px;">Creado: {{ ruta.created_at.strftime('%Y-%m-%d') }}</small>
+                <small class="text-white-50 mt-1" style="font-size: 11px;">{{ 'Borrador creado' if ruta.is_draft else 'Creado' }}: {{ ruta.created_at.strftime('%Y-%m-%d') }}</small>
             </div>
             
             <!-- Centro: Datos e Información -->
@@ -44,6 +47,9 @@
                         <i class="bi bi-calendar3 me-1"></i>{{ ruta.fecha_ideal }}
                     </span>
                     {% endif %}
+                    {% if ruta.is_draft %}
+                    <span class="badge rounded-0 fw-bold border border-2 border-start-0 p-2 fs-6" style="background:#f5c518;color:#000;border-color:#000;"><i class="bi bi-clock me-1"></i>En progreso</span>
+                    {% endif %}
                 </div>
                 <p class="card-text fw-bold text-dark text-uppercase small mb-1" style="opacity: 0.6;">Saliendo de:</p>
                 <p class="card-text fs-5 fw-bold text-truncate mb-0"><i class="bi bi-airplane-engines me-2"></i>{{ ruta.origen }}</p>
@@ -53,8 +59,16 @@
             <div class="card-footer bg-light border-dark border-start border-2 d-flex flex-column gap-2 justify-content-center p-4 rounded-0" style="min-width: 200px;">
                 <a href="{{ url_for('constructor') }}?history_id={{ ruta.id }}" 
                    class="btn btn-dark fw-black rounded-0 tracking-wider text-uppercase w-100 border-2 border-dark hover-lift flex-grow-1 d-flex align-items-center justify-content-center fs-5" style="box-shadow: 3px 3px 0 0 #555;">
-                   <i class="bi bi-cursor-fill text-warning me-2"></i>Abrir
+                   <i class="bi bi-{% if ruta.is_draft %}pencil-fill text-warning{% else %}cursor-fill text-warning{% endif %} me-2"></i>{{ 'Continuar Borrador' if ruta.is_draft else 'Abrir' }}
                 </a>
+                {% if ruta.is_draft %}
+                <button class="btn btn-warning fw-bold rounded-0 border-2 border-dark w-100 py-2" style="color:#000;" onclick="finalizarBorrador({{ ruta.id }}, this)" title="Marcar como viaje definitivo">
+                    <i class="bi bi-check-circle-fill me-2"></i>Finalizar
+                </button>
+                {% endif %}
+                <button class="btn btn-dark fw-bold rounded-0 border-2 border-dark w-100 py-2 {% if ruta.is_draft %}mt-0{% else %}mt-2{% endif %}" onclick="copiarEnlace('{{ url_for('shared_itinerary', token=ruta.share_token, _external=True) }}', this)" title="Compartir via enlace">
+                    <i class="bi bi-link-45deg me-2"></i>Copiar Enlace
+                </button>
                 <button class="btn btn-outline-danger fw-bold rounded-0 border-2 w-100 py-2 mt-2" onclick="mostrarModalEliminar({{ ruta.id }}, '{{ ruta.destino }}', this)" title="Eliminar del Historial">
                     <i class="bi bi-trash-fill me-2"></i>Eliminar
                 </button>
@@ -137,6 +151,26 @@ function mostrarModalEliminar(id, destino, btnElement) {
     deleteModalInstance.show();
 }
 
+// --- Lógica de Enlaces Compartidos ---
+function copiarEnlace(url, btn) {
+    if(!url || url.includes('None')) { alert('El enlace aún se está generando, intenta de nuevo en unos segundos.'); return; }
+    navigator.clipboard.writeText(url).then(() => {
+        const originalHtml = btn.innerHTML;
+        btn.innerHTML = '<i class="bi bi-check-all me-2"></i>¡Copiado!';
+        btn.classList.remove('btn-dark');
+        btn.classList.add('btn-success', 'text-white', 'border-success');
+        
+        setTimeout(() => {
+            btn.innerHTML = originalHtml;
+            btn.classList.add('btn-dark');
+            btn.classList.remove('btn-success', 'text-white', 'border-success');
+        }, 2200);
+    }).catch(err => {
+        console.error("Fallo al copiar enlace: ", err);
+        alert("Tu navegador bloqueó el copiado automático. Enlace: " + url);
+    });
+}
+
 document.addEventListener("DOMContentLoaded", () => {
     document.getElementById('confirmDeleteBtn')?.addEventListener('click', function() {
         if (!routeToDeleteId || !buttonToLoading) return;
@@ -179,6 +213,25 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     });
 });
+</script>
+
+<script>
+// --- Finalizar borrador ---
+function finalizarBorrador(id, btn) {
+    const originalHtml = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Guardando...';
+    fetch(`/api/finalize_route/${id}`, { method: 'POST' })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) { window.location.reload(); }
+        else {
+            alert(data.message || 'Error al finalizar.');
+            btn.innerHTML = originalHtml; btn.disabled = false;
+        }
+    })
+    .catch(() => { alert('Error de red.'); btn.innerHTML = originalHtml; btn.disabled = false; });
+}
 </script>
 
 {% endblock %}
