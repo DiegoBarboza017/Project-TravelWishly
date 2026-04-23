@@ -80,8 +80,9 @@
             .then(res => res.json())
             .then(data => {
                 if (data.logged_in) {
-                    // Magia! La aprobación pasó vía email en otra ventana. Lo mandamos auto al Inicio.
-                    window.location.href = "{{ url_for('index') }}";
+                    // Magia! La aprobación pasó vía email en otra ventana. Lo mandamos auto al next url o inicio.
+                    const nextUrl = new URLSearchParams(window.location.search).get('next');
+                    window.location.href = nextUrl ? nextUrl : "{{ url_for('index') }}";
                 }
             })
             .catch(e => false);

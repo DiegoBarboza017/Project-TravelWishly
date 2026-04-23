@@ -298,3 +298,137 @@ function actualizarProgressPacking() {
         else                     el('packingStatusMsg').textContent = '✅ ¡Packing completado! Estás listo para volar. ✈️';
     }
 }
+
+/* =========================================================================
+   HOSPEDAJE INTELIGENTE
+========================================================================= */
+window.toggleHospedajeAI = async function() {
+    const isChecked = document.getElementById('checkHospedajeAI').checked;
+    const container = document.getElementById('contenedorHospedajeAI');
+    const grid = document.getElementById('gridHoteles');
+    
+    if (!isChecked) {
+        container.classList.add('d-none');
+        return;
+    }
+    
+    // Obtener destino
+    const destinoEl = document.getElementById('rutaDestino');
+    const destino = destinoEl ? destinoEl.value.trim() : '';
+    if (!destino) {
+        alert("Por favor ingresa un destino principal antes de buscar alojamiento.");
+        document.getElementById('checkHospedajeAI').checked = false;
+        return;
+    }
+    
+    container.classList.remove('d-none');
+    grid.innerHTML = '<div class="col-12 text-center py-4"><div class="spinner-border text-primary" role="status"></div><p class="mt-2 fw-bold text-uppercase small">Analizando zonas con IA...</p></div>';
+    
+    try {
+        const res = await fetch('/api/suggest_hotels', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ destino: destino })
+        });
+        const data = await res.json();
+        
+        if (data.success && data.hoteles) {
+            grid.innerHTML = '';
+            data.hoteles.forEach(hotel => {
+                const col = document.createElement('div');
+                col.className = 'col-12';
+                
+                // Color por estilo
+                let badgeClass = 'bg-secondary';
+                if (hotel.estilo.toLowerCase().includes('mochilero')) badgeClass = 'bg-success';
+                else if (hotel.estilo.toLowerCase().includes('lujo')) badgeClass = 'bg-dark';
+                else badgeClass = 'bg-primary';
+
+                col.innerHTML = `
+                    <div class="card rounded-0 border-dark border-2 p-3 bg-white hover-lift" style="box-shadow: 3px 3px 0 0 rgba(0,0,0,0.2); transition: 0.2s;">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <h6 class="fw-black mb-0" style="font-size: 15px;">${hotel.nombre}</h6>
+                            <span class="badge ${badgeClass} rounded-0 border border-dark text-uppercase" style="font-size: 10px;">${hotel.estilo}</span>
+                        </div>
+                        <p class="small text-muted fw-bold mb-2" style="font-size: 12px; line-height: 1.3;"><i class="bi bi-info-circle-fill me-1 text-dark"></i>${hotel.razon}</p>
+                        <div class="d-flex justify-content-between align-items-center mt-2 pt-2 border-top border-dark border-1">
+                            <span class="fw-black text-dark" style="font-size: 13px;">~ ${hotel.precio}</span>
+                            <div class="d-flex gap-2">
+                                <a href="https://www.google.com/maps/search/Hotels+in+${encodeURIComponent(hotel.nombre)}+${encodeURIComponent(destino)}" target="_blank" class="btn btn-sm btn-outline-dark rounded-0 fw-bold border-2" style="font-size: 10px;" title="Ver en Google Maps"><i class="bi bi-geo-alt-fill"></i> Mapa</a>
+                                <a href="https://www.booking.com/searchresults.html?ss=${encodeURIComponent(destino)}" target="_blank" class="btn btn-sm btn-dark rounded-0 fw-bold border-2" style="font-size: 10px;" title="Ver precios en Booking"><i class="bi bi-calendar-check-fill"></i> Reservar</a>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                grid.appendChild(col);
+            });
+        } else {
+            grid.innerHTML = `<div class="col-12 text-center py-3"><p class="text-danger fw-bold mb-0">Error: ${data.message}</p></div>`;
+        }
+    } catch (e) {
+        grid.innerHTML = `<div class="col-12 text-center py-3"><p class="text-danger fw-bold mb-0">No se pudo conectar con el servidor.</p></div>`;
+    }
+};
+
+window.analizarFechaConstructor = async function() {
+    const fechaInput = document.getElementById('rutaFecha');
+    const destinoInput = document.getElementById('rutaDestino');
+    const feedbackBox = document.getElementById('fechaSeasonalityFeedback');
+    const iconSpan = document.getElementById('fechaSeasonalityIcon');
+    const textSpan = document.getElementById('fechaSeasonalityText');
+    
+    if(!fechaInput || !destinoInput || !feedbackBox) return;
+    
+    const fechaVal = fechaInput.value;
+    const destinoVal = destinoInput.value;
+    
+    if(!fechaVal || !destinoVal) {
+        feedbackBox.classList.add('d-none');
+        return;
+    }
+    
+    // Ajustar mes (getMonth() es 0-index)
+    // Usamos utc para que coincida con lo ingresado y evitar desfase de timezone
+    const fechaParts = fechaVal.split('-');
+    const year = parseInt(fechaParts[0]);
+    const month = parseInt(fechaParts[1]) - 1;
+    const meses = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+    const mesStr = meses[month];
+    
+    feedbackBox.classList.remove('d-none');
+    iconSpan.innerHTML = '<span class="spinner-border spinner-border-sm" role="status"></span>';
+    textSpan.innerText = 'Analizando temporada para tu fecha...';
+    
+    try {
+        const res = await fetch('/api/seasonality', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ destino: destinoVal, mes: mesStr })
+        });
+        const data = await res.json();
+        
+        if (data.success && data.data) {
+            const s = data.data;
+            const seasonUpper = s.temporada.toUpperCase();
+            
+            let color = "text-dark"; // media
+            let icon = "bi-calendar-minus-fill text-warning";
+            if (seasonUpper.includes("ALTA")) {
+                color = "text-danger";
+                icon = "bi-calendar-x-fill text-danger";
+            }
+            if (seasonUpper.includes("BAJA")) {
+                color = "text-success";
+                icon = "bi-calendar-check-fill text-success";
+            }
+            
+            iconSpan.innerHTML = `<i class="bi ${icon}"></i>`;
+            textSpan.innerHTML = `<span class="${color}">TEMPORADA ${seasonUpper}:</span> ${s.razon}`;
+            
+        } else {
+            feedbackBox.classList.add('d-none');
+        }
+    } catch(e) {
+        feedbackBox.classList.add('d-none');
+    }
+};

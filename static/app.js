@@ -755,6 +755,62 @@ window.cargarGuiaSegura = function cargarGuiaSegura() {
             elementoHijo.style.transform = 'translateX(0px)';
         }, 30 + (i * 100));
     });
+
+    // Nuevo: Fetch Seasonality API
+    const badgeSeason = document.getElementById('seasonalityBadge');
+    if (badgeSeason) {
+        badgeSeason.className = "badge bg-secondary fs-6 rounded-0 border border-dark border-2 px-3 py-2 text-uppercase";
+        badgeSeason.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Analizando Temporadas...';
+        document.getElementById('seasonalityMejorEpoca').innerText = '';
+        document.getElementById('seasonalityClima').innerText = '';
+        document.getElementById('seasonalityRazon').innerText = '';
+        document.getElementById('seasonalityEventosWrapper').classList.add('d-none');
+        const bajaWrapperReset = document.getElementById('seasonalityBajaWrapper');
+        if (bajaWrapperReset) bajaWrapperReset.classList.add('d-none');
+        
+        fetch('/api/seasonality', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ destino: `${destinoObj.ciudad}, ${destinoObj.pais}` })
+        })
+        .then(r => r.json())
+        .then(data => {
+            if(data.success && data.data) {
+                const s = data.data;
+                const seasonUpper = s.temporada.toUpperCase();
+                let bgClass = "bg-warning text-dark"; // Media
+                if(seasonUpper.includes("ALTA")) bgClass = "bg-danger text-white";
+                if(seasonUpper.includes("BAJA")) bgClass = "bg-success text-white";
+                
+                badgeSeason.className = `badge ${bgClass} fs-6 rounded-0 border border-dark border-2 px-3 py-2 text-uppercase`;
+                badgeSeason.innerHTML = `<i class="bi bi-calendar-check me-2"></i> TEMPORADA ${seasonUpper}`;
+                
+                document.getElementById('seasonalityMejorEpoca').innerHTML = `<i class="bi bi-star-fill text-warning me-1"></i> Mejor época: ${s.mejor_epoca}`;
+                document.getElementById('seasonalityClima').innerHTML = `<strong>Clima:</strong> ${s.clima}`;
+                document.getElementById('seasonalityRazon').innerText = `"${s.razon}"`;
+                
+                // Temporada Baja
+                const bajaWrapper = document.getElementById('seasonalityBajaWrapper');
+                if (s.temporada_baja_meses || s.temporada_baja_razon) {
+                    document.getElementById('seasonalityBajaMeses').innerText = s.temporada_baja_meses || '';
+                    document.getElementById('seasonalityBajaRazon').innerText = s.temporada_baja_razon || '';
+                    bajaWrapper.classList.remove('d-none');
+                }
+
+                if (s.eventos && s.eventos.length > 0) {
+                    const ul = document.getElementById('seasonalityEventosList');
+                    ul.innerHTML = s.eventos.map(e => `<li>${e}</li>`).join('');
+                    document.getElementById('seasonalityEventosWrapper').classList.remove('d-none');
+                }
+            } else {
+                badgeSeason.className = "badge bg-dark fs-6 rounded-0 border border-dark border-2 px-3 py-2 text-uppercase";
+                badgeSeason.innerText = "DATOS NO DISPONIBLES";
+            }
+        })
+        .catch(e => {
+            badgeSeason.innerText = "ERROR DE CONEXIÓN";
+        });
+    }
 }
 
 /** @function continuarAPresupuesto redirige de Guía a Presupuesto usando el flujo global lineal */
@@ -818,19 +874,18 @@ window.abrirGaleria = function(puntoInteres, ciudadContexto) {
 
     grid.innerHTML = imgHTML;
 
-    // Ejecutar fetch asíncrono nativo usando Wikimedia Commons (100% robusto, sin rate limits para cliente web)
-    const qStr = `${puntoInteres} ${ciudadContexto}`;
-    const wikiUrl = `https://commons.wikimedia.org/w/api.php?action=query&generator=search&gsrsearch=${encodeURIComponent(qStr)}&gsrnamespace=6&gsrlimit=10&prop=imageinfo&iiprop=url&format=json&origin=*`;
+    // Utilizamos nuestro proxy en Python para evadir bloqueos CORS y obtener mejores imágenes
+    const qStr = `${puntoInteres} ${ciudadContexto} travel photography high quality`;
+    const proxyUrl = `/api/get_image?query=${encodeURIComponent(qStr)}&limit=10`;
     
-    fetch(wikiUrl)
+    fetch(proxyUrl)
         .then(r => r.json())
         .then(data => {
-            let pages = data.query ? data.query.pages : {};
-            let urls = Object.values(pages).map(p => p.imageinfo && p.imageinfo.length > 0 ? p.imageinfo[0].url : null).filter(u => u);
+            let urls = data.urls || [];
             
             // Rellenar si hay menos de 10 fotos disponibles
             if (urls.length > 0) {
-                while(urls.length < 10) urls.push(urls[0]);
+                while(urls.length < 10) urls.push(urls[Math.floor(Math.random() * urls.length)]); // Rellenar aleatoriamente
                 
                 urls.forEach((url, idx) => {
                     if (idx < 10) {
@@ -843,7 +898,7 @@ window.abrirGaleria = function(puntoInteres, ciudadContexto) {
             grid.classList.remove('d-none');
         })
         .catch(err => {
-            console.error("Fallo obteniendo las imgs desde Wikimedia", err);
+            console.error("Fallo obteniendo las imgs desde el proxy", err);
             spinner.classList.add('d-none');
             grid.classList.remove('d-none');
         });
@@ -1066,39 +1121,47 @@ window.hablarSintesis = function(texto, idioma) {
     }
 };
 
-window.generarKitVocabulario = function(destinoString) {
+window.generarKitVocabulario = async function(destinoString) {
     const grid = document.getElementById('survivalKitGrid');
-    if(!grid) return;
+    if(!grid || !destinoString) return;
 
-    if(!destinoString) return;
-    let targetCountry = "Internacional";
-    if(destinoString.includes(',')) {
-        targetCountry = destinoString.split(',')[1].trim();
-    } else {
-        targetCountry = destinoString;
+    grid.innerHTML = '<div class="col-12 text-center py-4"><span class="spinner-border text-dark"></span><p class="mt-2 fw-bold text-uppercase small">Traduciendo frases locales...</p></div>';
+
+    try {
+        const res = await fetch('/api/phrases', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ destino: destinoString })
+        });
+        const data = await res.json();
+        
+        if (data.success && data.data && data.data.length > 0) {
+            let html = '';
+            data.data.forEach((langData) => {
+                html += `<div class="col-12 mt-2"><div class="fw-black bg-light border border-dark border-2 text-dark p-1 text-center text-uppercase mb-2" style="font-size:0.7rem;">IDIOMA: ${langData.idioma}</div></div>`;
+                langData.phrases.forEach(phrase => {
+                    const safeLocalStr = phrase.local.replace(/'/g, "\\'");
+                    html += `
+                    <div class="col-6 mb-2">
+                        <button class="btn btn-outline-dark w-100 text-start d-flex justify-content-between align-items-center h-100 rounded-0 border-2 text-uppercase fw-bold p-2" 
+                                onclick="window.hablarSintesis('${safeLocalStr}', '${langData.lang_code}')" style="font-size:0.75rem;">
+                            <div class="text-truncate me-2">
+                                <div class="text-muted" style="font-size:0.6rem;">${phrase.es}</div>
+                                <div class="text-dark fs-6 text-wrap lh-1 mt-1">${phrase.local.split('(')[0].trim()}</div>
+                            </div>
+                            <i class="bi bi-volume-up-fill fs-5 text-primary"></i>
+                        </button>
+                    </div>
+                    `;
+                });
+            });
+            grid.innerHTML = html;
+        } else {
+            grid.innerHTML = '<div class="col-12 text-center text-danger fw-bold small mt-4">No se pudieron generar las frases.</div>';
+        }
+    } catch(e) {
+        grid.innerHTML = '<div class="col-12 text-center text-danger fw-bold small mt-4">Error de conexión al cargar frases.</div>';
     }
-
-    // Default to English if not found
-    let langData = SURVIVAL_DB[targetCountry] || { lang: 'en-US', phrases: SURVIVAL_DB["EE.UU."].phrases };
-
-    let html = '';
-    langData.phrases.forEach(phrase => {
-        // El boton invoca a window.hablarSintesis con comillas escapadas evitando inyecciones de string roto
-        const safeLocalStr = phrase.local.replace(/'/g, "\\'");
-        html += `
-        <div class="col-6 mb-2">
-            <button class="btn btn-outline-dark w-100 text-start d-flex justify-content-between align-items-center h-100 rounded-0 border-2 text-uppercase fw-bold p-2" 
-                    onclick="window.hablarSintesis('${safeLocalStr}', '${langData.lang}')" style="font-size:0.75rem;">
-                <div class="text-truncate me-2">
-                    <div class="text-muted" style="font-size:0.6rem;">${phrase.es}</div>
-                    <div class="text-dark fs-6">${phrase.local.split('(')[0].trim()}</div>
-                </div>
-                <i class="bi bi-volume-up-fill fs-5 text-primary"></i>
-            </button>
-        </div>
-        `;
-    });
-    grid.innerHTML = html;
 };
 
 // Variable Global para retener la instancia de Leaflet
@@ -2663,12 +2726,35 @@ window.guardarViajeHistorial = function(btnElement) {
             mochila_detalle: mochilaDetalle,
             total_mochila: totalMochila,
             presupuesto_viaje: presupuestoViaje,
-            itinerario_steps: itinerarioSteps
+            itinerario_steps: itinerarioSteps,
+            is_final: true
         })
     })
 
     .then(response => {
-        if (!response.ok && response.status === 401) throw new Error('Inicia sesión para poder acceder a la BD central.');
+        if (!response.ok && response.status === 401) {
+            // Guardar payload para después del login
+            const payload = {
+                origen: origen,
+                destino: destino,
+                duracion_dias: parseInt(duracion, 10),
+                fecha_ideal: fecha || '',
+                mochila_state: JSON.stringify(mochilaIDs),
+                vibes_state: JSON.stringify(vibesState),
+                packing_state: JSON.stringify(packingIDs),
+                mochila_detalle: mochilaDetalle,
+                total_mochila: totalMochila,
+                presupuesto_viaje: presupuestoViaje,
+                itinerario_steps: itinerarioSteps,
+                is_final: true
+            };
+            sessionStorage.setItem('pending_itinerary_save', JSON.stringify(payload));
+            
+            // Construir URL de redirección segura
+            const currentUrl = window.location.href;
+            window.location.href = `/login?next=${encodeURIComponent(currentUrl)}&msg=Inicia+sesión+o+regístrate+para+guardar+tu+viaje`;
+            throw new Error('Redirigiendo a login...');
+        }
         return response.json();
     })
     .then(data => {
@@ -2749,5 +2835,44 @@ document.addEventListener("DOMContentLoaded", () => {
     // Cargar lista de monedas dinamicamente si estamos en el dashboard
     if (document.getElementById('fromCurrency')) {
         cargarListaMonedas();
+    }
+});
+
+// =========================================================================
+// AUTO-SAVE LUEGO DEL LOGIN
+// =========================================================================
+document.addEventListener('DOMContentLoaded', () => {
+    const isLoggedIn = document.body.dataset.loggedIn === 'true';
+    const pendingSave = sessionStorage.getItem('pending_itinerary_save');
+    
+    if (isLoggedIn && pendingSave) {
+        // Overlay de carga inmediato para mejorar UX
+        const loadingOverlay = document.createElement('div');
+        loadingOverlay.innerHTML = '<div style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: white; z-index: 99999; display: flex; flex-direction: column; justify-content: center; align-items: center;"><div class="spinner-border text-dark" style="width: 3rem; height: 3rem;" role="status"></div><h4 class="mt-3 fw-black text-dark text-uppercase tracking-wider">Guardando viaje...</h4><p class="text-muted fw-bold">Por favor espera un momento.</p></div>';
+        document.body.appendChild(loadingOverlay);
+
+        // Enviar automáticamente a la BD
+        const payload = JSON.parse(pendingSave);
+        sessionStorage.removeItem('pending_itinerary_save');
+        
+        fetch('/api/save_route', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify(payload)
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data && data.success && data.route_id) {
+                // Redirigir al historial e indicarle que resalte la nueva ruta
+                window.location.href = `/historial?new_route_id=${data.route_id}&auto_saved=1`;
+            } else if (data && data.success) {
+                // Fallback por si no viene el route_id
+                window.location.href = `/historial?auto_saved=1`;
+            }
+        })
+        .catch(console.error);
     }
 });

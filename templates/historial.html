@@ -24,7 +24,7 @@
 
 <div class="row g-4" id="historialGrid">
     {% for ruta in rutas %}
-    <div class="col-12">
+    <div class="col-12" id="route-card-{{ ruta.id }}">
         <div class="card h-100 border-dark border-3 rounded-0 hover-lift d-flex flex-md-row flex-column {% if ruta.is_draft %}draft-card{% endif %}" style="{% if not ruta.is_draft %}box-shadow: 6px 6px 0 0 #000;{% endif %}">
             <!-- Izquierda: Índice y Destino -->
             <div class="card-header p-4 border-dark border-end border-3 text-center d-flex flex-column justify-content-center align-items-center {% if ruta.is_draft %}draft-card-header{% else %}bg-dark{% endif %}" style="min-width: 250px;">
@@ -232,6 +232,80 @@ function finalizarBorrador(id, btn) {
     })
     .catch(() => { alert('Error de red.'); btn.innerHTML = originalHtml; btn.disabled = false; });
 }
+</script>
+
+<script>
+// --- Lógica de Auto-Guardado Animation ---
+document.addEventListener('DOMContentLoaded', () => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const newRouteId = urlParams.get('new_route_id');
+    const autoSaved = urlParams.get('auto_saved');
+    
+    // Limpiar URL silenciosamente para que no vuelva a saltar si refresca
+    if (autoSaved === '1' || newRouteId) {
+        const url = new URL(window.location);
+        url.searchParams.delete('new_route_id');
+        url.searchParams.delete('auto_saved');
+        window.history.replaceState({}, document.title, url.pathname);
+    }
+
+    if (autoSaved === '1') {
+        // Inyectar animación CSS
+        if (!document.getElementById('animPopScale')) {
+            const style = document.createElement('style');
+            style.id = 'animPopScale';
+            style.innerHTML = '@keyframes popScale { to { transform: scale(1); } }';
+            document.head.appendChild(style);
+        }
+
+        // 1. Mostrar overlay de bienvenida primero
+        const notif = document.createElement('div');
+        notif.id = 'overlayGuardado';
+        notif.style.cssText = 'position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.7);z-index:9999;display:flex;justify-content:center;align-items:center;transition:opacity 0.5s ease;';
+        notif.innerHTML = `
+            <div style="background:white;border:4px solid #000;box-shadow:12px 12px 0 0 #000;padding:40px;text-align:center;max-width:500px;transform:scale(0.8);animation:popScale 0.3s cubic-bezier(0.175,0.885,0.32,1.275) forwards;">
+                <i class="bi bi-floppy-fill text-dark mb-3 d-block" style="font-size:3.5rem;"></i>
+                <h2 class="fw-black text-uppercase text-dark mb-3">¡Bienvenido de vuelta!</h2>
+                <p class="fw-bold text-muted mb-0">Hemos guardado automáticamente tu viaje en tu Historial.</p>
+            </div>
+        `;
+        document.body.appendChild(notif);
+
+        // 2. Fade-out del overlay a los 3 segundos
+        setTimeout(() => {
+            notif.style.opacity = '0';
+
+            // 3. Una vez desaparece el overlay, hacer scroll y resaltar la tarjeta
+            setTimeout(() => {
+                notif.remove();
+
+                if (newRouteId) {
+                    const routeElement = document.getElementById(`route-card-${newRouteId}`);
+                    if (routeElement) {
+                        const cardInner = routeElement.querySelector('.card');
+                        routeElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        
+                        setTimeout(() => {
+                            if (cardInner) {
+                                cardInner.style.transition = 'box-shadow 0.4s ease, border-color 0.4s ease';
+                                cardInner.style.boxShadow = '0 0 0 5px #0d6efd, 10px 10px 0 0 #000';
+                                cardInner.classList.add('border-primary');
+                            }
+                        }, 400); // pequeño delay para que el scroll llegue primero
+
+                        // 4. Quitar el resaltado a los 4 segundos
+                        setTimeout(() => {
+                            if (cardInner) {
+                                cardInner.style.boxShadow = '6px 6px 0 0 #000';
+                                cardInner.classList.remove('border-primary');
+                            }
+                        }, 4500);
+                    }
+                }
+            }, 500); // duración del fade-out
+        }, 3000); // tiempo visible del overlay
+    }
+});
 </script>
 
 {% endblock %}

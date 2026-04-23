@@ -178,7 +178,8 @@ def create_app():
                 print(f"Error enviando correo de bienvenida: {e}")
 
             flash('Usuario registrado exitosamente. Se ha enviado un correo a tu cuenta.', 'success')
-            return redirect(url_for('login'))
+            next_page = request.args.get('next')
+            return redirect(url_for('login', next=next_page) if next_page else url_for('login'))
         return render_template('registro.html')
 
     @app.route('/login', methods=['GET', 'POST'])
@@ -215,7 +216,8 @@ def create_app():
                     session['expires_at'] = (datetime.now() + timedelta(minutes=30)).timestamp()
                     
                 flash('Bienvenido de nuevo. Sesión iniciada correctamente.', 'success')
-                return redirect(url_for('index'))
+                next_page = request.args.get('next')
+                return redirect(next_page if next_page else url_for('index'))
             else:
                 flash('Credenciales incorrectas.', 'error')
                 return redirect(url_for('login'))
@@ -232,7 +234,8 @@ def create_app():
         
         s = get_reset_serializer()
         token = s.dumps(email, salt='magic-link-salt')
-        magic_link = url_for('magic_auth', token=token, _external=True)
+        next_page = request.args.get('next')
+        magic_link = url_for('magic_auth', token=token, next=next_page, _external=True)
         
         try:
             msg = Message(
@@ -246,7 +249,8 @@ def create_app():
             print(f"Error enviando magic link: {e}")
             flash('Hubo un error enviando tu enlace de acceso. Intenta de nuevo más tarde.', 'error')
             
-        return redirect(url_for('login'))
+        next_page = request.args.get('next')
+        return redirect(url_for('login', next=next_page) if next_page else url_for('login'))
 
     @app.route('/magic-auth/<token>')
     def magic_auth(token):
@@ -558,6 +562,9 @@ def create_app():
                 is_draft=True
             ).first()
 
+            is_final_flag = data.get('is_final', False)
+            is_draft_val = not is_final_flag
+
             if existing:
                 existing.origen = data.get('origen', existing.origen)
                 existing.duracion_dias = int(data.get('duracion_dias', existing.duracion_dias))
@@ -565,8 +572,9 @@ def create_app():
                 existing.mochila_state = data.get('mochila_state', existing.mochila_state)
                 existing.vibes_state = data.get('vibes_state', existing.vibes_state)
                 existing.packing_state = data.get('packing_state', existing.packing_state)
+                existing.is_draft = is_draft_val
                 db.session.commit()
-                return jsonify({'success': True, 'message': 'Borrador actualizado.', 'route_id': existing.id})
+                return jsonify({'success': True, 'message': 'Viaje actualizado.', 'route_id': existing.id})
             else:
                 borrador = SavedRoute(
                     user_id=session['user_id'],
@@ -577,7 +585,7 @@ def create_app():
                     mochila_state=data.get('mochila_state', '[]'),
                     vibes_state=data.get('vibes_state', '[]'),
                     packing_state=data.get('packing_state', '[]'),
-                    is_draft=True
+                    is_draft=is_draft_val
                 )
                 db.session.add(borrador)
                 db.session.commit()
@@ -928,6 +936,179 @@ def create_app():
     # =======================================================
     # NUEVOS MÓDULOS (SHARING & LEIA 2.0 AI)
     # =======================================================
+
+    @app.route('/api/suggest_hotels', methods=['POST'])
+    def suggest_hotels():
+        """Backend para sugerir hoteles usando Gemini"""
+        gemini_key = os.environ.get('GEMINI_API_KEY', '').strip()
+        if not gemini_key:
+            return jsonify({'success': False, 'message': 'API Key no configurada'})
+            
+        data = request.get_json()
+        destino = data.get('destino', '')
+        if not destino:
+            return jsonify({'success': False, 'message': 'Destino requerido'})
+            
+        prompt = (
+            f"Actúa como un experto agente de viajes. Sugiere 3 opciones o zonas reales de hospedaje en {destino} "
+            f"con estilos variados (Mochilero, Estándar, Lujo). "
+            f"Devuelve la respuesta estrictamente en este formato JSON válido (un arreglo de 3 objetos), "
+            f"sin texto adicional ni markdown de bloques de código:\n"
+            f'[\n'
+            f'  {{"nombre": "Nombre del hotel o zona", "estilo": "Mochilero/Estándar/Lujo", "precio": "Precio est. por noche", "razon": "Por qué conviene hospedarse aquí (muy breve)"}}\n'
+            f']'
+        )
+
+        try:
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key={gemini_key}"
+            payload = {
+                "contents": [{"parts": [{"text": prompt}]}],
+                "generationConfig": {
+                    "temperature": 0.4,
+                    "maxOutputTokens": 1024
+                }
+            }
+            res = requests.post(url, json=payload, timeout=20)
+            res_data = res.json()
+            if 'candidates' in res_data and len(res_data['candidates']) > 0:
+                txt = res_data['candidates'][0]['content']['parts'][0]['text']
+                import json
+                try:
+                    txt = txt.strip()
+                    txt = txt.replace('```json\n', '').replace('```json', '').replace('\n```', '').replace('```', '').strip()
+                    # Extraer el arreglo para mayor seguridad
+                    start_idx = txt.find('[')
+                    end_idx = txt.rfind(']')
+                    if start_idx != -1 and end_idx != -1:
+                        txt = txt[start_idx:end_idx+1]
+                    hoteles = json.loads(txt)
+                    return jsonify({'success': True, 'hoteles': hoteles})
+                except Exception as ex:
+                    print("Error JSON parse en hoteles:", ex, "TXT:", txt)
+                    return jsonify({'success': False, 'message': 'No se pudo generar la sugerencia (JSON inválido)'})
+            else:
+                return jsonify({'success': False, 'message': 'No se pudo generar la sugerencia'})
+        except Exception as e:
+            print("Error suggest_hotels:", e)
+            return jsonify({'success': False, 'message': str(e)})
+
+    @app.route('/api/seasonality', methods=['POST'])
+    def seasonality():
+        """Backend para análisis de temporadas y eventos usando Gemini"""
+        gemini_key = os.environ.get('GEMINI_API_KEY', '').strip()
+        if not gemini_key:
+            return jsonify({'success': False, 'message': 'API Key no configurada'})
+            
+        data = request.get_json()
+        destino = data.get('destino', '')
+        mes = data.get('mes', '')
+        
+        if not destino:
+            return jsonify({'success': False, 'message': 'Destino requerido'})
+            
+        contexto_fecha = f"El usuario planea viajar en el mes de {mes}." if mes else "El usuario quiere saber sobre las temporadas en general."
+        
+        prompt = (
+            f"Actúa como un planificador de viajes experto. Analiza el destino '{destino}'. {contexto_fecha} "
+            f"Proporciona información completa sobre la temporada ACTUAL y también sobre la temporada BAJA para viajeros que prefieren viajar cuando hay menos turistas y precios más económicos. "
+            f"Incluye hasta 3 eventos/festividades famosas del lugar. "
+            f"Devuelve la respuesta ESTRICTAMENTE en este formato JSON válido (un solo objeto), sin markdown ni texto extra:\n"
+            f'{{\n'
+            f'  "temporada": "ALTA/MEDIA/BAJA",\n'
+            f'  "clima": "Breve descripción del clima actual",\n'
+            f'  "razon": "Por qué es temporada alta/media/baja ahora (muy breve)",\n'
+            f'  "mejor_epoca": "Meses ideales para turismo (temporada alta)",\n'
+            f'  "temporada_baja_meses": "Meses de temporada baja",\n'
+            f'  "temporada_baja_razon": "Por qué es temporada baja (clima, menos turistas, precios, etc.)",\n'
+            f'  "eventos": ["Evento 1 (Mes)", "Evento 2 (Mes)"]\n'
+            f'}}'
+        )
+
+        try:
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key={gemini_key}"
+            payload = {
+                "contents": [{"parts": [{"text": prompt}]}],
+                "generationConfig": {"temperature": 0.4, "maxOutputTokens": 800}
+            }
+            res = requests.post(url, json=payload, timeout=20)
+            res_data = res.json()
+            if 'candidates' in res_data and len(res_data['candidates']) > 0:
+                import json
+                txt = res_data['candidates'][0]['content']['parts'][0]['text']
+                try:
+                    txt = txt.strip()
+                    txt = txt.replace('```json\n', '').replace('```json', '').replace('\n```', '').replace('```', '').strip()
+                    start_idx = txt.find('{')
+                    end_idx = txt.rfind('}')
+                    if start_idx != -1 and end_idx != -1:
+                        txt = txt[start_idx:end_idx+1]
+                    datos = json.loads(txt)
+                    # Asegurarse de que están todos los campos
+                    if 'temporada' not in datos:
+                        datos['temporada'] = 'MEDIA'
+                    return jsonify({'success': True, 'data': datos})
+                except Exception as ex:
+                    print("Error JSON parse en seasonality:", ex, "TXT:", txt)
+                    return jsonify({'success': False, 'message': 'JSON inválido'})
+            else:
+                return jsonify({'success': False, 'message': 'No se pudo generar el análisis'})
+        except Exception as e:
+            return jsonify({'success': False, 'message': str(e)})
+
+    @app.route('/api/phrases', methods=['POST'])
+    def survival_phrases():
+        """Genera frases de supervivencia para un destino"""
+        gemini_key = os.environ.get('GEMINI_API_KEY', '').strip()
+        if not gemini_key:
+            return jsonify({'success': False})
+            
+        data = request.get_json()
+        destino = data.get('destino', '')
+        if not destino:
+            return jsonify({'success': False})
+            
+        prompt = (
+            f"You are a JSON generator. Given the travel destination '{destino}', "
+            f"identify the 2 main spoken languages there. "
+            f"If it's a Spanish-speaking country/city, use Spanish as lang 1 and English as lang 2. "
+            f"Translate these 6 phrases into both languages: "
+            f"Hola, Gracias, Disculpe, Dónde está el baño, Ayuda, La cuenta por favor. "
+            f"Reply ONLY with a valid JSON array, no extra text, no markdown. Example format:\n"
+            f'[{{"idioma":"Español","lang_code":"es-MX","phrases":[{{"es":"Hola","local":"¡Hola!"}},{{"es":"Gracias","local":"Gracias"}}]}},{{"idioma":"English","lang_code":"en-US","phrases":[{{"es":"Hola","local":"Hello"}},{{"es":"Gracias","local":"Thank you"}}]}}]\n'
+            f"Now generate the full 6-phrase array for both languages of '{destino}':"
+        )
+        
+        try:
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key={gemini_key}"
+            payload = {
+                "contents": [{"parts": [{"text": prompt}]}],
+                "generationConfig": {"temperature": 0.2, "maxOutputTokens": 1024}
+            }
+            res = requests.post(url, json=payload, timeout=20)
+            res_data = res.json()
+            print(f"[PHRASES] Status: {res.status_code}")
+            if 'candidates' in res_data and len(res_data['candidates']) > 0:
+                txt = res_data['candidates'][0]['content']['parts'][0]['text']
+                import json
+                print(f"[PHRASES] Raw response: {txt[:300]}")
+                txt = txt.strip()
+                txt = txt.replace('```json\n', '').replace('```json', '').replace('\n```', '').replace('```', '').strip()
+                start_idx = txt.find('[')
+                end_idx = txt.rfind(']')
+                if start_idx != -1 and end_idx != -1:
+                    txt = txt[start_idx:end_idx+1]
+                try:
+                    datos = json.loads(txt)
+                    return jsonify({'success': True, 'data': datos})
+                except Exception as parse_err:
+                    print(f"[PHRASES] JSON parse error: {parse_err} | TXT: {txt[:200]}")
+                    return jsonify({'success': False, 'message': f'Parse error: {str(parse_err)}'})
+            else:
+                print(f"[PHRASES] No candidates in response: {res_data}")
+            return jsonify({'success': False, 'message': 'Sin respuesta de IA'})
+        except Exception as e:
+            print(f"[PHRASES] Exception: {e}")
+            return jsonify({'success': False, 'message': str(e)})
 
     @app.route('/shared/<token>')
     def shared_itinerary(token):
