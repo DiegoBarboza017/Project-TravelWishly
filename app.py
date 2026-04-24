@@ -903,35 +903,69 @@ def create_app():
     # ===== IMAGE SEARCH PROXY ENDPOINT =====
     _image_cache = {}
 
+    # Colección de imágenes de viaje de Unsplash verificadas (no requieren API key, son públicas)
+    UNSPLASH_TRAVEL_IDS = [
+        'photo-1503220317375-aaad61436b1b', 'photo-1488646953014-c8cb2c610e75',
+        'photo-1476514525535-07fb3b4ae5f1', 'photo-1500530855697-b586d89ba3ee',
+        'photo-1469854523086-cc02fe5d8800', 'photo-1452421822248-d4c2b47f0c81',
+        'photo-1507525428034-b723cf961d3e', 'photo-1530521954074-e64f6810b32d',
+        'photo-1539635278303-d4002c07eae3', 'photo-1436491865332-7a61a109cc05',
+        'photo-1508050919630-b135583b29ab', 'photo-1525625293386-3f8f99389edd',
+        'photo-1520250497591-112f2f40a3f4', 'photo-1551882547-ff40c4a49f41',
+        'photo-1566073771259-6a8506099945', 'photo-1582719508461-905c673771fd',
+        'photo-1571896349842-33c89424de2d', 'photo-1542314831-068cd1dbfeeb',
+        'photo-1455587734955-081b22074882', 'photo-1564501049412-61c2a3083791',
+    ]
+
     @app.route('/api/get_image')
     def api_get_image():
+        import hashlib, time
         query = request.args.get('query', '')
         limit = int(request.args.get('limit', 1))
-        
+
         if not query:
-            return jsonify({'urls': ['https://images.unsplash.com/photo-1503220317375-aaad61436b1b?w=800&q=80'] * limit})
+            return jsonify({'urls': [f'https://images.unsplash.com/{UNSPLASH_TRAVEL_IDS[i % len(UNSPLASH_TRAVEL_IDS)]}?w=800&q=80&fit=crop' for i in range(limit)]})
 
         cache_key = f"{query}_{limit}"
         if cache_key in _image_cache:
             return jsonify({'urls': _image_cache[cache_key]})
 
+        # Intentar DuckDuckGo primero (puede tener rate limit)
+        ddg_urls = []
         try:
             from duckduckgo_search import DDGS
             with DDGS() as ddgs:
-                results = list(ddgs.images(query, max_results=limit))
-                if results and len(results) > 0:
-                    urls = [img['image'] for img in results]
-                    # Fill if not enough
-                    while len(urls) < limit:
-                        urls.append(urls[0])
-                    _image_cache[cache_key] = urls
-                    return jsonify({'urls': urls})
+                results = list(ddgs.images(query, max_results=limit + 5))
+                # Solo aceptar imágenes de dominios confiables que permiten hotlinking
+                trusted = ['unsplash.com', 'wikimedia.org', 'wikipedia.org', 'pexels.com',
+                           'pixabay.com', 'staticflickr.com', 'imgur.com']
+                for img in results:
+                    url = img.get('image', '')
+                    if any(d in url for d in trusted):
+                        ddg_urls.append(url)
+                    if len(ddg_urls) >= limit:
+                        break
         except Exception as e:
             print(f"[IMAGE SEARCH ERROR] {query}: {e}")
 
-        # Fallbacks genéricos
-        fb = 'https://images.unsplash.com/photo-1488646953014-c8cb2c610e75?w=800&q=80'
-        return jsonify({'urls': [fb] * limit})
+        if len(ddg_urls) >= limit:
+            _image_cache[cache_key] = ddg_urls[:limit]
+            return jsonify({'urls': ddg_urls[:limit]})
+
+        # Fallback determinista usando Unsplash con seed basado en query
+        # Unsplash source API: pública, sin key, permite hotlinking
+        seed = int(hashlib.md5(query.encode()).hexdigest(), 16)
+        keywords = query.replace(' ', ',').lower()[:80]
+        urls = []
+        for i in range(limit):
+            idx = (seed + i) % len(UNSPLASH_TRAVEL_IDS)
+            photo_id = UNSPLASH_TRAVEL_IDS[idx]
+            # Usar diferentes tamaños para variedad visual
+            w = 800 + (i % 3) * 100
+            urls.append(f'https://images.unsplash.com/{photo_id}?w={w}&q=80&fit=crop&auto=format')
+
+        _image_cache[cache_key] = urls
+        return jsonify({'urls': urls})
 
     # =======================================================
     # NUEVOS MÓDULOS (SHARING & LEIA 2.0 AI)
@@ -943,24 +977,25 @@ def create_app():
         gemini_key = os.environ.get('GEMINI_API_KEY', '').strip()
         if not gemini_key:
             return jsonify({'success': False, 'message': 'API Key no configurada'})
-            
+
         data = request.get_json()
         destino = data.get('destino', '')
         if not destino:
             return jsonify({'success': False, 'message': 'Destino requerido'})
-            
+
         prompt = (
-            f"Actúa como un experto agente de viajes. Sugiere 3 opciones o zonas reales de hospedaje en {destino} "
-            f"con estilos variados (Mochilero, Estándar, Lujo). "
-            f"Devuelve la respuesta estrictamente en este formato JSON válido (un arreglo de 3 objetos), "
-            f"sin texto adicional ni markdown de bloques de código:\n"
+            f"Actua como un experto agente de viajes. Sugiere 3 opciones o zonas reales de hospedaje en {destino} "
+            f"con estilos variados (Mochilero, Estandar, Lujo). "
+            f"Devuelve la respuesta estrictamente en este formato JSON valido (un arreglo de 3 objetos), "
+            f"sin texto adicional ni markdown de bloques de codigo:\n"
             f'[\n'
-            f'  {{"nombre": "Nombre del hotel o zona", "estilo": "Mochilero/Estándar/Lujo", "precio": "Precio est. por noche", "razon": "Por qué conviene hospedarse aquí (muy breve)"}}\n'
+            f'  {{"nombre": "Nombre del hotel o zona", "estilo": "Mochilero/Estandar/Lujo", "precio": "Precio est. por noche", "razon": "Por que conviene hospedarse aqui (muy breve)"}}\n'
             f']'
         )
 
         try:
-            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key={gemini_key}"
+            import json
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={gemini_key}"
             payload = {
                 "contents": [{"parts": [{"text": prompt}]}],
                 "generationConfig": {
@@ -968,15 +1003,14 @@ def create_app():
                     "maxOutputTokens": 1024
                 }
             }
-            res = requests.post(url, json=payload, timeout=20)
+            res = requests.post(url, json=payload, timeout=25)
             res_data = res.json()
+            print(f"[HOTELS] Status: {res.status_code}")
             if 'candidates' in res_data and len(res_data['candidates']) > 0:
                 txt = res_data['candidates'][0]['content']['parts'][0]['text']
-                import json
                 try:
                     txt = txt.strip()
                     txt = txt.replace('```json\n', '').replace('```json', '').replace('\n```', '').replace('```', '').strip()
-                    # Extraer el arreglo para mayor seguridad
                     start_idx = txt.find('[')
                     end_idx = txt.rfind(']')
                     if start_idx != -1 and end_idx != -1:
@@ -985,12 +1019,18 @@ def create_app():
                     return jsonify({'success': True, 'hoteles': hoteles})
                 except Exception as ex:
                     print("Error JSON parse en hoteles:", ex, "TXT:", txt)
-                    return jsonify({'success': False, 'message': 'No se pudo generar la sugerencia (JSON inválido)'})
             else:
-                return jsonify({'success': False, 'message': 'No se pudo generar la sugerencia'})
+                print("suggest_hotels: no candidates:", res_data)
         except Exception as e:
             print("Error suggest_hotels:", e)
-            return jsonify({'success': False, 'message': str(e)})
+
+        # --- FALLBACK: zonas genericas garantizadas ---
+        hoteles_fallback = [
+            {"nombre": f"Zona Centro / Casco Historico de {destino}", "estilo": "Estandar", "precio": "~$50-120 USD/noche", "razon": "Centrico, facil acceso a transporte y atracciones principales"},
+            {"nombre": f"Area de Hostales / Budget Zone de {destino}", "estilo": "Mochilero", "precio": "~$15-35 USD/noche", "razon": "Ideal para viajeros con presupuesto, ambiente social y buenas conexiones"},
+            {"nombre": f"Distrito Turistico / Hotel Zone de {destino}", "estilo": "Lujo", "precio": "~$150-350 USD/noche", "razon": "Zona premium con servicios completos, comodidad y seguridad garantizada"}
+        ]
+        return jsonify({'success': True, 'hoteles': hoteles_fallback, 'source': 'fallback'})
 
     @app.route('/api/seasonality', methods=['POST'])
     def seasonality():
@@ -1025,12 +1065,12 @@ def create_app():
         )
 
         try:
-            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key={gemini_key}"
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={gemini_key}"
             payload = {
                 "contents": [{"parts": [{"text": prompt}]}],
                 "generationConfig": {"temperature": 0.4, "maxOutputTokens": 800}
             }
-            res = requests.post(url, json=payload, timeout=20)
+            res = requests.post(url, json=payload, timeout=25)
             res_data = res.json()
             if 'candidates' in res_data and len(res_data['candidates']) > 0:
                 import json
@@ -1079,7 +1119,7 @@ def create_app():
         )
         
         try:
-            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key={gemini_key}"
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={gemini_key}"
             payload = {
                 "contents": [{"parts": [{"text": prompt}]}],
                 "generationConfig": {"temperature": 0.2, "maxOutputTokens": 1024}
@@ -1102,13 +1142,37 @@ def create_app():
                     return jsonify({'success': True, 'data': datos})
                 except Exception as parse_err:
                     print(f"[PHRASES] JSON parse error: {parse_err} | TXT: {txt[:200]}")
-                    return jsonify({'success': False, 'message': f'Parse error: {str(parse_err)}'})
             else:
                 print(f"[PHRASES] No candidates in response: {res_data}")
-            return jsonify({'success': False, 'message': 'Sin respuesta de IA'})
         except Exception as e:
             print(f"[PHRASES] Exception: {e}")
-            return jsonify({'success': False, 'message': str(e)})
+
+        # --- FALLBACK GARANTIZADO: frases por idioma detectado ---
+        import json as _json
+        d = destino.lower()
+        en_phrases = [{"es":"Hola","local":"Hello"},{"es":"Gracias","local":"Thank you"},{"es":"Disculpe","local":"Excuse me"},{"es":"¿Dónde está el baño?","local":"Where is the restroom?"},{"es":"Ayuda","local":"Help!"},{"es":"La cuenta por favor","local":"Check, please"}]
+        es_phrases = [{"es":"Hola","local":"Hola"},{"es":"Gracias","local":"Gracias"},{"es":"Disculpe","local":"Disculpe"},{"es":"¿Dónde está el baño?","local":"¿Dónde está el baño?"},{"es":"Ayuda","local":"Ayuda"},{"es":"La cuenta por favor","local":"La cuenta por favor"}]
+
+        if any(x in d for x in ['japan','japon','tokyo','osaka']):
+            langs = [{"idioma":"日本語","lang_code":"ja-JP","phrases":[{"es":"Hola","local":"Konnichiwa"},{"es":"Gracias","local":"Arigatou"},{"es":"Disculpe","local":"Sumimasen"},{"es":"¿Dónde está el baño?","local":"Toire wa doko desu ka?"},{"es":"Ayuda","local":"Tasukete!"},{"es":"La cuenta por favor","local":"Okaikei onegaishimasu"}]},{"idioma":"English","lang_code":"en-US","phrases":en_phrases}]
+        elif any(x in d for x in ['france','paris','francais','senegal','cameroon','cameroun','cote','haiti','belgium']):
+            langs = [{"idioma":"Français","lang_code":"fr-FR","phrases":[{"es":"Hola","local":"Bonjour"},{"es":"Gracias","local":"Merci"},{"es":"Disculpe","local":"Excusez-moi"},{"es":"¿Dónde está el baño?","local":"Où sont les toilettes?"},{"es":"Ayuda","local":"Au secours!"},{"es":"La cuenta por favor","local":"L'addition s'il vous plaît"}]},{"idioma":"English","lang_code":"en-US","phrases":en_phrases}]
+        elif any(x in d for x in ['brazil','brasil','portugal','angola']):
+            langs = [{"idioma":"Português","lang_code":"pt-BR","phrases":[{"es":"Hola","local":"Olá"},{"es":"Gracias","local":"Obrigado/a"},{"es":"Disculpe","local":"Desculpe"},{"es":"¿Dónde está el baño?","local":"Onde fica o banheiro?"},{"es":"Ayuda","local":"Socorro!"},{"es":"La cuenta por favor","local":"A conta por favor"}]},{"idioma":"English","lang_code":"en-US","phrases":en_phrases}]
+        elif any(x in d for x in ['italy','italia','rome','milan','venice']):
+            langs = [{"idioma":"Italiano","lang_code":"it-IT","phrases":[{"es":"Hola","local":"Ciao"},{"es":"Gracias","local":"Grazie"},{"es":"Disculpe","local":"Mi scusi"},{"es":"¿Dónde está el baño?","local":"Dov'è il bagno?"},{"es":"Ayuda","local":"Aiuto!"},{"es":"La cuenta por favor","local":"Il conto per favore"}]},{"idioma":"English","lang_code":"en-US","phrases":en_phrases}]
+        elif any(x in d for x in ['germany','austria','berlin','munich','deutsch']):
+            langs = [{"idioma":"Deutsch","lang_code":"de-DE","phrases":[{"es":"Hola","local":"Hallo"},{"es":"Gracias","local":"Danke"},{"es":"Disculpe","local":"Entschuldigung"},{"es":"¿Dónde está el baño?","local":"Wo ist die Toilette?"},{"es":"Ayuda","local":"Hilfe!"},{"es":"La cuenta por favor","local":"Die Rechnung bitte"}]},{"idioma":"English","lang_code":"en-US","phrases":en_phrases}]
+        elif any(x in d for x in ['china','beijing','shanghai','guangzhou']):
+            langs = [{"idioma":"中文","lang_code":"zh-CN","phrases":[{"es":"Hola","local":"Nǐ hǎo"},{"es":"Gracias","local":"Xièxiè"},{"es":"Disculpe","local":"Duìbuqǐ"},{"es":"¿Dónde está el baño?","local":"Xǐshǒujiān zài nǎlǐ?"},{"es":"Ayuda","local":"Jiùmìng!"},{"es":"La cuenta por favor","local":"Mǎidān"}]},{"idioma":"English","lang_code":"en-US","phrases":en_phrases}]
+        elif any(x in d for x in ['united states','usa','england','australia','canada','new zealand','ireland','uk','nigeria','ghana','kenya','south africa']):
+            langs = [{"idioma":"English","lang_code":"en-US","phrases":en_phrases},{"idioma":"Español","lang_code":"es-MX","phrases":es_phrases}]
+        else:
+            # Genérico: español + inglés
+            langs = [{"idioma":"Español","lang_code":"es-MX","phrases":es_phrases},{"idioma":"English","lang_code":"en-US","phrases":en_phrases}]
+
+        return jsonify({'success': True, 'data': langs, 'source': 'fallback'})
+
 
     @app.route('/shared/<token>')
     def shared_itinerary(token):
@@ -1141,7 +1205,7 @@ def create_app():
         full_prompt = f"{system_instruction}\n\nUsuario: {user_message}"
 
         try:
-            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key={gemini_key}"
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={gemini_key}"
             payload = {
                 "contents": [{"parts": [{"text": full_prompt}]}],
                 "generationConfig": {

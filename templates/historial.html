@@ -154,22 +154,47 @@ function mostrarModalEliminar(id, destino, btnElement) {
 // --- Lógica de Enlaces Compartidos ---
 function copiarEnlace(url, btn) {
     if(!url || url.includes('None')) { alert('El enlace aún se está generando, intenta de nuevo en unos segundos.'); return; }
-    navigator.clipboard.writeText(url).then(() => {
-        const originalHtml = btn.innerHTML;
+    
+    const originalHtml = btn.innerHTML;
+    
+    function mostrarExito() {
         btn.innerHTML = '<i class="bi bi-check-all me-2"></i>¡Copiado!';
         btn.classList.remove('btn-dark');
         btn.classList.add('btn-success', 'text-white', 'border-success');
-        
         setTimeout(() => {
             btn.innerHTML = originalHtml;
             btn.classList.add('btn-dark');
             btn.classList.remove('btn-success', 'text-white', 'border-success');
         }, 2200);
-    }).catch(err => {
-        console.error("Fallo al copiar enlace: ", err);
-        alert("Tu navegador bloqueó el copiado automático. Enlace: " + url);
-    });
+    }
+    
+    function mostrarManual() {
+        // Fallback: mostrar URL en prompt para que el usuario la copie manualmente
+        const confirmed = window.prompt('Copia este enlace con Ctrl+C:', url);
+        // Si cerraron sin copiar, se queda sin hacer nada
+    }
+    
+    // Intentar clipboard moderno (requiere HTTPS o localhost)
+    if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(url).then(mostrarExito).catch(() => mostrarManual());
+    } else {
+        // Fallback para HTTP / redes locales
+        try {
+            const el = document.createElement('textarea');
+            el.value = url;
+            el.style.cssText = 'position:fixed;left:-9999px;top:-9999px;opacity:0;';
+            document.body.appendChild(el);
+            el.focus();
+            el.select();
+            const ok = document.execCommand('copy');
+            document.body.removeChild(el);
+            if (ok) { mostrarExito(); } else { mostrarManual(); }
+        } catch(e) {
+            mostrarManual();
+        }
+    }
 }
+
 
 document.addEventListener("DOMContentLoaded", () => {
     document.getElementById('confirmDeleteBtn')?.addEventListener('click', function() {
