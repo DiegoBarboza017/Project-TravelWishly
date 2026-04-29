@@ -995,7 +995,7 @@ def create_app():
 
         try:
             import json
-            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={gemini_key}"
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key={gemini_key}"
             payload = {
                 "contents": [{"parts": [{"text": prompt}]}],
                 "generationConfig": {
@@ -1065,7 +1065,7 @@ def create_app():
         )
 
         try:
-            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={gemini_key}"
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key={gemini_key}"
             payload = {
                 "contents": [{"parts": [{"text": prompt}]}],
                 "generationConfig": {"temperature": 0.4, "maxOutputTokens": 800}
@@ -1088,12 +1088,71 @@ def create_app():
                         datos['temporada'] = 'MEDIA'
                     return jsonify({'success': True, 'data': datos})
                 except Exception as ex:
-                    print("Error JSON parse en seasonality:", ex, "TXT:", txt)
-                    return jsonify({'success': False, 'message': 'JSON inválido'})
+                    print("[SEASONALITY] JSON parse error:", ex, "TXT:", txt)
             else:
-                return jsonify({'success': False, 'message': 'No se pudo generar el análisis'})
+                print("[SEASONALITY] No candidates in response:", res_data)
         except Exception as e:
-            return jsonify({'success': False, 'message': str(e)})
+            print("[SEASONALITY] Exception:", e)
+
+        # ----------------------------------------------------------------
+        # FALLBACK UNIVERSAL: funciona para CUALQUIER pais del mundo.
+        # Calcula la temporada basandose en el mes actual del servidor
+        # y detecta el hemisferio sur para invertir las estaciones.
+        # ----------------------------------------------------------------
+        import datetime as _dt
+        mes_actual = _dt.datetime.now().month
+        d_lower = destino.lower()
+
+        # Paises/regiones del hemisferio SUR (estaciones invertidas)
+        hemisferio_sur = any(x in d_lower for x in [
+            'argentina', 'chile', 'australia', 'nueva zelanda', 'new zealand',
+            'sudafrica', 'south africa', 'brasil', 'brazil', 'uruguay',
+            'paraguay', 'bolivia', 'peru', 'peru', 'ecuador',
+            'mozambique', 'zimbabwe', 'zambia', 'madagascar', 'namibia',
+            'angola', 'botswana', 'lesotho', 'eswatini', 'swaziland',
+            'papua nueva guinea', 'papua new guinea', 'fiji', 'tonga', 'samoa'
+        ])
+
+        # Si es hemisferio sur, desplazamos 6 meses para invertir la logica
+        mes_calc = mes_actual if not hemisferio_sur else ((mes_actual + 5) % 12 + 1)
+
+        if mes_calc in [6, 7, 8]:
+            temporada_fb = 'ALTA'
+            clima_fb = 'Verano — dias calidos y soleados con alta afluencia turistica'
+            razon_fb = 'Temporada de verano con alta demanda y precios elevados'
+            mejor_fb = 'Junio a Agosto' if not hemisferio_sur else 'Diciembre a Febrero'
+        elif mes_calc in [12, 1]:
+            temporada_fb = 'ALTA'
+            clima_fb = 'Festividades de fin de ano — clima invernal festivo'
+            razon_fb = 'Vacaciones de Navidad y Ano Nuevo generan alta demanda turistica'
+            mejor_fb = 'Junio a Agosto' if not hemisferio_sur else 'Diciembre a Febrero'
+        elif mes_calc in [4, 5, 9, 10]:
+            temporada_fb = 'MEDIA'
+            clima_fb = 'Primavera/Otono — clima agradable con menos multitudes'
+            razon_fb = 'Temporada intermedia: buen clima y precios mas accesibles que en verano'
+            mejor_fb = 'Junio a Agosto' if not hemisferio_sur else 'Diciembre a Febrero'
+        else:  # 2, 3, 11
+            temporada_fb = 'BAJA'
+            clima_fb = 'Invierno — temporada tranquila con tarifas mas economicas'
+            razon_fb = 'Temporada baja: menos turistas y precios economicos ideales para presupuesto ajustado'
+            mejor_fb = 'Junio a Agosto' if not hemisferio_sur else 'Diciembre a Febrero'
+
+        t_baja = 'Noviembre, Enero, Febrero, Marzo' if not hemisferio_sur else 'Mayo, Junio, Julio'
+
+        datos_fallback = {
+            'temporada': temporada_fb,
+            'clima': clima_fb,
+            'razon': razon_fb,
+            'mejor_epoca': mejor_fb,
+            'temporada_baja_meses': t_baja,
+            'temporada_baja_razon': 'Menor afluencia turistica y precios mas economicos — ideal para viajeros con presupuesto ajustado',
+            'eventos': [
+                'Festividades y ferias locales (consultar agenda cultural del destino)',
+                'Mercados artesanales y eventos regionales',
+                'Gastronomia y cultura local todo el ano'
+            ]
+        }
+        return jsonify({'success': True, 'data': datos_fallback, 'source': 'fallback'})
 
     @app.route('/api/phrases', methods=['POST'])
     def survival_phrases():
@@ -1119,7 +1178,7 @@ def create_app():
         )
         
         try:
-            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={gemini_key}"
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key={gemini_key}"
             payload = {
                 "contents": [{"parts": [{"text": prompt}]}],
                 "generationConfig": {"temperature": 0.2, "maxOutputTokens": 1024}
@@ -1148,8 +1207,7 @@ def create_app():
             print(f"[PHRASES] Exception: {e}")
 
         # --- FALLBACK GARANTIZADO: frases por idioma detectado ---
-        import json as _json
-        d = destino.lower()
+                d = destino.lower()
         en_phrases = [{"es":"Hola","local":"Hello"},{"es":"Gracias","local":"Thank you"},{"es":"Disculpe","local":"Excuse me"},{"es":"¿Dónde está el baño?","local":"Where is the restroom?"},{"es":"Ayuda","local":"Help!"},{"es":"La cuenta por favor","local":"Check, please"}]
         es_phrases = [{"es":"Hola","local":"Hola"},{"es":"Gracias","local":"Gracias"},{"es":"Disculpe","local":"Disculpe"},{"es":"¿Dónde está el baño?","local":"¿Dónde está el baño?"},{"es":"Ayuda","local":"Ayuda"},{"es":"La cuenta por favor","local":"La cuenta por favor"}]
 
@@ -1205,7 +1263,7 @@ def create_app():
         full_prompt = f"{system_instruction}\n\nUsuario: {user_message}"
 
         try:
-            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={gemini_key}"
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key={gemini_key}"
             payload = {
                 "contents": [{"parts": [{"text": full_prompt}]}],
                 "generationConfig": {
