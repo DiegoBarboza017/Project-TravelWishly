@@ -26,31 +26,61 @@ from apscheduler.schedulers.background import BackgroundScheduler
 # === OpenWeather API Key (cambiar por la tuya en openweathermap.org) ===
 OPENWEATHER_API_KEY = os.environ.get('OPENWEATHER_API_KEY', '7bc4ccdffadb356912aeb175eb943099')
 
-# Módulo de Inicialización - Contribución inicial por Diego Barboza
+# ============================================================
+# INICIALIZACIÓN DE LA APLICACIÓN (Patrón Application Factory)
+# ============================================================
+# ¿Por qué usar una función create_app()?
+# Esto se conoce como "Application Factory". Permite crear múltiples instancias 
+# de la aplicación (por ejemplo, una para desarrollo y otra para pruebas automáticas) 
+# sin que interfieran entre sí. Ayuda mucho a la mantenibilidad del código.
 def create_app():
     app = Flask(__name__)
     
-    # Configuración de seguridad y base de datos (PostgreSQL)
-    # Recomendación: Utilizar variables de entorno en producción.
+    # --------------------------------------------------------
+    # CONFIGURACIÓN DE SEGURIDAD
+    # --------------------------------------------------------
+    # SECRET_KEY es vital para Flask. Se usa para firmar de forma segura las 
+    # cookies de sesión (donde guardamos si el usuario está logueado) y otros 
+    # tokens. Si alguien descubre esta llave, podría falsificar sesiones.
+    # Usamos os.environ.get para intentar leerla de un archivo .env, y si no 
+    # existe, usamos un valor por defecto para que la app no explote en desarrollo.
     app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'secr3t_travelwishly_k3y_for_dev')
 
-    # Configuración de Flask-Mail
+    # --------------------------------------------------------
+    # CONFIGURACIÓN DE CORREOS (Flask-Mail)
+    # --------------------------------------------------------
+    # Aquí configuramos cómo enviará correos la aplicación (ej. para Magic Links).
+    # Se usa el servidor SMTP de Gmail por su fiabilidad y porque es gratuito.
     app.config['MAIL_SERVER'] = 'smtp.gmail.com'
     app.config['MAIL_PORT'] = 587
-    app.config['MAIL_USE_TLS'] = True
+    app.config['MAIL_USE_TLS'] = True  # TLS cifra la comunicación para que sea segura
     app.config['MAIL_USERNAME'] = os.environ.get('MAIL_USERNAME', 'travelwishly.bot@gmail.com')
     app.config['MAIL_PASSWORD'] = os.environ.get('MAIL_PASSWORD')
     app.config['MAIL_DEFAULT_SENDER'] = os.environ.get('MAIL_USERNAME', 'travelwishly.bot@gmail.com')
     mail = Mail(app)
 
     # ============================================================
-    # SCHEDULER DE RECORDATORIOS DE AHORRO EN SEGUNDO PLANO
+    # SCHEDULER (PROGRAMADOR) DE RECORDATORIOS DE AHORRO
     # ============================================================
+    # ¿Por qué usar un Scheduler?
+    # Los usuarios crean "Planes de Ahorro" que duran meses. Necesitamos un mecanismo 
+    # que, de forma invisible y automática, revise cada cierto tiempo si le toca a 
+    # algún usuario recibir su correo recordatorio mensual.
     def enviar_recordatorios_ahorro():
-        """Job que revisa y envía recordatorios de ahorro mensuales pendientes"""
+        """
+        Job que revisa la base de datos buscando planes activos que ya cumplieron
+        sus 30 días de espera y envía un correo electrónico.
+        """
+        # app.app_context() es necesario porque estamos en un hilo secundario
+        # y Flask necesita saber a qué aplicación pertenece esta base de datos.
         with app.app_context():
             try:
                 ahora = datetime.now(timezone.utc)
+                
+                # Buscamos en la base de datos planes que cumplan 3 condiciones:
+                # 1. Están activos
+                # 2. La fecha de "próximo recordatorio" ya pasó o es ahora
+                # 3. Aún no se han enviado todos los recordatorios prometidos
                 planes = SavingsReminder.query.filter(
                     SavingsReminder.is_active == True,
                     SavingsReminder.next_reminder <= ahora,
@@ -224,16 +254,27 @@ def create_app():
                 
         return render_template('login.html')
 
+    # ============================================================
+    # AUTENTICACIÓN SIN CONTRASEÑA ("MAGIC LINKS")
+    # ============================================================
+    # ¿Por qué usar Magic Links?
+    # Mejoran la experiencia del usuario (UX) al no obligarlos a recordar otra 
+    # contraseña. Simplemente ingresan su correo y reciben un enlace seguro.
     @app.route('/magic-login', methods=['POST'])
     def magic_login():
-        """Módulo de Autenticación sin contraseña (Vía Email Seguro)"""
+        """Genera y envía un enlace de acceso único al correo del usuario."""
         email = request.form.get('google_email')
         if not email or '@' not in email:
             flash('Por favor, ingresa un correo válido.', 'error')
             return redirect(url_for('login'))
         
+        # URLSafeTimedSerializer crea un 'token' (un texto encriptado) que contiene 
+        # el correo del usuario. Como está firmado con nuestra SECRET_KEY, 
+        # nadie puede falsificarlo.
         s = get_reset_serializer()
         token = s.dumps(email, salt='magic-link-salt')
+        
+        # Creamos la URL completa a la que el usuario debe hacer clic
         next_page = request.args.get('next')
         magic_link = url_for('magic_auth', token=token, next=next_page, _external=True)
         
@@ -252,26 +293,34 @@ def create_app():
         next_page = request.args.get('next')
         return redirect(url_for('login', next=next_page) if next_page else url_for('login'))
 
+    # Esta ruta es la que se abre cuando el usuario hace clic en el correo
     @app.route('/magic-auth/<token>')
     def magic_auth(token):
         """Valida el enlace e inicia sesión (o registra) automáticamente"""
         s = get_reset_serializer()
         try:
-            email = s.loads(token, salt='magic-link-salt', max_age=900) # Expira en 15 mins
+            # Intentamos desencriptar el token. Si han pasado más de 15 min (900 seg),
+            # o si el token fue alterado, esto lanzará un error.
+            email = s.loads(token, salt='magic-link-salt', max_age=900)
         except:
             flash('El enlace de acceso es inválido o ha expirado.', 'error')
             return redirect(url_for('login'))
             
         user = User.query.filter_by(email=email).first()
         is_new_user = False
+        
+        # Funcionalidad "Lazy Registration": Si el correo no existe en la base 
+        # de datos, creamos la cuenta automáticamente sin pedir más datos.
         if not user:
-            # Registro automático
             username_base = email.split('@')[0]
+            # Le asignamos una contraseña aleatoria imposible de adivinar, 
+            # ya que el usuario solo usará el correo para entrar.
             user = User(username=username_base, email=email, password_hash=generate_password_hash(uuid.uuid4().hex))
             db.session.add(user)
             db.session.commit()
             is_new_user = True
             
+        # Iniciar la sesión
         session['user_id'] = user.id
         session['username'] = user.username
         session['user_email'] = user.email
@@ -283,8 +332,10 @@ def create_app():
         else:
             flash(f'¡Bienvenido de nuevo, {user.username}!', 'success')
         
-        # En vez de llevarnos al Dashboard en esta nueva pestaña molesta, 
-        # mostramos una página limplia de éxito que se auto-cerrará.
+        # ¿Por qué renderizamos 'magic_success.html' en vez de redirigir al Dashboard?
+        # Porque usualmente el usuario abre este enlace desde su celular o en una pestaña 
+        # nueva. El archivo magic_success.html muestra un mensaje de "Éxito" y 
+        # automáticamente cierra esa pestaña, dejando al usuario en la pestaña original.
         return render_template('magic_success.html')
 
     def get_reset_serializer():
@@ -840,7 +891,15 @@ def create_app():
         except Exception as e:
             print(f"[MIGRATION] Aviso: {e}")
 
-    # ===== WEATHER PROXY ENDPOINT =====
+    # ============================================================
+    # PROXIES DE APIS EXTERNAS
+    # ============================================================
+    # ¿Por qué creamos estas rutas si el frontend podría llamar a OpenWeather directamente?
+    # 1. Seguridad: Ocultamos nuestra API KEY (OPENWEATHER_API_KEY) en el servidor.
+    # 2. CORS: Los navegadores bloquean peticiones directas desde el frontend a otros 
+    #    dominios por seguridad. Al hacerlo desde Python, evitamos ese bloqueo.
+
+    # ===== WEATHER PROXY ENDPOINT (Clima) =====
     @app.route('/api/weather')
     def api_weather():
         city = request.args.get('city', '').strip()
@@ -866,15 +925,21 @@ def create_app():
         except Exception as e:
             return jsonify({'error': str(e)}), 500
 
-    # ===== EXCHANGE RATE PROXY ENDPOINT =====
-    _exchange_cache = {}  # { base: {data, timestamp} }
+    # ===== EXCHANGE RATE PROXY ENDPOINT (Divisas) =====
+    # Usamos este diccionario como "Caché" temporal en memoria RAM.
+    _exchange_cache = {}  # Guarda datos en este formato: { base: {data, timestamp} }
 
     @app.route('/api/exchange')
     def api_exchange():
         import time
         base = request.args.get('base', 'USD').strip().upper()
         now = time.time()
-        # Cache por 30 minutos para no abusar la API
+        
+        # ¿Por qué usar Caché?
+        # Las APIs gratuitas de divisas tienen límites (ej. 1000 peticiones por día).
+        # Si 50 usuarios piden el tipo de cambio del USD, en vez de gastar 50 peticiones,
+        # hacemos 1 sola, la guardamos aquí, y durante 30 minutos (1800 segundos) 
+        # le enviamos a todos los usuarios los datos guardados. ¡Ahorro extremo!
         if base in _exchange_cache and now - _exchange_cache[base]['ts'] < 1800:
             return jsonify(_exchange_cache[base]['data'])
         try:
@@ -973,7 +1038,12 @@ def create_app():
 
     @app.route('/api/suggest_hotels', methods=['POST'])
     def suggest_hotels():
-        """Backend para sugerir hoteles usando Gemini"""
+        """
+        Backend para sugerir hoteles usando Inteligencia Artificial (Gemini).
+        ¿Por qué usamos este backend en vez de llamar a Gemini desde el frontend (JS)?
+        Porque si lo hacemos desde el JS, nuestra API KEY quedaría expuesta al público 
+        y cualquiera podría robarla. Al hacerlo en Python, la llave está segura en el servidor.
+        """
         gemini_key = os.environ.get('GEMINI_API_KEY', '').strip()
         if not gemini_key:
             return jsonify({'success': False, 'message': 'API Key no configurada'})
@@ -983,6 +1053,13 @@ def create_app():
         if not destino:
             return jsonify({'success': False, 'message': 'Destino requerido'})
 
+        # --------------------------------------------------------
+        # INGENIERÍA DE PROMPTS (Prompt Engineering)
+        # --------------------------------------------------------
+        # Le damos instrucciones muy estrictas a la IA para que devuelva la 
+        # información exactamente en el formato JSON que nuestro frontend necesita.
+        # Esto evita que la IA responda con texto libre ("Hola, aquí tienes tus hoteles: ...")
+        # que rompería nuestra aplicación.
         prompt = (
             f"Actua como un experto agente de viajes. Sugiere 3 opciones o zonas reales de hospedaje en {destino} "
             f"con estilos variados (Mochilero, Estandar, Lujo). "
@@ -1024,11 +1101,17 @@ def create_app():
         except Exception as e:
             print("Error suggest_hotels:", e)
 
-        # --- FALLBACK: zonas genericas garantizadas ---
+        # --------------------------------------------------------
+        # SISTEMA DE FALLBACK (PLAN B)
+        # --------------------------------------------------------
+        # ¿Qué pasa si la API de Google falla, no hay internet, o se acaba nuestra cuota?
+        # En vez de mostrarle un error feo al usuario, inyectamos estas zonas genéricas 
+        # que funcionan para literalmente cualquier ciudad del mundo.
+        # Esto garantiza la estabilidad de la app en producción.
         hoteles_fallback = [
-            {"nombre": f"Zona Centro / Casco Historico de {destino}", "estilo": "Estandar", "precio": "~$50-120 USD/noche", "razon": "Centrico, facil acceso a transporte y atracciones principales"},
-            {"nombre": f"Area de Hostales / Budget Zone de {destino}", "estilo": "Mochilero", "precio": "~$15-35 USD/noche", "razon": "Ideal para viajeros con presupuesto, ambiente social y buenas conexiones"},
-            {"nombre": f"Distrito Turistico / Hotel Zone de {destino}", "estilo": "Lujo", "precio": "~$150-350 USD/noche", "razon": "Zona premium con servicios completos, comodidad y seguridad garantizada"}
+            {"nombre": f"Zona Centro / Casco Histórico de {destino}", "estilo": "Estandar", "precio": "~$50-120 USD/noche", "razon": "Céntrico, fácil acceso a transporte y atracciones principales"},
+            {"nombre": f"Área de Hostales / Budget Zone de {destino}", "estilo": "Mochilero", "precio": "~$15-35 USD/noche", "razon": "Ideal para viajeros con presupuesto, ambiente social y buenas conexiones"},
+            {"nombre": f"Distrito Turístico / Hotel Zone de {destino}", "estilo": "Lujo", "precio": "~$150-350 USD/noche", "razon": "Zona premium con servicios completos, comodidad y seguridad garantizada"}
         ]
         return jsonify({'success': True, 'hoteles': hoteles_fallback, 'source': 'fallback'})
 
@@ -1095,10 +1178,13 @@ def create_app():
             print("[SEASONALITY] Exception:", e)
 
         # ----------------------------------------------------------------
-        # FALLBACK UNIVERSAL: funciona para CUALQUIER pais del mundo.
-        # Calcula la temporada basandose en el mes actual del servidor
-        # y detecta el hemisferio sur para invertir las estaciones.
+        # FALLBACK UNIVERSAL (¿Qué pasa si la IA falla?)
         # ----------------------------------------------------------------
+        # Si Gemini se queda sin cuota o no responde, usamos este algoritmo matemático
+        # que funciona para CUALQUIER país del mundo. 
+        # Funciona basándose en el mes actual del servidor y detectando si el país 
+        # está en el hemisferio sur (donde las estaciones, como verano e invierno, 
+        # están invertidas respecto al hemisferio norte).
         import datetime as _dt
         mes_actual = _dt.datetime.now().month
         d_lower = destino.lower()
@@ -1207,7 +1293,7 @@ def create_app():
             print(f"[PHRASES] Exception: {e}")
 
         # --- FALLBACK GARANTIZADO: frases por idioma detectado ---
-                d = destino.lower()
+        d = destino.lower()
         en_phrases = [{"es":"Hola","local":"Hello"},{"es":"Gracias","local":"Thank you"},{"es":"Disculpe","local":"Excuse me"},{"es":"¿Dónde está el baño?","local":"Where is the restroom?"},{"es":"Ayuda","local":"Help!"},{"es":"La cuenta por favor","local":"Check, please"}]
         es_phrases = [{"es":"Hola","local":"Hola"},{"es":"Gracias","local":"Gracias"},{"es":"Disculpe","local":"Disculpe"},{"es":"¿Dónde está el baño?","local":"¿Dónde está el baño?"},{"es":"Ayuda","local":"Ayuda"},{"es":"La cuenta por favor","local":"La cuenta por favor"}]
 

@@ -1,5 +1,5 @@
 // sw.js - Service Worker PWA TravelWishly
-const CACHE_NAME = 'travelwishly-v3';
+const CACHE_NAME = 'travelwishly-v4';
 
 // Recursos críticos a cachear estáticamente
 const ASSETS_TO_CACHE = [

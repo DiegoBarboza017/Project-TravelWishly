@@ -14,6 +14,31 @@
     <h4 class="fw-black text-uppercase mb-4 border-bottom border-dark border-2 pb-3 text-center" style="font-size: 1.6rem; letter-spacing: 1px;">
         <i class="bi bi-compass-fill me-2 text-danger"></i>¿No sabes a dónde viajar? Elige tus intereses
     </h4>
+    <!-- 
+        BUG FIX: Los botones de interés antes usaban btn-dark + text-white al seleccionarse.
+        El problema es que el fondo del contenedor es claro (#f8f9fa) pero el botón se volvía
+        negro (btn-dark) con texto blanco — en pantallas con bajo contraste o modo oscuro el
+        texto se perdía. Solución: usamos btn-warning (amarillo) como estado activo para que
+        el texto negro sea siempre visible sin importar el fondo del dispositivo.
+        Esto se controla en app.js → recomendarDestinoGuia() removiendo btn-outline-dark
+        y añadiendo btn-warning border-dark.
+    -->
+    <style>
+        /* Estado ACTIVO de botones de interés - texto SIEMPRE visible */
+        .btn-interes.btn-warning {
+            background-color: #ffc107 !important;
+            color: #000 !important;       /* texto negro sobre amarillo — máximo contraste */
+            border-color: #000 !important;
+            box-shadow: 3px 3px 0 0 #000 !important;
+            transform: translateY(-1px);
+        }
+        /* Estado normal */
+        .btn-interes {
+            background-color: #fff;
+            color: #000;
+            transition: all 0.15s ease;
+        }
+    </style>
     <div class="d-flex flex-wrap justify-content-center gap-2 mb-3">
         <button class="btn btn-outline-dark fw-bold rounded-0 border-2 btn-interes"
             style="box-shadow: 2px 2px 0 0 #000;" onclick="recomendarDestinoGuia('fiesta', this)">
@@ -96,7 +121,7 @@
                         style="font-weight: 900;">DESTINO TÍTULO</h3>
                     <p class="text-dark small text-uppercase fw-bold tracking-wider mb-2">Perfil Cultural</p>
                     <div class="d-flex gap-2">
-                        <span id="panelIdiomas" class="badge bg-dark fw-bold border border-2 border-dark text-uppercase p-2 shadow-none"><i class="bi bi-translate me-1"></i> IDIOMAS SE CARGARÁN...</span>
+                        <span id="panelIdiomas" class="badge bg-dark fw-bold border border-2 border-dark text-uppercase p-2 shadow-none text-wrap" style="text-align: left; line-height: 1.4;"><i class="bi bi-translate me-1"></i> IDIOMAS SE CARGARÁN...</span>
                     </div>
                 </div>
             </div>
@@ -120,21 +145,29 @@
             <!-- Novedad: CALENDARIO DE TEMPORADAS -->
             <h5 class="text-dark fw-bold mb-3 mt-5 text-uppercase tracking-wider"><i class="bi bi-calendar-check"></i> Calendario de Temporadas</h5>
             <div id="panelSeasonality" class="bg-light border-dark border-3 p-4 rounded-0 mb-4" style="box-shadow: 4px 4px 0 0 #000;">
+                <!-- 
+                    BUG FIX RESPONSIVE: Antes era d-flex align-items-center sin flex-wrap.
+                    En pantallas pequeñas el badge de temporada y los meses "MEJOR ÉPOCA"
+                    no cabían en la misma fila y se encimaban/desbordaban.
+                    Solución: añadir flex-wrap gap-2 y hacer el texto de meses un bloque
+                    separado en móvil para que siempre baje a la siguiente línea si no cabe.
+                -->
                 <!-- Temporada Actual -->
-                <div class="d-flex align-items-center mb-3">
+                <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
                     <div id="seasonalityBadge" class="badge bg-secondary fs-6 rounded-0 border border-dark border-2 px-3 py-2 text-uppercase">CARGANDO...</div>
-                    <span id="seasonalityMejorEpoca" class="ms-3 fw-bold text-uppercase text-muted small"></span>
+                    <span id="seasonalityMejorEpoca" class="fw-bold text-uppercase text-muted small"></span>
                 </div>
                 <p id="seasonalityClima" class="text-dark fw-semibold mb-2" style="font-size: 0.9rem;"></p>
                 <p id="seasonalityRazon" class="text-dark fw-bold fst-italic mb-3" style="font-size: 0.85rem;"></p>
 
                 <!-- Temporada Baja -->
                 <div id="seasonalityBajaWrapper" class="d-none mt-3 pt-3 border-top border-dark">
-                    <div class="d-flex align-items-center mb-2">
+                    <!-- BUG FIX: mismo fix de flex-wrap para la sección de temporada baja -->
+                    <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
                         <span class="badge bg-success text-white rounded-0 border border-dark border-2 px-3 py-2 text-uppercase fs-6">
                             <i class="bi bi-graph-down me-2"></i>Temporada Baja
                         </span>
-                        <span id="seasonalityBajaMeses" class="ms-3 fw-bold text-uppercase text-muted small"></span>
+                        <span id="seasonalityBajaMeses" class="fw-bold text-uppercase text-muted small"></span>
                     </div>
                     <p id="seasonalityBajaRazon" class="text-dark fw-semibold mb-0" style="font-size: 0.85rem;"></p>
                     <p class="text-success fw-bold small mb-0 mt-1"><i class="bi bi-piggy-bank-fill me-1"></i>Precios más bajos y menos aglomeraciones.</p>

@@ -66,8 +66,8 @@
                     <i class="bi bi-check-circle-fill me-2"></i>Finalizar
                 </button>
                 {% endif %}
-                <button class="btn btn-dark fw-bold rounded-0 border-2 border-dark w-100 py-2 {% if ruta.is_draft %}mt-0{% else %}mt-2{% endif %}" onclick="copiarEnlace('{{ url_for('shared_itinerary', token=ruta.share_token, _external=True) }}', this)" title="Compartir via enlace">
-                    <i class="bi bi-link-45deg me-2"></i>Copiar Enlace
+                <button class="btn btn-dark fw-bold rounded-0 border-2 border-dark w-100 py-2 {% if ruta.is_draft %}mt-0{% else %}mt-2{% endif %}" onclick="compartirEnlace('{{ url_for('shared_itinerary', token=ruta.share_token, _external=True) }}', this)" title="Compartir itinerario">
+                    <i class="bi bi-share-fill me-2"></i>Compartir Viaje
                 </button>
                 <button class="btn btn-outline-danger fw-bold rounded-0 border-2 w-100 py-2 mt-2" onclick="mostrarModalEliminar({{ ruta.id }}, '{{ ruta.destino }}', this)" title="Eliminar del Historial">
                     <i class="bi bi-trash-fill me-2"></i>Eliminar
@@ -152,6 +152,24 @@ function mostrarModalEliminar(id, destino, btnElement) {
 }
 
 // --- Lógica de Enlaces Compartidos ---
+function compartirEnlace(url, btn) {
+    if(!url || url.includes('None')) { alert('El enlace aún se está generando, intenta de nuevo en unos segundos.'); return; }
+    
+    // Si el dispositivo soporta compartir nativamente (sale el menú de WhatsApp, etc)
+    if (navigator.share) {
+        navigator.share({
+            title: 'Mi Viaje en TravelWishly',
+            text: '¡Mira este increíble itinerario de viaje que armé!',
+            url: url
+        }).catch(err => {
+            console.log('Compartir cancelado o falló', err);
+        });
+    } else {
+        // Fallback para PC
+        copiarEnlace(url, btn);
+    }
+}
+
 function copiarEnlace(url, btn) {
     if(!url || url.includes('None')) { alert('El enlace aún se está generando, intenta de nuevo en unos segundos.'); return; }
     

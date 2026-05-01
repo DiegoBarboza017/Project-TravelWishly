@@ -691,7 +691,32 @@ window.cargarGuiaSegura = function cargarGuiaSegura() {
         healthBox.classList.remove('d-none');
     }
 
-    // Fetch Dinamico de Idiomas Mundiales (Primary, Secondary)
+    // Idiomas reales por país — diccionario local de respaldo
+    // Si la API de restcountries.com falla o no devuelve datos, usamos este mapa local
+    // en lugar del texto genérico e INCORRECTO "Español y Lenguas Locales".
+    const IDIOMAS_POR_PAIS = {
+        "Japón":      ["Japonés"],
+        "Francia":    ["Francés"],
+        "México":     ["Español"],
+        "Indonesia":  ["Indonesio (Bahasa)", "Javanés"],
+        "EE.UU.":     ["Inglés"],
+        "Argentina":  ["Español"],
+        "Italia":     ["Italiano"],
+        "España":     ["Español", "Catalán"],
+        "Perú":       ["Español", "Quechua"],
+        "Canadá":     ["Inglés", "Francés"],
+        "Australia":  ["Inglés"],
+        "E.A.U.":     ["Árabe", "Inglés"],
+        "Islandia":   ["Islandés"],
+        "Tailandia":  ["Tailandés"],
+        "Alemania":   ["Alemán"],
+        "Brasil":     ["Portugués"],
+        "Chequia":    ["Checo"],
+        "Polinesia":  ["Francés", "Tahitiano"],
+        "Países Bajos": ["Neerlandés"],
+    };
+
+    // Fetch Dinámico de Idiomas Mundiales (Primary, Secondary)
     const panelIdioma = document.getElementById('panelIdiomas');
     if (panelIdioma) {
         panelIdioma.innerHTML = `<span class="spinner-border spinner-border-sm" role="status"></span> Calculando Lenguajes...`;
@@ -700,14 +725,26 @@ window.cargarGuiaSegura = function cargarGuiaSegura() {
             .then(data => {
                 if (data && data[0] && data[0].languages) {
                     const l = Object.values(data[0].languages);
-                    const mainStr = l[0] || "REGIONAL";
-                    const secStr = l[1] || "INGLÉS";
-                    panelIdioma.innerHTML = `<i class="bi bi-translate me-2"></i> IDIOMAS: 1. ${mainStr.toUpperCase()} | 2. ${secStr.toUpperCase()}`;
+                    // Mostrar todos los idiomas del país, no solo 2
+                    const idiomasStr = l.map(id => id.toUpperCase()).join(' | ');
+                    panelIdioma.innerHTML = `<i class="bi bi-translate me-2"></i> IDIOMAS: ${idiomasStr}`;
                 } else {
-                    panelIdioma.innerHTML = `<i class="bi bi-translate me-2"></i> IDIOMAS: ESPAÑOL Y LENGUAS LOCALES`;
+                    // Fallback al diccionario local — nunca más "Español y Lenguas Locales" incorrecto
+                    const idiomasLocales = IDIOMAS_POR_PAIS[destinoObj.pais];
+                    if (idiomasLocales) {
+                        panelIdioma.innerHTML = `<i class="bi bi-translate me-2"></i> IDIOMAS: ${idiomasLocales.map(i => i.toUpperCase()).join(' | ')}`;
+                    } else {
+                        panelIdioma.innerHTML = `<i class="bi bi-translate me-2"></i> IDIOMAS: CONSULTAR LOCALMENTE`;
+                    }
                 }
             }).catch(e => {
-                panelIdioma.innerHTML = `<i class="bi bi-translate me-2"></i> IDIOMAS: ESPAÑOL Y LENGUAS LOCALES`;
+                // Error de red: usar diccionario local en vez de texto genérico incorrecto
+                const idiomasLocales = IDIOMAS_POR_PAIS[destinoObj.pais];
+                if (idiomasLocales) {
+                    panelIdioma.innerHTML = `<i class="bi bi-translate me-2"></i> IDIOMAS: ${idiomasLocales.map(i => i.toUpperCase()).join(' | ')}`;
+                } else {
+                    panelIdioma.innerHTML = `<i class="bi bi-translate me-2"></i> IDIOMAS: CONSULTAR LOCALMENTE`;
+                }
             });
     }
 
@@ -1572,10 +1609,24 @@ window.recomendarDestinoGuia = function(interesStr, btnElement) {
     const idx = _guiaInteresesSeleccionados.indexOf(interesStr);
     if (idx > -1) {
         _guiaInteresesSeleccionados.splice(idx, 1);
-        if (btnElement) { btnElement.classList.remove('btn-dark','text-white'); btnElement.classList.add('btn-outline-dark'); }
+        // Deseleccionado: volver al estilo base sin selección
+        if (btnElement) {
+            btnElement.classList.remove('btn-warning');
+            btnElement.classList.add('btn-outline-dark');
+        }
     } else {
         _guiaInteresesSeleccionados.push(interesStr);
-        if (btnElement) { btnElement.classList.remove('btn-outline-dark'); btnElement.classList.add('btn-dark','text-white'); }
+        // SELECCIONADO: btn-warning = fondo amarillo, texto negro.
+        // ¿Por qué btn-warning y no btn-dark?
+        // Con btn-dark el fondo es negro y el texto es blanco. El problema es que en la
+        // pantalla del celular, cuando el sistema tiene modo oscuro o la pantalla tiene poco
+        // contraste, el texto blanco sobre fondo negro se vuelve invisible.
+        // Con btn-warning (amarillo) el texto siempre queda negro (#000) sobre fondo brillante,
+        // lo que garantiza máximo contraste legible en CUALQUIER dispositivo.
+        if (btnElement) {
+            btnElement.classList.remove('btn-outline-dark');
+            btnElement.classList.add('btn-warning');
+        }
     }
 
     const panel = document.getElementById('guiaPanelRecomendado');
@@ -1661,42 +1712,151 @@ window.mostrarDetallesDestino = function(id) {
 
     document.getElementById('modalDestinoTitle').innerHTML = `<i class="bi bi-geo-fill me-2 text-primary"></i>${d.ciudad}, ${d.pais}`;
 
-    // Generar el Carousel con las 10 fotos dinámicas
     const galeriaEl = document.getElementById('modalDestinoGaleria');
     if (galeriaEl && d.galeria) {
         let galeriaHtml = '';
-        d.galeria.forEach((foto, i) => {
-            let active = i === 0 ? 'active' : '';
+        const fotos5 = d.galeria.slice(0, 5);
+        fotos5.forEach((foto, i) => {
+            const active = i === 0 ? 'active' : '';
             galeriaHtml += `
                 <div class="carousel-item ${active}">
-                    <img id="img_dest_${d.id}_${i}" src="data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22800%22%20height%3D%22400%22%20viewBox%3D%220%200%20800%20400%22%20preserveAspectRatio%3D%22none%22%3E%3Crect%20width%3D%22800%22%20height%3D%22400%22%20fill%3D%22%23222%22%2F%3E%3Ctext%20x%3D%2250%25%22%20y%3D%2250%25%22%20font-family%3D%22monospace%22%20font-size%3D%2224%22%20fill%3D%22%23777%22%20dominant-baseline%3D%22middle%22%20text-anchor%3D%22middle%22%3ECARGANDO%20FOTO...%3C%2Ftext%3E%3C%2Fsvg%3E" class="d-block w-100" style="height: 350px; object-fit: cover; background-color: #111;" alt="${foto.n}">
-                    <div class="carousel-caption d-none d-md-block p-0 p-2" style="background: rgba(0,0,0,0.7); backdrop-filter: blur(2px); bottom: 20px; border: 2px solid white; pointer-events:none;">
-                        <h5 class="fw-black mb-0 text-uppercase tracking-wider fs-5">${foto.n}</h5>
-                        <p class="small mb-0 fw-bold">${i+1} / 10</p>
+                    <img id="img_dest_${d.id}_${i}"
+                         src="data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20width%3D'800'%20height%3D'400'%3E%3Crect%20width%3D'800'%20height%3D'400'%20fill%3D'%23222'%2F%3E%3Ctext%20x%3D'50%25'%20y%3D'50%25'%20font-family%3D'monospace'%20font-size%3D'22'%20fill%3D'%23666'%20dominant-baseline%3D'middle'%20text-anchor%3D'middle'%3ECARGANDO...%3C%2Ftext%3E%3C%2Fsvg%3E"
+                         class="d-block w-100" style="height:350px;object-fit:cover;background:#111;" alt="${foto.n}">
+                    <div class="carousel-caption d-none d-md-block" style="background:rgba(0,0,0,0.7);bottom:20px;border:2px solid #fff;pointer-events:none;padding:6px 12px;">
+                        <h5 class="fw-black mb-0 text-uppercase fs-6">${foto.n}</h5>
+                        <p class="small mb-0 fw-bold">${i+1} / ${fotos5.length}</p>
                     </div>
-                </div>
             `;
         });
         galeriaEl.innerHTML = galeriaHtml;
 
-        // Fetch asíncrono individual desde Wikimedia Commons para cada punto de interés real
-        d.galeria.forEach((foto, i) => {
-            const qStr = `${foto.n} ${d.ciudad} landmark`;
-            const wikiUrl = `https://commons.wikimedia.org/w/api.php?action=query&generator=search&gsrsearch=${encodeURIComponent(qStr)}&gsrnamespace=6&gsrlimit=1&prop=imageinfo&iiprop=url&format=json&origin=*`;
-            
-            fetch(wikiUrl)
-                .then(r => r.json())
-                .then(data => {
-                    let pages = data.query ? data.query.pages : {};
-                    let urls = Object.values(pages).map(p => p.imageinfo && p.imageinfo.length > 0 ? p.imageinfo[0].url : null).filter(u => u);
-                    if (urls.length > 0 && urls[0]) {
-                        let imgEl = document.getElementById(`img_dest_${d.id}_${i}`);
-                        if (imgEl) imgEl.src = urls[0];
+        // Tabla de títulos exactos de artículos Wikipedia por cada `q` de la galería.
+        // Wikipedia REST /api/rest_v1/page/summary/{título} devuelve SIEMPRE la imagen
+        // principal del artículo — la foto más icónica del lugar, sin búsqueda aleatoria.
+        const WIKI_TITLES = {
+            // Tokio
+            "shibuya,crossing":"Shibuya_crossing","akihabara,neon":"Akihabara",
+            "sensoji,temple":"Sensō-ji","shinjuku,night":"Shinjuku","fuji,mountain":"Mount_Fuji",
+            // París
+            "eiffel,tower":"Eiffel_Tower","louvre,museum":"Louvre","notredame,paris":"Notre-Dame_de_Paris",
+            "arcdetriomphe":"Arc_de_Triomphe","montmartre,street":"Montmartre",
+            // Cancún
+            "cancun,beach":"Cancún","playadelcarmen,mexico":"Playa_del_Carmen",
+            "tulum,ruins":"Tulum","islamujeres,beach,mexico":"Isla_Mujeres",
+            "cenote,mexico,water":"Cenote","chichenitza,mexico":"Chichen_Itza",
+            // Bali
+            "bali,riceterrace":"Tegallalang_Rice_Terrace","monkeyforest,bali":"Sacred_Monkey_Forest_Sanctuary",
+            "uluwatu,temple":"Pura_Luhur_Uluwatu","nusapenida,cliff":"Nusa_Penida",
+            "seminyak,beach":"Seminyak",
+            // Nueva York
+            "timessquare,newyork":"Times_Square","centralpark,newyork":"Central_Park",
+            "statueofliberty":"Statue_of_Liberty","brooklynbridge":"Brooklyn_Bridge",
+            "empirestate,building":"Empire_State_Building",
+            // Patagonia
+            "peritomoreno,glacier":"Perito_Moreno_Glacier","fitzroy,mountain":"Mount_Fitz_Roy",
+            "ushuaia,argentina":"Ushuaia","tierradelfuego,park":"Tierra_del_Fuego_National_Park",
+            "elchalten,nature":"El_Chaltén",
+            // Roma
+            "colosseum,rome":"Colosseum","trevi,fountain":"Trevi_Fountain",
+            "pantheon,rome":"Pantheon,_Rome","romanforum":"Roman_Forum",
+            "vatican,basilica":"St._Peter's_Basilica",
+            // Ibiza
+            "daltvila,ibiza":"Dalt_Vila","calacomte,beach":"Cala_Comte",
+            "esvedra,ibiza":"Es_Vedrà","playadenbossa":"Playa_d'en_Bossa",
+            "ibiza,nightclub":"Ibiza",
+            // Cusco
+            "machupicchu":"Machu_Picchu","cusco,plaza":"Plaza_de_Armas,_Cusco",
+            "sacredvalley,peru":"Sacred_Valley","rainbowmountain,peru":"Vinicunca",
+            "sacsayhuaman":"Saksaywaman",
+            // Kioto
+            "fushimiinari":"Fushimi_Inari-taisha","kinkakuji":"Kinkaku-ji",
+            "arashiyama,bamboo":"Arashiyama","gion,kyoto":"Gion,_Kyoto",
+            "kiyomizudera":"Kiyomizu-dera",
+            // Las Vegas
+            "lasvegas,strip":"Las_Vegas_Strip","bellagio,fountains":"Bellagio_(resort_and_casino)",
+            "fremont,lasvegas":"Fremont_Street_Experience","grandcanyon":"Grand_Canyon",
+            "highroller,vegas":"High_Roller_(Ferris_wheel)",
+            // Banff
+            "lakelouise,banff":"Lake_Louise,_Alberta","banff,nationalpark":"Banff_National_Park",
+            "morainelake":"Moraine_Lake","icefields,canada":"Icefields_Parkway",
+            "peytolake":"Peyto_Lake",
+            // Oaxaca
+            "santodomingo,oaxaca":"Temple_of_Santo_Domingo,_Oaxaca",
+            "montealban,oaxaca":"Monte_Albán","hierveelagua":"Hierve_el_Agua",
+            "eltule,tree":"Árbol_del_Tule","mitla,ruins":"Mitla",
+            // Bora Bora
+            "borabora,bungalow":"Bora_Bora","otemanu,mountain":"Mount_Otemanu",
+            "matirabeach":"Matira_Beach","borabora,lagoon":"Bora_Bora",
+            "borabora,reef":"Bora_Bora",
+            // Ámsterdam
+            "amsterdam,canal":"Canals_of_Amsterdam","damsquare":"Dam_Square",
+            "vangoghmuseum":"Van_Gogh_Museum","annefrankhouse":"Anne_Frank_House",
+            "rijksmuseum":"Rijksmuseum",
+            // Sídney
+            "sydneyoperahouse":"Sydney_Opera_House","sydneyharbourbridge":"Sydney_Harbour_Bridge",
+            "bondibeach":"Bondi_Beach","darlingharbour":"Darling_Harbour",
+            "bluemountains,australia":"Blue_Mountains_(New_South_Wales)",
+            // Dubai
+            "burjkhalifa":"Burj_Khalifa","palmjumeirah":"Palm_Jumeirah",
+            "dubaimall":"The_Dubai_Mall","burjalarab":"Burj_Al_Arab",
+            "dubaimarina":"Dubai_Marina",
+            // Reykjavik
+            "bluelagoon,iceland":"Blue_Lagoon_(geothermal_spa)","northernlights,iceland":"Aurora",
+            "hallgrimskirkja":"Hallgrímskirkja","gullfoss":"Gullfoss",
+            "goldencircle,iceland":"Golden_Circle_(Iceland)",
+            // Bangkok
+            "grandpalace,bangkok":"Grand_Palace","watarun":"Wat_Arun",
+            "watpho":"Wat_Pho","floatingmarket,bangkok":"Damnoen_Saduak_floating_market",
+            "chaophraya":"Chao_Phraya_River",
+            // Múnich
+            "marienplatz":"Marienplatz","neuschwanstein":"Neuschwanstein_Castle",
+            "oktoberfest,munich":"Oktoberfest","englishgarden,munich":"English_Garden,_Munich",
+            "frauenkirche,munich":"Frauenkirche,_Munich",
+            // Río de Janeiro
+            "cristoredentor":"Cristo_Redentor","copacabana":"Copacabana,_Rio_de_Janeiro",
+            "sugarloaf,rio":"Sugarloaf_Mountain","ipanema":"Ipanema",
+            "selaron,steps":"Escadaria_Selarón",
+            // Milán
+            "duomo,milan":"Milan_Cathedral","vittorioemanuele":"Galleria_Vittorio_Emanuele_II",
+            "sforza,castle":"Sforza_Castle","lascala,milan":"La_Scala",
+            "navigli,milan":"Navigli",
+            // Hawái
+            "waikiki":"Waikiki","diamondhead":"Diamond_Head_(Hawaii)",
+            "pearlharbor":"Pearl_Harbor","hanaumabay":"Hanauma_Bay",
+            "northshore,oahu":"North_Shore,_Oahu",
+            // Praga
+            "charlesbridge":"Charles_Bridge","praguecastle":"Prague_Castle",
+            "oldtownsquare,prague":"Old_Town_Square,_Prague",
+            "astronomicalclock,prague":"Prague_astronomical_clock",
+            "stvitus,cathedral":"St._Vitus_Cathedral"
+        };
+
+        // Cargar imágenes usando el REST summary de Wikipedia con título exacto
+        fotos5.forEach((foto, i) => {
+            const imgEl = document.getElementById(`img_dest_${d.id}_${i}`);
+            if (!imgEl) return;
+            const wikiTitle = WIKI_TITLES[foto.q];
+            if (!wikiTitle) return;
+
+            setTimeout(async () => {
+                try {
+                    const res = await fetch(
+                        `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(wikiTitle)}`
+                    );
+                    if (!res.ok) return;
+                    const data = await res.json();
+                    if (data.thumbnail && data.thumbnail.source) {
+                        imgEl.src = data.thumbnail.source.replace(/\/\d+px-/, '/800px-');
                     }
-                })
-                .catch(err => console.error("Error cargando image", err));
+                } catch (e) {
+                    console.warn(`[Galería] "${foto.n}":`, e);
+                }
+            }, i * 400);
         });
     }
+
+
 
     document.getElementById('modalDestinoDesc').innerText = d.desc;
     document.getElementById('modalDestinoMoneda').innerText = d.moneda || "No disp.";

@@ -301,12 +301,39 @@ ul>li>i.bi {
     opacity: 0;
     transform: scale(0);
     pointer-events: none;
+    border: 3px solid #000;
+    box-shadow: 6px 6px 0 0 #000;
 }
 
 .chat-window.active {
     opacity: 1;
     transform: scale(1);
     pointer-events: all;
+}
+
+/* === FIX MÓVIL: El chatbot de 350px se desbordaba en pantallas de ~360px ===
+   En dispositivos pequeños el chat ocupa casi toda la pantalla de forma controlada,
+   anclado al centro-fondo en lugar del lado derecho fijo. */
+@media (max-width: 480px) {
+    .chat-window {
+        right: 10px;
+        left: 10px;
+        width: auto;           /* ocupa el espacio entre left:10 y right:10 */
+        bottom: 90px;
+        height: 60vh;          /* usa 60% de la altura disponible de la pantalla */
+        max-height: 480px;
+    }
+    .chat-bot-wrapper {
+        bottom: 16px;
+        right: 16px;
+        gap: 8px;
+    }
+    .chat-tooltip {
+        font-size: 0.78rem;
+        padding: 6px 12px;
+        max-width: 180px;
+        white-space: normal;
+    }
 }
 
 .chat-header {

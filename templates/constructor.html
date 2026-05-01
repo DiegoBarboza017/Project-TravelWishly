@@ -20,6 +20,40 @@
 }
 </style>
 
+<!--
+    BUG FIX: Tabs de navegación (Itinerario / Mochila / Lista de Empaque)
+    
+    El problema reportado: cuando se pasaba de la pestaña Itinerario a Mochila o Lista
+    de Empaque, el botón del paso anterior seguía pareciendo activo / seleccionado.
+    
+    Causa: Bootstrap pone .active en el tab seleccionado, pero como los tabs inactivos
+    tenían 'text-dark' hardcodeado, tanto activos como inactivos se veían iguales.
+    
+    Solución: Definimos estilos CSS explícitos para distinguir visualmente cada estado:
+    - Tab ACTIVO:   fondo blanco, texto negro, sin borde inferior (unido al contenido)
+    - Tab INACTIVO: fondo gris claro, texto gris, con borde completo
+    Esto hace que el tab seleccionado sea OBVIO sin importar el navegador o dispositivo.
+-->
+<style>
+#constructorTabs .nav-link {
+    background-color: #e0e0e0;  /* gris claro para inactivos */
+    color: #555;                /* texto gris para inactivos */
+    border-bottom: 3px solid #000 !important;
+    transition: all 0.15s ease;
+}
+#constructorTabs .nav-link:hover:not(.active) {
+    background-color: #ccc;
+    color: #000;
+}
+#constructorTabs .nav-link.active {
+    background-color: #fff !important;  /* fondo blanco = seleccionado */
+    color: #000 !important;             /* texto negro = visible */
+    border-bottom: 3px solid #fff !important; /* eliminar borde inferior para unir con el panel */
+    font-weight: 900;
+}
+</style>
+
+
 <div
     class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-5 border-bottom border-dark border-3">
     <h1 class="h2 fw-black text-dark text-uppercase tracking-wider" style="font-weight: 900;">
