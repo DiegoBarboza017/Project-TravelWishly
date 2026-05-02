@@ -126,11 +126,34 @@ def create_app():
             except Exception as e:
                 print(f"[SCHEDULER] Error general: {e}")
 
+    # Función para enviar el correo de validación a los 5 minutos de crear un viaje
+    def enviar_recordatorio_prueba_5min(email, destino, base_url):
+        with app.app_context():
+            try:
+                cuerpo = (
+                    f"¡Hola viajero! ✈️\n\n"
+                    f"Este es el primer recordatorio de prueba para tu próximo viaje a {destino}.\n"
+                    f"Tu itinerario se ha guardado correctamente y nuestro sistema de alertas "
+                    f"está activado y funcionando al 100%.\n\n"
+                    f"Puedes ver tu itinerario en cualquier momento aquí: {base_url}historial\n\n"
+                    f"— El equipo de TravelWishly"
+                )
+                msg = Message(
+                    subject=f"✅ Prueba de Recordatorio Activa: Viaje a {destino}",
+                    recipients=[email],
+                    body=cuerpo
+                )
+                mail.send(msg)
+                print(f"[SCHEDULER] 5-min Recordatorio de prueba enviado a {email} para {destino}")
+            except Exception as e:
+                print(f"[SCHEDULER] Error en recordatorio 5-min: {e}")
+
     # Iniciar scheduler (solo una vez, evitando doble arranque en modo debug)
     if not app.debug or os.environ.get('WERKZEUG_RUN_MAIN') == 'true':
         scheduler = BackgroundScheduler()
         scheduler.add_job(enviar_recordatorios_ahorro, 'interval', hours=1, id='savings_reminder_job')
         scheduler.start()
+        app.apscheduler = scheduler  # Exponer el scheduler para crear trabajos dinámicos
         print("[SCHEDULER] APScheduler iniciado — revisando recordatorios cada hora.")
 
     # Use SQLite by default for easy local execution without needing PostgreSQL setup
@@ -573,6 +596,21 @@ def create_app():
                     mail.send(msg)
             except Exception as mail_err:
                 print(f"[SAVE_ROUTE] Email de resumen no enviado: {mail_err}")
+
+            # Programar el correo de recordatorio de prueba a los 5 minutos
+            if hasattr(app, 'apscheduler'):
+                # Usamos una función lambda o pasamos args a la función del scheduler
+                run_time = datetime.now(timezone.utc) + timedelta(minutes=5)
+                # El id del job lleva un UUID para evitar colisiones si se guardan varios viajes rápido
+                job_id = f"recordatorio_5min_{nueva_ruta.id}_{uuid.uuid4().hex[:6]}"
+                app.apscheduler.add_job(
+                    func=enviar_recordatorio_prueba_5min,
+                    trigger='date',
+                    run_date=run_time,
+                    args=[usuario.email, destino_txt, request.host_url],
+                    id=job_id
+                )
+                print(f"[SCHEDULER] Programado recordatorio de 5 minutos para viaje #{nueva_ruta.id} a las {run_time}")
 
             return jsonify({'success': True, 'message': 'Viaje guardado exitosamente en tu Historial.'})
 
