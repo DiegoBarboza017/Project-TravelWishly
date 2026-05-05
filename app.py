@@ -1171,14 +1171,17 @@ def create_app():
         
         prompt = (
             f"Actúa como un planificador de viajes experto. Analiza el destino '{destino}'. {contexto_fecha} "
-            f"Proporciona información completa sobre la temporada ACTUAL y también sobre la temporada BAJA para viajeros que prefieren viajar cuando hay menos turistas y precios más económicos. "
+            f"Proporciona información completa sobre las 3 temporadas de viaje: ALTA (cuando hay más turistas y precios altos), MEDIA (temporada intermedia con buen equilibrio), y BAJA (menos turistas y precios más económicos). "
             f"Incluye hasta 3 eventos/festividades famosas del lugar. "
             f"Devuelve la respuesta ESTRICTAMENTE en este formato JSON válido (un solo objeto), sin markdown ni texto extra:\n"
             f'{{\n'
             f'  "temporada": "ALTA/MEDIA/BAJA",\n'
             f'  "clima": "Breve descripción del clima actual",\n'
             f'  "razon": "Por qué es temporada alta/media/baja ahora (muy breve)",\n'
-            f'  "mejor_epoca": "Meses ideales para turismo (temporada alta)",\n'
+            f'  "temporada_alta_meses": "Meses de temporada alta (mayor turismo y precios altos)",\n'
+            f'  "temporada_alta_razon": "Por qué es temporada alta (eventos, vacaciones, clima ideal)",\n'
+            f'  "temporada_media_meses": "Meses de temporada media",\n'
+            f'  "temporada_media_razon": "Por qué es temporada media (transición, clima variable, precios intermedios)",\n'
             f'  "temporada_baja_meses": "Meses de temporada baja",\n'
             f'  "temporada_baja_razon": "Por qué es temporada baja (clima, menos turistas, precios, etc.)",\n'
             f'  "eventos": ["Evento 1 (Mes)", "Evento 2 (Mes)"]\n'
@@ -1261,13 +1264,18 @@ def create_app():
             razon_fb = 'Temporada baja: menos turistas y precios economicos ideales para presupuesto ajustado'
             mejor_fb = 'Junio a Agosto' if not hemisferio_sur else 'Diciembre a Febrero'
 
-        t_baja = 'Noviembre, Enero, Febrero, Marzo' if not hemisferio_sur else 'Mayo, Junio, Julio'
+        t_baja  = 'Noviembre, Enero, Febrero, Marzo' if not hemisferio_sur else 'Mayo, Junio, Julio'
+        t_media = 'Abril, Mayo, Septiembre, Octubre' if not hemisferio_sur else 'Octubre, Noviembre, Marzo'
+        t_alta  = 'Junio, Julio, Agosto, Diciembre' if not hemisferio_sur else 'Diciembre, Enero, Febrero'
 
         datos_fallback = {
             'temporada': temporada_fb,
             'clima': clima_fb,
             'razon': razon_fb,
-            'mejor_epoca': mejor_fb,
+            'temporada_alta_meses': t_alta,
+            'temporada_alta_razon': 'Mayor afluencia turística, precios elevados y alta demanda de reservaciones',
+            'temporada_media_meses': t_media,
+            'temporada_media_razon': 'Primavera y otoño — clima agradable con precios intermedios y afluencia moderada de turistas',
             'temporada_baja_meses': t_baja,
             'temporada_baja_razon': 'Menor afluencia turistica y precios mas economicos — ideal para viajeros con presupuesto ajustado',
             'eventos': [

@@ -501,6 +501,29 @@ ul>li>i.bi {
     .guide-tooltip-box { max-width: 150px; font-size: 0.7rem; }
 }
 
+/* ====== FIX MÓVIL: Separa verticalmente guia-bot y chatbot para evitar solapamiento ======
+   En pantallas pequeñas ambos flotantes están en bottom:30px (uno en la izquierda, otro en la
+   derecha). Al desplegar el tooltip del chat, éste se extiende hacia la izquierda y se encima
+   con el botón de la guía. Solución: en móvil, subir el botón de guía a bottom:96px para que
+   quede ENCIMA del chatbot, sin solapamiento. */
+@media (max-width: 480px) {
+    .guide-bot-wrapper {
+        bottom: 96px;   /* Sube encima del área del chatbot */
+        left: 12px;
+        gap: 6px;
+    }
+    .guide-bot-bubble {
+        width: 46px;
+        height: 46px;
+        font-size: 1.1rem;
+    }
+    .guide-tooltip-box {
+        max-width: 130px;
+        font-size: 0.65rem;
+        padding: 7px 10px;
+    }
+}
+
 /* ====== DRAFT BADGE (HISTORIAL) ====== */
 .draft-card-header { background: linear-gradient(135deg, #1a1a1a 60%, #7c6300 100%) !important; }
 .draft-card { border-color: #c8a600 !important; box-shadow: 6px 6px 0 0 #c8a600 !important; }

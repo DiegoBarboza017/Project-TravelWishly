@@ -152,17 +152,40 @@
                     Solución: añadir flex-wrap gap-2 y hacer el texto de meses un bloque
                     separado en móvil para que siempre baje a la siguiente línea si no cabe.
                 -->
-                <!-- Temporada Actual -->
+                <!-- Temporada Actual (badge dinámico) -->
                 <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
                     <div id="seasonalityBadge" class="badge bg-secondary fs-6 rounded-0 border border-dark border-2 px-3 py-2 text-uppercase">CARGANDO...</div>
-                    <span id="seasonalityMejorEpoca" class="fw-bold text-uppercase text-muted small"></span>
+                    <span class="fw-bold text-muted small text-uppercase">Temporada actual</span>
                 </div>
                 <p id="seasonalityClima" class="text-dark fw-semibold mb-2" style="font-size: 0.9rem;"></p>
                 <p id="seasonalityRazon" class="text-dark fw-bold fst-italic mb-3" style="font-size: 0.85rem;"></p>
 
-                <!-- Temporada Baja -->
+                <!-- ===== TEMPORADA ALTA ===== -->
+                <div id="seasonalityAltaWrapper" class="d-none mt-3 pt-3 border-top border-dark">
+                    <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+                        <span class="badge bg-danger text-white rounded-0 border border-dark border-2 px-3 py-2 text-uppercase fs-6">
+                            <i class="bi bi-graph-up me-2"></i>Temporada Alta
+                        </span>
+                        <span id="seasonalityAltaMeses" class="fw-bold text-uppercase text-muted small"></span>
+                    </div>
+                    <p id="seasonalityAltaRazon" class="text-dark fw-semibold mb-0" style="font-size: 0.85rem;"></p>
+                    <p class="text-danger fw-bold small mb-0 mt-1"><i class="bi bi-exclamation-triangle-fill me-1"></i>Mayor afluencia de turistas y precios más elevados.</p>
+                </div>
+
+                <!-- ===== TEMPORADA MEDIA ===== -->
+                <div id="seasonalityMediaWrapper" class="d-none mt-3 pt-3 border-top border-dark">
+                    <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+                        <span class="badge bg-warning text-dark rounded-0 border border-dark border-2 px-3 py-2 text-uppercase fs-6">
+                            <i class="bi bi-graph-up-arrow me-2"></i>Temporada Media
+                        </span>
+                        <span id="seasonalityMediaMeses" class="fw-bold text-uppercase text-muted small"></span>
+                    </div>
+                    <p id="seasonalityMediaRazon" class="text-dark fw-semibold mb-0" style="font-size: 0.85rem;"></p>
+                    <p class="text-warning fw-bold small mb-0 mt-1"><i class="bi bi-balance-scale me-1"></i>Balance entre costos y afluencia de turistas.</p>
+                </div>
+
+                <!-- ===== TEMPORADA BAJA ===== -->
                 <div id="seasonalityBajaWrapper" class="d-none mt-3 pt-3 border-top border-dark">
-                    <!-- BUG FIX: mismo fix de flex-wrap para la sección de temporada baja -->
                     <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
                         <span class="badge bg-success text-white rounded-0 border border-dark border-2 px-3 py-2 text-uppercase fs-6">
                             <i class="bi bi-graph-down me-2"></i>Temporada Baja

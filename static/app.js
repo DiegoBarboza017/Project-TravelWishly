@@ -798,12 +798,14 @@ window.cargarGuiaSegura = function cargarGuiaSegura() {
     if (badgeSeason) {
         badgeSeason.className = "badge bg-secondary fs-6 rounded-0 border border-dark border-2 px-3 py-2 text-uppercase";
         badgeSeason.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Analizando Temporadas...';
-        document.getElementById('seasonalityMejorEpoca').innerText = '';
-        document.getElementById('seasonalityClima').innerText = '';
-        document.getElementById('seasonalityRazon').innerText = '';
-        document.getElementById('seasonalityEventosWrapper').classList.add('d-none');
-        const bajaWrapperReset = document.getElementById('seasonalityBajaWrapper');
-        if (bajaWrapperReset) bajaWrapperReset.classList.add('d-none');
+        // Limpiar campos de texto de la temporada actual
+        ['seasonalityClima','seasonalityRazon'].forEach(id => {
+            const el = document.getElementById(id); if(el) el.innerText = '';
+        });
+        // Ocultar todos los wrappers de temporada y eventos
+        ['seasonalityAltaWrapper','seasonalityMediaWrapper','seasonalityBajaWrapper','seasonalityEventosWrapper'].forEach(id => {
+            const el = document.getElementById(id); if(el) el.classList.add('d-none');
+        });
         
         fetch('/api/seasonality', {
             method: 'POST',
@@ -815,28 +817,52 @@ window.cargarGuiaSegura = function cargarGuiaSegura() {
             if(data.success && data.data) {
                 const s = data.data;
                 const seasonUpper = s.temporada.toUpperCase();
-                let bgClass = "bg-warning text-dark"; // Media
+                let bgClass = "bg-warning text-dark"; // Media por defecto
                 if(seasonUpper.includes("ALTA")) bgClass = "bg-danger text-white";
                 if(seasonUpper.includes("BAJA")) bgClass = "bg-success text-white";
-                
+
                 badgeSeason.className = `badge ${bgClass} fs-6 rounded-0 border border-dark border-2 px-3 py-2 text-uppercase`;
-                badgeSeason.innerHTML = `<i class="bi bi-calendar-check me-2"></i> TEMPORADA ${seasonUpper}`;
-                
-                document.getElementById('seasonalityMejorEpoca').innerHTML = `<i class="bi bi-star-fill text-warning me-1"></i> Mejor época: ${s.mejor_epoca}`;
-                document.getElementById('seasonalityClima').innerHTML = `<strong>Clima:</strong> ${s.clima}`;
-                document.getElementById('seasonalityRazon').innerText = `"${s.razon}"`;
-                
-                // Temporada Baja
+                badgeSeason.innerHTML = `<i class="bi bi-calendar-check me-2"></i> TEMPORADA ${seasonUpper} AHORA`;
+
+                const climaEl = document.getElementById('seasonalityClima');
+                const razonEl = document.getElementById('seasonalityRazon');
+                if (climaEl) climaEl.innerHTML = `<strong>Clima:</strong> ${s.clima}`;
+                if (razonEl) razonEl.innerText = `"${s.razon}"`;
+
+                // ===== TEMPORADA ALTA =====
+                const altaWrapper = document.getElementById('seasonalityAltaWrapper');
+                if (altaWrapper && (s.temporada_alta_meses || s.temporada_alta_razon)) {
+                    const altaMeses = document.getElementById('seasonalityAltaMeses');
+                    const altaRazon = document.getElementById('seasonalityAltaRazon');
+                    if (altaMeses) altaMeses.innerText = s.temporada_alta_meses || '';
+                    if (altaRazon) altaRazon.innerText = s.temporada_alta_razon || '';
+                    altaWrapper.classList.remove('d-none');
+                }
+
+                // ===== TEMPORADA MEDIA =====
+                const mediaWrapper = document.getElementById('seasonalityMediaWrapper');
+                if (mediaWrapper && (s.temporada_media_meses || s.temporada_media_razon)) {
+                    const mediaMeses = document.getElementById('seasonalityMediaMeses');
+                    const mediaRazon = document.getElementById('seasonalityMediaRazon');
+                    if (mediaMeses) mediaMeses.innerText = s.temporada_media_meses || '';
+                    if (mediaRazon) mediaRazon.innerText = s.temporada_media_razon || '';
+                    mediaWrapper.classList.remove('d-none');
+                }
+
+                // ===== TEMPORADA BAJA =====
                 const bajaWrapper = document.getElementById('seasonalityBajaWrapper');
-                if (s.temporada_baja_meses || s.temporada_baja_razon) {
-                    document.getElementById('seasonalityBajaMeses').innerText = s.temporada_baja_meses || '';
-                    document.getElementById('seasonalityBajaRazon').innerText = s.temporada_baja_razon || '';
+                if (bajaWrapper && (s.temporada_baja_meses || s.temporada_baja_razon)) {
+                    const bajaMeses = document.getElementById('seasonalityBajaMeses');
+                    const bajaRazon = document.getElementById('seasonalityBajaRazon');
+                    if (bajaMeses) bajaMeses.innerText = s.temporada_baja_meses || '';
+                    if (bajaRazon) bajaRazon.innerText = s.temporada_baja_razon || '';
                     bajaWrapper.classList.remove('d-none');
                 }
 
+                // ===== EVENTOS =====
                 if (s.eventos && s.eventos.length > 0) {
                     const ul = document.getElementById('seasonalityEventosList');
-                    ul.innerHTML = s.eventos.map(e => `<li>${e}</li>`).join('');
+                    if(ul) ul.innerHTML = s.eventos.map(e => `<li>${e}</li>`).join('');
                     document.getElementById('seasonalityEventosWrapper').classList.remove('d-none');
                 }
             } else {
@@ -845,7 +871,7 @@ window.cargarGuiaSegura = function cargarGuiaSegura() {
             }
         })
         .catch(e => {
-            badgeSeason.innerText = "ERROR DE CONEXIÓN";
+            badgeSeason.innerText = "ERROR DE CONEXI\u00d3N";
         });
     }
 }
@@ -2707,6 +2733,147 @@ function agregarActividadCustom() {
     renderizarTimeline();
 }
 
+/* =========================================================================
+   MÓDULO: BÚSQUEDA DE VUELOS (Google Flights / Skyscanner / Kayak)
+========================================================================= */
+
+/**
+ * @function abrirBuscadorVuelos
+ * Lee origen y destino del itinerario y genera links directos a los principales
+ * comparadores de vuelos con la ruta prellenada. No requiere API externa.
+ */
+window.abrirBuscadorVuelos = function() {
+    const origenInput  = document.getElementById('rutaOrigen');
+    const destinoInput = document.getElementById('rutaDestino');
+    const fechaInput   = document.getElementById('rutaFecha');
+    const panelVuelos  = document.getElementById('panelVuelos');
+    const linksGrid    = document.getElementById('vuelosLinksGrid');
+    const btn          = document.getElementById('btnBuscarVuelos');
+
+    const origen  = origenInput  ? origenInput.value.trim()  : '';
+    const destino = destinoInput ? destinoInput.value.trim() : '';
+    const fecha   = fechaInput   ? fechaInput.value.trim()   : ''; // YYYY-MM-DD
+
+    if (!destino) {
+        if (btn) {
+            btn.innerHTML = '<i class="bi bi-exclamation-triangle-fill me-2 text-warning"></i>Ingresa un destino primero';
+            setTimeout(() => { btn.innerHTML = '<i class="bi bi-search me-2"></i>Buscar Vuelos'; }, 2500);
+        }
+        return;
+    }
+
+    // Limpiar: solo ciudad (antes de la primera coma)
+    const clean = (str) => (str.includes(',') ? str.split(',')[0].trim() : str.trim());
+    const origenClean  = clean(origen  || 'México');
+    const destinoClean = clean(destino);
+
+    // Formato de fecha para Skyscanner/Kayak: YYMMDD
+    let fechaYYMMDD = '';
+    let fechaISO   = '';
+    if (fecha) {
+        const parts = fecha.split('-'); // [YYYY, MM, DD]
+        if (parts.length === 3) {
+            fechaYYMMDD = parts[0].slice(2) + parts[1] + parts[2]; // ej: 260521
+            fechaISO = fecha; // 2026-05-21
+        }
+    }
+
+    // === GOOGLE FLIGHTS ===
+    // El parámetro `q` con "vuelos de X a Y" pre-rellena origen y destino automáticamente
+    const googleQ = `vuelos de ${origenClean} a ${destinoClean}${fecha ? ' ' + fechaISO : ''}`;
+    const googleFlightsUrl = `https://www.google.com/travel/flights?q=${encodeURIComponent(googleQ)}&hl=es`;
+
+    // === SKYSCANNER ===
+    // Formato: /vuelos/ORIGEN/DESTINO/YYMMDD para ida simple
+    // Skyscanner usa slugs en minúsculas con guiones para los nombres
+    const slugify = (s) => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,'-').replace(/[^a-z0-9-]/g,'');
+    const skySrc = slugify(origenClean);
+    const skyDst = slugify(destinoClean);
+    const skyscannerUrl = fechaYYMMDD
+        ? `https://www.skyscanner.com.mx/vuelos/${skySrc}/${skyDst}/${fechaYYMMDD}/`
+        : `https://www.skyscanner.com.mx/vuelos/${skySrc}/${skyDst}/`;
+
+    // === KAYAK ===
+    // Formato: /flights/ORIGEN/DESTINO/YYYY-MM-DD para vuelo de ida
+    const kayakUrl = fechaISO
+        ? `https://www.kayak.com.mx/flights/${encodeURIComponent(origenClean)}/${encodeURIComponent(destinoClean)}/${fechaISO}`
+        : `https://www.kayak.com.mx/flights/${encodeURIComponent(origenClean)}/${encodeURIComponent(destinoClean)}`;
+
+    // === MOMONDO ===
+    const momondoUrl = `https://www.momondo.mx/vuelos/${encodeURIComponent(origenClean)}/${encodeURIComponent(destinoClean)}${fechaISO ? '/' + fechaISO : ''}`;
+
+    // Info contextual de ruta
+    const rutaLabel = `${origenClean} → ${destinoClean}${fecha ? ' · ' + fechaISO : ''}`;
+
+    const plataformas = [
+        {
+            nombre: 'Google Flights',
+            icon: 'bi-google',
+            url: googleFlightsUrl,
+            desc: 'Comparador en tiempo real · Pre-rellena origen y destino',
+            badge: 'RECOMENDADO',
+            badgeClass: 'bg-success'
+        },
+        {
+            nombre: 'Skyscanner',
+            icon: 'bi-airplane-fill',
+            url: skyscannerUrl,
+            desc: 'Alertas de precio · Fechas flexibles · Ruta pre-cargada',
+            badge: 'POPULAR',
+            badgeClass: 'bg-dark'
+        },
+        {
+            nombre: 'Kayak',
+            icon: 'bi-compass-fill',
+            url: kayakUrl,
+            desc: 'Predictor de precios · Incluye fecha de salida',
+            badge: 'PREDICTOR',
+            badgeClass: 'bg-secondary'
+        },
+        {
+            nombre: 'Momondo',
+            icon: 'bi-globe2',
+            url: momondoUrl,
+            desc: 'Rutas alternativas y escalas económicas',
+            badge: '',
+            badgeClass: ''
+        }
+    ];
+
+    if (linksGrid) {
+        linksGrid.innerHTML = `
+            <div class="fw-black text-uppercase text-muted mb-2" style="font-size:10px; letter-spacing:0.8px;">
+                <i class="bi bi-arrow-right-circle me-1"></i>${rutaLabel}
+            </div>
+        ` + plataformas.map(p => `
+            <a href="${p.url}" target="_blank" rel="noopener noreferrer"
+               class="d-flex justify-content-between align-items-center p-2 border border-dark border-2 bg-white text-dark text-decoration-none"
+               style="box-shadow: 2px 2px 0 0 #000; transition: transform 0.15s, box-shadow 0.15s;"
+               onmouseenter="this.style.transform='translate(-2px,-2px)';this.style.boxShadow='4px 4px 0 0 #000'"
+               onmouseleave="this.style.transform='';this.style.boxShadow='2px 2px 0 0 #000'">
+                <div class="d-flex align-items-center gap-2">
+                    <i class="bi ${p.icon} fs-5"></i>
+                    <div>
+                        <div class="fw-black text-uppercase" style="font-size: 12px; letter-spacing: 0.5px;">
+                            ${p.nombre}
+                            ${p.badge ? `<span class="badge ${p.badgeClass} rounded-0 ms-1 px-1 py-0" style="font-size:8px;">${p.badge}</span>` : ''}
+                        </div>
+                        <div class="text-muted fw-bold" style="font-size: 10px;">${p.desc}</div>
+                    </div>
+                </div>
+                <i class="bi bi-box-arrow-up-right text-muted flex-shrink-0"></i>
+            </a>
+        `).join('');
+    }
+
+    if (panelVuelos) panelVuelos.classList.remove('d-none');
+    if (btn) {
+        btn.innerHTML = '<i class="bi bi-check-circle-fill me-2 text-success"></i>Ver opciones';
+        setTimeout(() => { btn.innerHTML = '<i class="bi bi-search me-2"></i>Buscar Vuelos'; btn.disabled = false; }, 2000);
+    }
+};
+
+
 
 // Inicializadores Extra para Dashboard
 document.addEventListener("DOMContentLoaded", () => {
@@ -2909,11 +3076,32 @@ window.guardarViajeHistorial = function(btnElement) {
                 is_final: true
             };
             sessionStorage.setItem('pending_itinerary_save', JSON.stringify(payload));
-            
+
+            // Mostrar un overlay amigable antes de redirigir (en vez de un alert confuso)
+            btnElement.innerHTML = '<i class="bi bi-lock-fill me-2"></i>Iniciando sesión...';
+            const loginOverlay = document.createElement('div');
+            loginOverlay.innerHTML = `
+                <div style="position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.75);z-index:99999;display:flex;justify-content:center;align-items:center;">
+                    <div style="background:#fff;border:4px solid #000;box-shadow:12px 12px 0 0 #000;padding:40px 32px;text-align:center;max-width:420px;width:90%;">
+                        <i class="bi bi-lock-fill d-block mb-3" style="font-size:3rem;"></i>
+                        <h4 class="fw-black text-uppercase mb-2">¡Tu viaje está listo!</h4>
+                        <p class="fw-bold text-muted mb-4" style="font-size:0.9rem;">Solo necesitas iniciar sesión o registrarte para guardarlo en tu historial.</p>
+                        <div class="spinner-border text-dark" role="status"><span class="visually-hidden">Redirigiendo...</span></div>
+                        <p class="small fw-bold text-muted mt-3 mb-0">Redirigiendo al inicio de sesión...</p>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(loginOverlay);
+
+            // Flag para que el catch no muestre alert
+            window._guardarViaje_redirecting = true;
+
             // Construir URL de redirección segura
             const currentUrl = window.location.href;
-            window.location.href = `/login?next=${encodeURIComponent(currentUrl)}&msg=Inicia+sesión+o+regístrate+para+guardar+tu+viaje`;
-            throw new Error('Redirigiendo a login...');
+            setTimeout(() => {
+                window.location.href = `/login?next=${encodeURIComponent(currentUrl)}&msg=Inicia+sesi%C3%B3n+o+regs%C3%ADtrate+para+guardar+tu+viaje`;
+            }, 1800);
+            throw new Error('__REDIRECT_TO_LOGIN__');
         }
         return response.json();
     })
@@ -2955,14 +3143,19 @@ window.guardarViajeHistorial = function(btnElement) {
                 btnElement.disabled = false;
             }, 3000);
         } else {
-            alert("❌ Error: " + (data.message || 'Error guardando en PostgreSQL.'));
+            alert('❌ Error: ' + (data.message || 'Error guardando el viaje.'));
             btnElement.innerHTML = originalText;
             btnElement.disabled = false;
         }
     })
     .catch(error => {
-        console.error("Error SQL:", error);
-        alert(error.message || "❌ Falla de Red: El servidor no respondió.");
+        // Si es redirección intencional al login, no mostrar alert ni restaurar botón
+        if (window._guardarViaje_redirecting || (error.message && error.message === '__REDIRECT_TO_LOGIN__')) {
+            window._guardarViaje_redirecting = false;
+            return;
+        }
+        console.error('Error al guardar viaje:', error);
+        alert('❌ Falla de Red: El servidor no respondió. Verifica tu conexión e intenta de nuevo.');
         btnElement.innerHTML = originalText;
         btnElement.disabled = false;
     });

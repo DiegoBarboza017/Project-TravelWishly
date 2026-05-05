@@ -147,6 +147,29 @@
                 </button>
             </div>
 
+            <!-- Botón de Búsqueda de Vuelos -->
+            <div class="mb-4 p-3 border border-2 border-dark bg-white" style="box-shadow: 2px 2px 0 0 #000;">
+                <p class="fw-bold text-dark mb-2 text-uppercase" style="font-size: 13px;">
+                    <i class="bi bi-airplane-fill me-2"></i>Comparar Vuelos
+                </p>
+                <small class="d-block text-muted fw-bold mb-3" style="font-size: 10px;">
+                    Compara precios en los principales buscadores de vuelos con tu ruta.
+                </small>
+                <button type="button" id="btnBuscarVuelos"
+                    class="btn btn-dark rounded-0 fw-bold w-100 border-2 border-dark text-uppercase py-2 mb-2"
+                    style="font-size: 12px; letter-spacing: 0.5px;"
+                    onclick="abrirBuscadorVuelos()">
+                    <i class="bi bi-search me-2"></i>Buscar Vuelos
+                </button>
+                <!-- Panel de links de vuelos (oculto hasta que se pulse el botón) -->
+                <div id="panelVuelos" class="d-none mt-2">
+                    <div id="vuelosLinksGrid" class="d-flex flex-column gap-2"></div>
+                    <p class="small text-muted fw-bold mt-2 mb-0" style="font-size: 10px;">
+                        <i class="bi bi-info-circle me-1"></i>Los precios son referenciales. Ingresa tu origen y destino primero.
+                    </p>
+                </div>
+            </div>
+
             <button class="btn btn-primary-flow rounded-0 fw-black px-4 py-4 w-100 border-dark border-3 text-uppercase hover-lift mb-2 fs-4"
                 style="box-shadow: 8px 8px 0 0 rgba(0,0,0,0.6); transition: all 0.2s; letter-spacing: 1px;"
                 type="button" onclick="if(window.generarRutaInteligente) window.generarRutaInteligente()">
