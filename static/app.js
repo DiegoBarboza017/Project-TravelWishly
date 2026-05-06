@@ -108,7 +108,10 @@ document.addEventListener("DOMContentLoaded", () => {
                                 const btn = document.querySelector(`button[onclick*="recomendarDestino('${vibe}'"]`);
                                 if(btn) window.recomendarDestino(vibe, btn);
                             });
-                        } catch(e){}
+            // Marcar ruta como generada correctamente
+            window.rutaYaGenerada = true;
+            
+        } catch(e) {}
                     }, 1000);
 
                     // Damos ~2500ms para asegurar que `cargarPackingList` ya inyectó el HTML semántico global 
@@ -152,8 +155,21 @@ const ESTILOS_VIAJE = {
 
 let TASAS_CAMBIO = {
     'MXN': { tasa: 1, simbolo: '$' },
-    'USD': { tasa: 1 / 17.0, simbolo: 'USD $' }, // Default fallback
-    'EUR': { tasa: 1 / 18.5, simbolo: '€' }      // Default fallback
+    'USD': { tasa: 1 / 17.0, simbolo: '$' },
+    'EUR': { tasa: 1 / 18.5, simbolo: '€' },
+    'CAD': { tasa: 1 / 12.5, simbolo: '$' },
+    'GBP': { tasa: 1 / 21.5, simbolo: '£' },
+    'JPY': { tasa: 1 / 0.11, simbolo: '¥' },
+    'AUD': { tasa: 1 / 11.2, simbolo: '$' },
+    'CHF': { tasa: 1 / 19.5, simbolo: 'CHF' },
+    'CNY': { tasa: 1 / 2.3, simbolo: '¥' },
+    'ARS': { tasa: 50.0, simbolo: '$' },
+    'COP': { tasa: 220.0, simbolo: '$' },
+    'CLP': { tasa: 50.0, simbolo: '$' },
+    'PEN': { tasa: 0.22, simbolo: 'S/' },
+    'BRL': { tasa: 0.30, simbolo: 'R$' },
+    'RUB': { tasa: 5.5, simbolo: '₽' },
+    'INR': { tasa: 4.8, simbolo: '₹' }
 };
 
 // Fetch asíncrono de divisas de la vida real (API pública grauita)
@@ -165,9 +181,12 @@ async function obtenerTasasReales() {
         const data = await response.json();
         
         if (data && data.rates) {
-            TASAS_CAMBIO['USD'].tasa = data.rates.USD;
-            TASAS_CAMBIO['EUR'].tasa = data.rates.EUR;
-            console.log("✅ Tasas actualizadas! USD:", data.rates.USD, "| EUR:", data.rates.EUR);
+            for (let currency in TASAS_CAMBIO) {
+                if (data.rates[currency]) {
+                    TASAS_CAMBIO[currency].tasa = data.rates[currency];
+                }
+            }
+            console.log("✅ Tasas actualizadas dinámicamente desde API.");
         }
     } catch (error) {
         console.warn("⚠️ No se pudieron cargar las tasas en vivo. Utilizando modo offline/estimado.", error);
@@ -350,6 +369,8 @@ function renderizarPanelGraficas(distr) {
             responsive: true,
             maintainAspectRatio: false,
             animation: {
+                duration: 1500,
+                easing: 'easeOutQuart',
                 animateScale: true,
                 animateRotate: true
             },
@@ -725,24 +746,36 @@ window.cargarGuiaSegura = function cargarGuiaSegura() {
             .then(data => {
                 if (data && data[0] && data[0].languages) {
                     const l = Object.values(data[0].languages);
-                    // Mostrar todos los idiomas del país, no solo 2
-                    const idiomasStr = l.map(id => id.toUpperCase()).join(' | ');
-                    panelIdioma.innerHTML = `<i class="bi bi-translate me-2"></i> IDIOMAS: ${idiomasStr}`;
+                    if (l.length >= 2) {
+                        panelIdioma.innerHTML = `<i class="bi bi-translate me-2"></i> PRINCIPAL: ${l[0].toUpperCase()} | SECUNDARIO: ${l.slice(1).join(', ').toUpperCase()}`;
+                    } else {
+                        panelIdioma.innerHTML = `<i class="bi bi-translate me-2"></i> PRINCIPAL: ${l[0].toUpperCase()}`;
+                    }
                 } else {
-                    // Fallback al diccionario local — nunca más "Español y Lenguas Locales" incorrecto
                     const idiomasLocales = IDIOMAS_POR_PAIS[destinoObj.pais];
                     if (idiomasLocales) {
-                        panelIdioma.innerHTML = `<i class="bi bi-translate me-2"></i> IDIOMAS: ${idiomasLocales.map(i => i.toUpperCase()).join(' | ')}`;
+                        if (idiomasLocales.length >= 2) {
+                            panelIdioma.innerHTML = `<i class="bi bi-translate me-2"></i> PRINCIPAL: ${idiomasLocales[0].toUpperCase()} | SECUNDARIO: ${idiomasLocales.slice(1).join(', ').toUpperCase()}`;
+                        } else {
+                            panelIdioma.innerHTML = `<i class="bi bi-translate me-2"></i> PRINCIPAL: ${idiomasLocales[0].toUpperCase()}`;
+                        }
                     } else {
-                        panelIdioma.innerHTML = `<i class="bi bi-translate me-2"></i> IDIOMAS: CONSULTAR LOCALMENTE`;
+                        panelIdioma.innerHTML = `<i class="bi bi-translate me-2"></i> PRINCIPAL: ESPAÑOL | SECUNDARIO: INGLÉS`;
                     }
                 }
             }).catch(e => {
-                // Error de red: usar diccionario local en vez de texto genérico incorrecto
                 const idiomasLocales = IDIOMAS_POR_PAIS[destinoObj.pais];
                 if (idiomasLocales) {
-                    panelIdioma.innerHTML = `<i class="bi bi-translate me-2"></i> IDIOMAS: ${idiomasLocales.map(i => i.toUpperCase()).join(' | ')}`;
+                    if (idiomasLocales.length >= 2) {
+                        panelIdioma.innerHTML = `<i class="bi bi-translate me-2"></i> PRINCIPAL: ${idiomasLocales[0].toUpperCase()} | SECUNDARIO: ${idiomasLocales.slice(1).join(', ').toUpperCase()}`;
+                    } else {
+                        panelIdioma.innerHTML = `<i class="bi bi-translate me-2"></i> PRINCIPAL: ${idiomasLocales[0].toUpperCase()}`;
+                    }
                 } else {
+                    panelIdioma.innerHTML = `<i class="bi bi-translate me-2"></i> PRINCIPAL: ESPAÑOL | SECUNDARIO: INGLÉS`;
+                }
+            });
+    }
                     panelIdioma.innerHTML = `<i class="bi bi-translate me-2"></i> IDIOMAS: CONSULTAR LOCALMENTE`;
                 }
             });
@@ -2445,6 +2478,18 @@ window.evaluarDocumentacion = function() {
     window.calcularMochila();
 };
 
+window.rutaYaGenerada = false;
+
+/** @function continuarAMochila Verifica que se haya generado ruta antes de avanzar */
+window.continuarAMochila = function() {
+    if (!window.rutaYaGenerada) {
+        alert("⚠️ ¡Alto ahí viajero! Primero debes darle click a '1. GENERAR RUTA' para armar tu itinerario antes de continuar a la mochila.");
+        return;
+    }
+    document.getElementById('tab-mochila').click();
+    window.scrollTo({top:0,behavior:'smooth'});
+};
+
 /** @function generarRutaInteligente Construye la ruta paso a paso detectando distancias */
 window.generarRutaInteligente = function() {
     const origenInput = document.getElementById('rutaOrigen');
@@ -2464,6 +2509,8 @@ window.generarRutaInteligente = function() {
     }
 
     if (duracion > 90) duracion = 90;
+
+    window.rutaYaGenerada = false; // Reset
 
     container.innerHTML = '<div class="text-center py-5"><div class="spinner-border text-dark" role="status"></div><p class="fw-bold mt-3 text-uppercase">Trazando Ruta Logística...</p></div>';
 

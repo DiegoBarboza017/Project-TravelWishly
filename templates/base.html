@@ -382,9 +382,12 @@
     
     window.minimizarChat = function() {
         const win = document.getElementById('chatWindow');
-        const wrapper = document.getElementById('chatBotWrapper');
-        if (win) win.classList.remove('active'); // Oculta la ventana
-        if (wrapper) wrapper.style.display = 'block'; // Muestra burbuja inicial
+        if (!win) return;
+        if (win.classList.contains('minimized')) {
+            win.classList.remove('minimized');
+        } else {
+            win.classList.add('minimized');
+        }
     };
 
     // Hacer que el header del chat también restaure al hacer click cuando está minimizado

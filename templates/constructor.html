@@ -170,10 +170,10 @@
                 </div>
             </div>
 
-            <button class="btn btn-primary-flow rounded-0 fw-black px-4 py-4 w-100 border-dark border-3 text-uppercase hover-lift mb-2 fs-4"
-                style="box-shadow: 8px 8px 0 0 rgba(0,0,0,0.6); transition: all 0.2s; letter-spacing: 1px;"
+            <button class="btn btn-dark rounded-0 fw-black px-4 py-3 w-100 border-dark border-3 text-uppercase hover-lift mb-2 fs-5"
+                style="box-shadow: 6px 6px 0 0 rgba(0,0,0,0.6); transition: all 0.2s; letter-spacing: 1px;"
                 type="button" onclick="if(window.generarRutaInteligente) window.generarRutaInteligente()">
-                <i class="bi bi-magic me-2"></i>Generar Ruta
+                1. Generar Ruta <i class="bi bi-magic ms-2"></i>
             </button>
             <p class="small fw-bold text-muted mb-4 text-center mt-2" style="font-size: 11px;">
                 <i class="bi bi-cpu me-1"></i>El motor detectará regiones y calculará escalas automáticamente.
@@ -181,10 +181,10 @@
 
             <!-- Botón Continuar a Mochila -->
             <hr class="border-dark border-2">
-            <button class="btn w-100 py-3 fw-black rounded-0 text-uppercase border-2 border-dark hover-lift"
-                    style="background:#000; color:#fff; box-shadow: 4px 4px 0 0 rgba(0,0,0,0.4); letter-spacing:1px;"
-                    type="button" onclick="document.getElementById('tab-mochila').click(); window.scrollTo({top:0,behavior:'smooth'});">
-                Continuar a Mochila <i class="bi bi-arrow-right-circle-fill ms-2"></i>
+            <button class="btn btn-primary-flow w-100 py-4 fw-black rounded-0 text-uppercase border-3 border-dark hover-lift fs-4"
+                    style="box-shadow: 8px 8px 0 0 rgba(0,0,0,0.6); letter-spacing:1px; margin-top: 10px;"
+                    type="button" onclick="window.continuarAMochila()">
+                2. Continuar a Mochila <i class="bi bi-arrow-right-circle-fill ms-2"></i>
             </button>
         </div>
         <div class="col-md-8 px-md-5 px-4">
