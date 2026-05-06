@@ -335,10 +335,17 @@ def create_app():
         # Funcionalidad "Lazy Registration": Si el correo no existe en la base 
         # de datos, creamos la cuenta automáticamente sin pedir más datos.
         if not user:
-            username_base = email.split('@')[0]
+            base_name = email.split('@')[0]
+            username_to_try = base_name
+            counter = 1
+            # Garantizar que el username sea único para no causar un IntegrityError (Error 500)
+            while User.query.filter_by(username=username_to_try).first() is not None:
+                username_to_try = f"{base_name}{counter}"
+                counter += 1
+                
             # Le asignamos una contraseña aleatoria imposible de adivinar, 
             # ya que el usuario solo usará el correo para entrar.
-            user = User(username=username_base, email=email, password_hash=generate_password_hash(uuid.uuid4().hex))
+            user = User(username=username_to_try, email=email, password_hash=generate_password_hash(uuid.uuid4().hex))
             db.session.add(user)
             db.session.commit()
             is_new_user = True
