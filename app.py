@@ -3,10 +3,12 @@ TravelWishly - Lógica principal del servidor web (Flask)
 Estructura según lineamientos de calidad para mantenibilidad (ISO/IEC 25010)
 """
 
-from dotenv import load_dotenv
 import os
+from dotenv import load_dotenv
 
-load_dotenv()  # <--- Esta línea es la que hace la magia
+# Determinar ruta absoluta para PythonAnywhere WSGI
+basedir = os.path.abspath(os.path.dirname(__file__))
+load_dotenv(os.path.join(basedir, '.env'))
 
 import uuid
 import requests
