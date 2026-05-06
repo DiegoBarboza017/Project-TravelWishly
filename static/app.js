@@ -776,10 +776,6 @@ window.cargarGuiaSegura = function cargarGuiaSegura() {
                 }
             });
     }
-                    panelIdioma.innerHTML = `<i class="bi bi-translate me-2"></i> IDIOMAS: CONSULTAR LOCALMENTE`;
-                }
-            });
-    }
 
     // Save for Flow
     window._guiaDestinoActual = `${destinoObj.ciudad}, ${destinoObj.pais}`;
