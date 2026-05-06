@@ -620,4 +620,16 @@ ul>li>i.bi {
 /* Guide tooltip hidden (minimized) */
 .guide-tooltip-box.is-minimized {
     display: none;
-}
+}/ *   S o l u c i Û n   g l o b a l   p a r a   d e s b o r d a m i e n t o   d e   t e x t o   e n   m Û v i l e s   * /  
+ p ,   s p a n ,   d i v ,   h 1 ,   h 2 ,   h 3 ,   h 4 ,   h 5 ,   h 6 ,   . s e a s o n - d e s c   {   o v e r f l o w - w r a p :   b r e a k - w o r d   ! i m p o r t a n t ;   w o r d - w r a p :   b r e a k - w o r d   ! i m p o r t a n t ;   w o r d - b r e a k :   b r e a k - w o r d   ! i m p o r t a n t ;   h y p h e n s :   a u t o ;   }  
+ 
+
+/* Soluci√≥n global para desbordamiento de texto en m√≥viles */
+p, span, div, h1, h2, h3, h4, h5, h6, .season-desc {
+    overflow-wrap: break-word !important;
+    word-wrap: break-word !important;
+    word-break: break-word !important;
+    hyphens: auto;
+}
+p ,   s p a n ,   d i v ,   h 1 ,   h 2 ,   h 3 ,   h 4 ,   h 5 ,   h 6 ,   . s e a s o n - d e s c   {   o v e r f l o w - w r a p :   a n y w h e r e   ! i m p o r t a n t ;   }  
+ 

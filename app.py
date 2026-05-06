@@ -159,9 +159,10 @@ def create_app():
         app.apscheduler = scheduler  # Exponer el scheduler para crear trabajos dinámicos
         print("[SCHEDULER] APScheduler iniciado — revisando recordatorios cada hora.")
 
-    # Use SQLite by default for easy local execution without needing PostgreSQL setup
-  # Configuración para MySQL en la Nube (Clever Cloud)
-    app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///instance/travelwishly.db')
+    # Configuración para MySQL en la Nube (o SQLite local)
+    default_db_path = 'sqlite:///' + os.path.join(basedir, 'instance', 'travelwishly.db')
+    # Forzar SQLite local para evitar bloqueos de firewall en servidores gratuitos (como PythonAnywhere)
+    app.config['SQLALCHEMY_DATABASE_URI'] = default_db_path
 
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
     
@@ -903,6 +904,8 @@ def create_app():
     # Instanciación automática de las tablas para ambiente de desarrollo local
     with app.app_context():
         try:
+            # Asegurar que la carpeta instance exista
+            os.makedirs(os.path.join(basedir, 'instance'), exist_ok=True)
             db.create_all()
         except Exception as e:
             print(f"Aviso de BD: {e}")
