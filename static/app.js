@@ -2474,11 +2474,10 @@ window.evaluarDocumentacion = function() {
     window.calcularMochila();
 };
 
-window.rutaYaGenerada = false;
-
 /** @function continuarAMochila Verifica que se haya generado ruta antes de avanzar */
 window.continuarAMochila = function() {
-    if (!window.rutaYaGenerada) {
+    const container = document.getElementById('timelineContainer');
+    if (!container || container.innerHTML.includes('Aún no has definido') || container.innerHTML.includes('Datos insuficientes') || container.innerHTML.includes('Trazando Ruta Logística')) {
         alert("⚠️ ¡Alto ahí viajero! Primero debes darle click a '1. GENERAR RUTA' para armar tu itinerario antes de continuar a la mochila.");
         return;
     }
@@ -2505,8 +2504,6 @@ window.generarRutaInteligente = function() {
     }
 
     if (duracion > 90) duracion = 90;
-
-    window.rutaYaGenerada = false; // Reset
 
     container.innerHTML = '<div class="text-center py-5"><div class="spinner-border text-dark" role="status"></div><p class="fw-bold mt-3 text-uppercase">Trazando Ruta Logística...</p></div>';
 
@@ -2589,8 +2586,6 @@ window.generarRutaInteligente = function() {
         
         // Auto-Vincula al Smart Packing List
         if (window.cargarPackingList) window.cargarPackingList(destino);
-
-        window.rutaYaGenerada = true;
     }, 600);
 };
 
