@@ -327,51 +327,53 @@ def create_app():
         """Valida el enlace e inicia sesión (o registra) automáticamente"""
         s = get_reset_serializer()
         try:
-            # Intentamos desencriptar el token. Si han pasado más de 15 min (900 seg),
-            # o si el token fue alterado, esto lanzará un error.
             email = s.loads(token, salt='magic-link-salt', max_age=900)
+            email = email.lower().strip()
         except:
             flash('El enlace de acceso es inválido o ha expirado.', 'error')
             return redirect(url_for('login'))
             
-        user = User.query.filter_by(email=email).first()
-        is_new_user = False
-        
-        # Funcionalidad "Lazy Registration": Si el correo no existe en la base 
-        # de datos, creamos la cuenta automáticamente sin pedir más datos.
-        if not user:
-            base_name = email.split('@')[0]
-            username_to_try = base_name
-            counter = 1
-            # Garantizar que el username sea único para no causar un IntegrityError (Error 500)
-            while User.query.filter_by(username=username_to_try).first() is not None:
-                username_to_try = f"{base_name}{counter}"
-                counter += 1
-                
-            # Le asignamos una contraseña aleatoria imposible de adivinar, 
-            # ya que el usuario solo usará el correo para entrar.
-            user = User(username=username_to_try, email=email, password_hash=generate_password_hash(uuid.uuid4().hex))
-            db.session.add(user)
-            db.session.commit()
-            is_new_user = True
+        try:
+            user = User.query.filter_by(email=email).first()
+            is_new_user = False
             
-        # Iniciar la sesión
-        session['user_id'] = user.id
-        session['username'] = user.username
-        session['user_email'] = user.email
-        session.permanent = False
-        session['expires_at'] = (datetime.now() + timedelta(minutes=60)).timestamp()
-        
-        if is_new_user:
-            flash('¡Cuenta creada exitosamente! Bienvenido/a a TravelWishly.', 'success')
-        else:
-            flash(f'¡Bienvenido de nuevo, {user.username}!', 'success')
-        
-        # ¿Por qué renderizamos 'magic_success.html' en vez de redirigir al Dashboard?
-        # Porque usualmente el usuario abre este enlace desde su celular o en una pestaña 
-        # nueva. El archivo magic_success.html muestra un mensaje de "Éxito" y 
-        # automáticamente cierra esa pestaña, dejando al usuario en la pestaña original.
-        return render_template('magic_success.html')
+            # Funcionalidad "Lazy Registration": Si el correo no existe en la base 
+            # de datos, creamos la cuenta automáticamente sin pedir más datos.
+            if not user:
+                base_name = email.split('@')[0]
+                username_to_try = base_name
+                counter = 1
+                # Garantizar que el username sea único para no causar un IntegrityError (Error 500)
+                while User.query.filter_by(username=username_to_try).first() is not None:
+                    username_to_try = f"{base_name}{counter}"
+                    counter += 1
+                    
+                # Le asignamos una contraseña aleatoria imposible de adivinar, 
+                # ya que el usuario solo usará el correo para entrar.
+                user = User(username=username_to_try, email=email, password_hash=generate_password_hash(uuid.uuid4().hex))
+                db.session.add(user)
+                db.session.commit()
+                is_new_user = True
+                
+            # Iniciar la sesión
+            session['user_id'] = user.id
+            session['username'] = user.username
+            session['user_email'] = user.email
+            session.permanent = False
+            session['expires_at'] = (datetime.now() + timedelta(minutes=60)).timestamp()
+            
+            if is_new_user:
+                flash('¡Cuenta creada exitosamente! Bienvenido/a a TravelWishly.', 'success')
+            else:
+                flash(f'¡Bienvenido de nuevo, {user.username}!', 'success')
+            
+            # ¿Por qué renderizamos 'magic_success.html' en vez de redirigir al Dashboard?
+            # Porque usualmente el usuario abre este enlace desde su celular o en una pestaña 
+            # ajena, y necesitamos que pueda "Aceptar" para continuar.
+            next_page = request.args.get('next')
+            return render_template('magic_success.html', user=user, next_page=next_page)
+        except Exception as e:
+            return f"<h1>Error Crítico Interno (TravelWishly Debug)</h1><p>Ha ocurrido un error en la base de datos: <b>{str(e)}</b></p><p>Por favor toma una captura de esta pantalla y envíala.</p>", 500
 
     def get_reset_serializer():
         return URLSafeTimedSerializer(app.config['SECRET_KEY'])
