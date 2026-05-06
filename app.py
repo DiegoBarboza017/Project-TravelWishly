@@ -54,8 +54,9 @@ def create_app():
     # Aquí configuramos cómo enviará correos la aplicación (ej. para Magic Links).
     # Se usa el servidor SMTP de Gmail por su fiabilidad y porque es gratuito.
     app.config['MAIL_SERVER'] = 'smtp.gmail.com'
-    app.config['MAIL_PORT'] = 587
-    app.config['MAIL_USE_TLS'] = True  # TLS cifra la comunicación para que sea segura
+    app.config['MAIL_PORT'] = 465
+    app.config['MAIL_USE_TLS'] = False
+    app.config['MAIL_USE_SSL'] = True
     app.config['MAIL_USERNAME'] = os.environ.get('MAIL_USERNAME', 'travelwishly.bot@gmail.com')
     app.config['MAIL_PASSWORD'] = os.environ.get('MAIL_PASSWORD')
     app.config['MAIL_DEFAULT_SENDER'] = os.environ.get('MAIL_USERNAME', 'travelwishly.bot@gmail.com')
@@ -313,7 +314,8 @@ def create_app():
             flash('Te hemos enviado un enlace de un solo clic a tu correo. ¡Revísalo para entrar al instante!', 'success')
         except Exception as e:
             print(f"Error enviando magic link: {e}")
-            flash('Hubo un error enviando tu enlace de acceso. Intenta de nuevo más tarde.', 'error')
+            # Failsafe para evitar que el usuario se quede bloqueado si el correo falla en el servidor
+            flash(f'Hubo un problema enviando el correo. Sin embargo, puedes entrar haciendo clic aquí: <a href="{magic_link}" class="fw-bold text-dark text-decoration-underline">Entrar a mi cuenta</a>', 'error')
             
         next_page = request.args.get('next')
         return redirect(url_for('login', next=next_page) if next_page else url_for('login'))
