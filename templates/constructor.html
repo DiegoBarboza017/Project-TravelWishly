@@ -221,11 +221,28 @@
                     <div class="mb-4 p-3 bg-light border border-2 border-dark" style="box-shadow: 2px 2px 0 0 #000;">
                         <label class="form-label fw-bold text-dark text-uppercase small mb-2"><i class="bi bi-person-vcard-fill me-2"></i>¿Cuál es tu Nacionalidad?</label>
                         <select id="nacionalidadUsuario" class="form-select border-dark border-2 rounded-0 fw-bold bg-white" onchange="evaluarDocumentacion()">
-                            <option value="MX" selected>🇲🇽 México / Mexicano</option>
-                            <option value="US">🇺🇸 Estados Unidos / Americano</option>
-                            <option value="ES">🇪🇸 España / Comunitario Europeo</option>
-                            <option value="CO">🇨🇴 Colombia / Colombiano</option>
-                            <option value="AR">🇦🇷 Argentina / Argentino</option>
+                            <option value="MX" selected>🇲🇽 México</option>
+                            <option value="US">🇺🇸 Estados Unidos</option>
+                            <option value="ES">🇪🇸 España</option>
+                            <option value="CO">🇨🇴 Colombia</option>
+                            <option value="AR">🇦🇷 Argentina</option>
+                            <option value="CL">🇨🇱 Chile</option>
+                            <option value="PE">🇵🇪 Perú</option>
+                            <option value="EC">🇪🇨 Ecuador</option>
+                            <option value="VE">🇻🇪 Venezuela</option>
+                            <option value="UY">🇺🇾 Uruguay</option>
+                            <option value="PY">🇵🇾 Paraguay</option>
+                            <option value="BO">🇧🇴 Bolivia</option>
+                            <option value="CR">🇨🇷 Costa Rica</option>
+                            <option value="PA">🇵🇦 Panamá</option>
+                            <option value="DO">🇩🇴 República Dominicana</option>
+                            <option value="GT">🇬🇹 Guatemala</option>
+                            <option value="CA">🇨🇦 Canadá</option>
+                            <option value="BR">🇧🇷 Brasil</option>
+                            <option value="GB">🇬🇧 Reino Unido</option>
+                            <option value="FR">🇫🇷 Francia</option>
+                            <option value="DE">🇩🇪 Alemania</option>
+                            <option value="IT">🇮🇹 Italia</option>
                             <option value="OTRO">🌍 Otra Nacionalidad</option>
                         </select>
                         <small class="text-muted d-block mt-2" style="font-size: 11px; line-height: 1.2;">
@@ -487,4 +504,20 @@
   </div>
 </div>
 
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    if (typeof Choices !== 'undefined') {
+        const selectNacionalidad = document.getElementById('nacionalidadUsuario');
+        if (selectNacionalidad) {
+            new Choices(selectNacionalidad, {
+                searchEnabled: true,
+                itemSelectText: '',
+                placeholderValue: 'Busca tu nacionalidad...',
+                searchPlaceholderValue: 'Escribe para buscar...',
+                shouldSort: false
+            });
+        }
+    }
+});
+</script>
 {% endblock %}

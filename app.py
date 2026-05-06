@@ -491,13 +491,14 @@ def create_app():
             db.session.add(nueva_ruta)
             db.session.commit()
 
+            usuario = User.query.get(session['user_id'])
+            destino_txt = data.get('destino', '—')
+
             # ── Enviar email de resumen del viaje ────────────────────────────
             try:
                 from flask_mail import Message
-                usuario = User.query.get(session['user_id'])
                 if usuario and usuario.email:
                     origen_txt      = data.get('origen', '—')
-                    destino_txt     = data.get('destino', '—')
                     duracion_txt    = data.get('duracion_dias', '—')
                     fecha_txt       = data.get('fecha_ideal', '') or 'Sin fecha definida'
                     mochila_items   = data.get('mochila_detalle', [])   # list[{nombre, costo}]
@@ -603,14 +604,15 @@ def create_app():
                 run_time = datetime.now(timezone.utc) + timedelta(minutes=5)
                 # El id del job lleva un UUID para evitar colisiones si se guardan varios viajes rápido
                 job_id = f"recordatorio_5min_{nueva_ruta.id}_{uuid.uuid4().hex[:6]}"
-                app.apscheduler.add_job(
-                    func=enviar_recordatorio_prueba_5min,
-                    trigger='date',
-                    run_date=run_time,
-                    args=[usuario.email, destino_txt, request.host_url],
-                    id=job_id
-                )
-                print(f"[SCHEDULER] Programado recordatorio de 5 minutos para viaje #{nueva_ruta.id} a las {run_time}")
+                if usuario and usuario.email:
+                    app.apscheduler.add_job(
+                        func=enviar_recordatorio_prueba_5min,
+                        trigger='date',
+                        run_date=run_time,
+                        args=[usuario.email, destino_txt, request.host_url],
+                        id=job_id
+                    )
+                    print(f"[SCHEDULER] Programado recordatorio de 5 minutos para viaje #{nueva_ruta.id} a las {run_time}")
 
             return jsonify({'success': True, 'message': 'Viaje guardado exitosamente en tu Historial.'})
 

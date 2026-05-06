@@ -14,6 +14,7 @@
     <script src="https://unpkg.com/three"></script>
     <script src="https://unpkg.com/globe.gl"></script>
     <!-- CSS Propio -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js/public/assets/styles/choices.min.css" />
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <!-- PWA Manifest -->
     <link rel="manifest" href="/manifest.json">
@@ -226,6 +227,8 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <!-- html2pdf.js para la generacion de reportes PDF -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <!-- Choices.js para selectores con búsqueda -->
+    <script src="https://cdn.jsdelivr.net/npm/choices.js/public/assets/scripts/choices.min.js"></script>
     <!-- Script de lógica Frontend (Calculadora / Guía Turística) -->
     <script src="{{ url_for('static', filename='app.js') }}?v={{ range(1, 999999) | random }}"></script>
     <!-- Lógica del Globo Interactivo -->

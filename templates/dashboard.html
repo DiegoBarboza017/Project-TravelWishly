@@ -157,15 +157,20 @@
                         </div>
                     </div>
                     <div class="mb-4">
-                        <label for="capacidadAhorro" class="form-label fw-bold text-dark text-uppercase">Capacidad de
-                            Ahorro (% mensual)</label>
-                        <div class="input-group">
-                            <span
-                                class="input-group-text bg-white border-dark border-2 border-end-0 rounded-0 text-dark"><i
-                                    class="bi bi-percent"></i></span>
-                            <input type="number"
-                                class="form-control bg-white border-dark border-2 border-start-0 rounded-0 fw-bold text-dark"
-                                id="capacidadAhorro" placeholder="EJ: 15" min="1" max="100" required>
+                        <label class="form-label fw-bold text-dark text-uppercase">Capacidad de Ahorro Mensual</label>
+                        <div class="row g-2">
+                            <div class="col-6">
+                                <div class="input-group" title="Ingresa el porcentaje">
+                                    <span class="input-group-text bg-white border-dark border-2 border-end-0 rounded-0 text-dark"><i class="bi bi-percent"></i></span>
+                                    <input type="number" class="form-control bg-white border-dark border-2 border-start-0 rounded-0 fw-bold text-dark" id="capacidadAhorro" placeholder="%" min="1" max="100" required oninput="window.sincronizarAhorro ? window.sincronizarAhorro('porcentaje') : null">
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="input-group" title="O ingresa el monto exacto">
+                                    <span class="input-group-text bg-white border-dark border-2 border-end-0 rounded-0 text-dark"><i class="bi bi-cash"></i></span>
+                                    <input type="number" class="form-control bg-white border-dark border-2 border-start-0 rounded-0 fw-bold text-dark" id="capacidadAhorroMonto" placeholder="Monto" min="1" oninput="window.sincronizarAhorro ? window.sincronizarAhorro('monto') : null">
+                                </div>
+                            </div>
                         </div>
                     </div>
                     <div class="mb-5">
@@ -192,9 +197,22 @@
                         <div class="col-md-6">
                             <label class="form-label fw-bold text-dark text-uppercase">Moneda</label>
                             <select id="divisaSeleccionada" class="form-select border-dark border-3 rounded-0 fw-bold fw-black bg-white" style="box-shadow: inset 4px 4px 0 0 rgba(0,0,0,0.1);">
-                                <option value="MXN" selected>MXN ($)</option>
-                                <option value="USD">USD ($)</option>
-                                <option value="EUR">EUR (€)</option>
+                                <option value="MXN" selected>🇲🇽 MXN - Peso Mexicano</option>
+                                <option value="USD">🇺🇸 USD - Dólar Estadounidense</option>
+                                <option value="EUR">🇪🇺 EUR - Euro</option>
+                                <option value="CAD">🇨🇦 CAD - Dólar Canadiense</option>
+                                <option value="GBP">🇬🇧 GBP - Libra Esterlina</option>
+                                <option value="JPY">🇯🇵 JPY - Yen Japonés</option>
+                                <option value="AUD">🇦🇺 AUD - Dólar Australiano</option>
+                                <option value="CHF">🇨🇭 CHF - Franco Suizo</option>
+                                <option value="CNY">🇨🇳 CNY - Yuan Chino</option>
+                                <option value="ARS">🇦🇷 ARS - Peso Argentino</option>
+                                <option value="COP">🇨🇴 COP - Peso Colombiano</option>
+                                <option value="CLP">🇨🇱 CLP - Peso Chileno</option>
+                                <option value="PEN">🇵🇪 PEN - Sol Peruano</option>
+                                <option value="BRL">🇧🇷 BRL - Real Brasileño</option>
+                                <option value="RUB">🇷🇺 RUB - Rublo Ruso</option>
+                                <option value="INR">🇮🇳 INR - Rupia India</option>
                             </select>
                         </div>
                     </div>
@@ -343,13 +361,43 @@
                         <div class="d-flex align-items-center gap-2">
                             <div class="flex-fill">
                                 <select id="fromCurrency" class="form-select border-dark border-2 rounded-0 fw-bold" onchange="if(window.convertCurrency) window.convertCurrency()">
-                                    <option value="MXN" selected>MXN</option>
+                                    <option value="MXN" selected>🇲🇽 MXN - Peso Mexicano</option>
+                                    <option value="USD">🇺🇸 USD - Dólar Estadounidense</option>
+                                    <option value="EUR">🇪🇺 EUR - Euro</option>
+                                    <option value="CAD">🇨🇦 CAD - Dólar Canadiense</option>
+                                    <option value="GBP">🇬🇧 GBP - Libra Esterlina</option>
+                                    <option value="JPY">🇯🇵 JPY - Yen Japonés</option>
+                                    <option value="AUD">🇦🇺 AUD - Dólar Australiano</option>
+                                    <option value="CHF">🇨🇭 CHF - Franco Suizo</option>
+                                    <option value="CNY">🇨🇳 CNY - Yuan Chino</option>
+                                    <option value="ARS">🇦🇷 ARS - Peso Argentino</option>
+                                    <option value="COP">🇨🇴 COP - Peso Colombiano</option>
+                                    <option value="CLP">🇨🇱 CLP - Peso Chileno</option>
+                                    <option value="PEN">🇵🇪 PEN - Sol Peruano</option>
+                                    <option value="BRL">🇧🇷 BRL - Real Brasileño</option>
+                                    <option value="RUB">🇷🇺 RUB - Rublo Ruso</option>
+                                    <option value="INR">🇮🇳 INR - Rupia India</option>
                                 </select>
                             </div>
                             <span class="fw-bold fs-5 flex-shrink-0"><i class="bi bi-arrow-right"></i></span>
                             <div class="flex-fill">
                                 <select id="toCurrency" class="form-select border-dark border-2 rounded-0 fw-bold" onchange="if(window.convertCurrency) window.convertCurrency()">
-                                    <option value="USD" selected>USD</option>
+                                    <option value="MXN">🇲🇽 MXN - Peso Mexicano</option>
+                                    <option value="USD" selected>🇺🇸 USD - Dólar Estadounidense</option>
+                                    <option value="EUR">🇪🇺 EUR - Euro</option>
+                                    <option value="CAD">🇨🇦 CAD - Dólar Canadiense</option>
+                                    <option value="GBP">🇬🇧 GBP - Libra Esterlina</option>
+                                    <option value="JPY">🇯🇵 JPY - Yen Japonés</option>
+                                    <option value="AUD">🇦🇺 AUD - Dólar Australiano</option>
+                                    <option value="CHF">🇨🇭 CHF - Franco Suizo</option>
+                                    <option value="CNY">🇨🇳 CNY - Yuan Chino</option>
+                                    <option value="ARS">🇦🇷 ARS - Peso Argentino</option>
+                                    <option value="COP">🇨🇴 COP - Peso Colombiano</option>
+                                    <option value="CLP">🇨🇱 CLP - Peso Chileno</option>
+                                    <option value="PEN">🇵🇪 PEN - Sol Peruano</option>
+                                    <option value="BRL">🇧🇷 BRL - Real Brasileño</option>
+                                    <option value="RUB">🇷🇺 RUB - Rublo Ruso</option>
+                                    <option value="INR">🇮🇳 INR - Rupia India</option>
                                 </select>
                             </div>
                         </div>
@@ -628,5 +676,49 @@ window.confirmarRecordatorio = async function() {
         btn.innerHTML = '<i class="bi bi-bell-fill me-2"></i>Activar Plan de Ahorro';
     }
 };
+</script>
+<script>
+// Sincronizador de ahorro (Porcentaje <-> Monto)
+window.sincronizarAhorro = function(origen) {
+    const ingresos = parseFloat(document.getElementById('ingresosMensuales').value) || 0;
+    if (ingresos <= 0) return;
+    
+    const inputPorcentaje = document.getElementById('capacidadAhorro');
+    const inputMonto = document.getElementById('capacidadAhorroMonto');
+    
+    if (origen === 'porcentaje') {
+        const perc = parseFloat(inputPorcentaje.value) || 0;
+        inputMonto.value = (ingresos * (perc / 100)).toFixed(2);
+    } else {
+        const monto = parseFloat(inputMonto.value) || 0;
+        inputPorcentaje.value = ((monto / ingresos) * 100).toFixed(2);
+    }
+};
+
+// Auto-sincronizar cuando cambia el ingreso
+document.getElementById('ingresosMensuales').addEventListener('input', () => {
+    if (document.getElementById('capacidadAhorro').value) {
+        window.sincronizarAhorro('porcentaje');
+    }
+});
+
+// Inicializar Choices.js
+document.addEventListener("DOMContentLoaded", function() {
+    if (typeof Choices !== 'undefined') {
+        const selects = ['divisaSeleccionada', 'fromCurrency', 'toCurrency'];
+        selects.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) {
+                new Choices(el, {
+                    searchEnabled: true,
+                    itemSelectText: '',
+                    placeholderValue: 'Buscar moneda...',
+                    searchPlaceholderValue: 'Escribe para buscar...',
+                    shouldSort: false
+                });
+            }
+        });
+    }
+});
 </script>
 {% endblock %}

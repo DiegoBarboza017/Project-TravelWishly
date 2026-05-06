@@ -336,14 +336,14 @@ function renderizarPanelGraficas(distr) {
                 label: `Cifra Asignada (${distr.divisa})`,
                 data: [distr.hospedaje, distr.vuelos, distr.comida, distr.actividades],
                 backgroundColor: [
-                    '#0d6efd', // Primary Azul
-                    '#0dcaf0', // Info Cyan
-                    '#ffc107', // Warning Amarillo
-                    '#198754'  // Success Verde
+                    '#FF3366', // Vibrant Pink
+                    '#00E5FF', // Cyan
+                    '#FFEA00', // Yellow
+                    '#00E676'  // Bright Green
                 ],
-                borderWidth: 2,
-                borderColor: '#ffffff',
-                hoverOffset: 8
+                borderWidth: 3,
+                borderColor: '#000000',
+                hoverOffset: 12
             }]
         },
         options: {
@@ -2887,6 +2887,31 @@ document.addEventListener("DOMContentLoaded", () => {
 /* =========================================================================
    MÓDULO: CHATBOT IA FRONTEND (SIMULADO)
 ========================================================================= */
+
+/** Minimiza el chat (solo header visible, sin burbuja) */
+window.minimizarChat = function() {
+    const chatWindow = document.getElementById('chatWindow');
+    if (!chatWindow) return;
+    if (chatWindow.classList.contains('minimized')) {
+        // Si ya está minimizado, expándelo
+        chatWindow.classList.remove('minimized');
+    } else {
+        chatWindow.classList.add('minimized');
+    }
+};
+
+/** Abre el chat desde la burbuja */
+window.abrirChat = function() {
+    const chatWindow = document.getElementById('chatWindow');
+    const bubbleBtn  = document.getElementById('chatBotBubble');
+    const chatTooltip = document.getElementById('chatTooltip');
+    if (!chatWindow) return;
+    chatWindow.classList.add('active');
+    chatWindow.classList.remove('minimized');
+    if (bubbleBtn) bubbleBtn.style.transform = 'scale(0)';
+    if (chatTooltip) chatTooltip.classList.add('hide');
+};
+
 document.addEventListener("DOMContentLoaded", () => {
     const bubbleBtn = document.getElementById('chatBotBubble');
     const chatWindow = document.getElementById('chatWindow');
@@ -2902,12 +2927,15 @@ document.addEventListener("DOMContentLoaded", () => {
     // Toggle Chat Window
     bubbleBtn.addEventListener('click', () => {
         chatWindow.classList.add('active');
+        chatWindow.classList.remove('minimized');
         bubbleBtn.style.transform = "scale(0)";
-        if(chatTooltip) chatTooltip.classList.add('hide'); // Ocultar tooltip permanente al abrir
+        if(chatTooltip) chatTooltip.classList.add('hide');
     });
 
+    // X = cerrar completamente (muestra la burbuja de nuevo)
     closeChatBtn.addEventListener('click', () => {
         chatWindow.classList.remove('active');
+        chatWindow.classList.remove('minimized');
         bubbleBtn.style.transform = "scale(1)";
     });
 
