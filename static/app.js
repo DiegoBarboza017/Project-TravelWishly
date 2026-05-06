@@ -2589,6 +2589,8 @@ window.generarRutaInteligente = function() {
         
         // Auto-Vincula al Smart Packing List
         if (window.cargarPackingList) window.cargarPackingList(destino);
+
+        window.rutaYaGenerada = true;
     }, 600);
 };
 
