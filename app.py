@@ -159,10 +159,9 @@ def create_app():
         app.apscheduler = scheduler  # Exponer el scheduler para crear trabajos dinámicos
         print("[SCHEDULER] APScheduler iniciado — revisando recordatorios cada hora.")
 
-    # Configuración para MySQL en la Nube (o SQLite local)
+    # Configuración de base de datos — MySQL/Clever Cloud en producción, SQLite como fallback local
     default_db_path = 'sqlite:///' + os.path.join(basedir, 'instance', 'travelwishly.db')
-    # Forzar SQLite local para evitar bloqueos de firewall en servidores gratuitos (como PythonAnywhere)
-    app.config['SQLALCHEMY_DATABASE_URI'] = default_db_path
+    app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', default_db_path)
 
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
     
@@ -488,7 +487,6 @@ def create_app():
             return jsonify({'success': False, 'message': 'Datos incompletos'}), 400
             
         try:
-            import uuid
             token = uuid.uuid4().hex
             nueva_ruta = SavedRoute(
                 user_id=session['user_id'],
@@ -936,7 +934,6 @@ def create_app():
                 print("[MIGRATION] Columna share_token añadida a saved_routes. Asignando UUIDs a las antiguas...")
                 # Llenar tokens antiguos
                 with app.app_context():
-                    import uuid
                     rutas = SavedRoute.query.filter_by(share_token=None).all()
                     for r in rutas:
                         r.share_token = uuid.uuid4().hex
