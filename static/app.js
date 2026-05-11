@@ -2824,14 +2824,9 @@ window.abrirBuscadorVuelos = function() {
     const googleFlightsUrl = `https://www.google.com/travel/flights?q=${encodeURIComponent(googleQ)}&hl=es`;
 
     // === SKYSCANNER ===
-    // Formato: /vuelos/ORIGEN/DESTINO/YYMMDD para ida simple
-    // Skyscanner usa slugs en minúsculas con guiones para los nombres
-    const slugify = (s) => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,'-').replace(/[^a-z0-9-]/g,'');
-    const skySrc = slugify(origenClean);
-    const skyDst = slugify(destinoClean);
-    const skyscannerUrl = fechaYYMMDD
-        ? `https://www.skyscanner.com.mx/vuelos/${skySrc}/${skyDst}/${fechaYYMMDD}/`
-        : `https://www.skyscanner.com.mx/vuelos/${skySrc}/${skyDst}/`;
+    // Usamos búsqueda por texto en lugar de slugs de ciudad — evita 404s por códigos IATA inválidos
+    const skyscannerQ = `${origenClean} ${destinoClean}`;
+    const skyscannerUrl = `https://www.skyscanner.com.mx/vuelos/?query=${encodeURIComponent(skyscannerQ)}`;
 
     // === KAYAK ===
     // Formato: /flights/ORIGEN/DESTINO/YYYY-MM-DD para vuelo de ida
@@ -2839,8 +2834,11 @@ window.abrirBuscadorVuelos = function() {
         ? `https://www.kayak.com.mx/flights/${encodeURIComponent(origenClean)}/${encodeURIComponent(destinoClean)}/${fechaISO}`
         : `https://www.kayak.com.mx/flights/${encodeURIComponent(origenClean)}/${encodeURIComponent(destinoClean)}`;
 
-    // === MOMONDO ===
-    const momondoUrl = `https://www.momondo.mx/vuelos/${encodeURIComponent(origenClean)}/${encodeURIComponent(destinoClean)}${fechaISO ? '/' + fechaISO : ''}`;
+    // === MOMONDO / DESPEGAR ===
+    // Despegar.com: funciona muy bien desde México y acepta búsqueda por nombre de ciudad
+    const momondoUrl = fechaISO
+        ? `https://www.despegar.com.mx/vuelos/resultados/${encodeURIComponent(origenClean)}/${encodeURIComponent(destinoClean)}/${fechaISO}/1/0/0/NA/NA/NA`
+        : `https://www.despegar.com.mx/vuelos/resultados/${encodeURIComponent(origenClean)}/${encodeURIComponent(destinoClean)}/hoy/1/0/0/NA/NA/NA`;
 
     // Info contextual de ruta
     const rutaLabel = `${origenClean} → ${destinoClean}${fecha ? ' · ' + fechaISO : ''}`;
@@ -2871,12 +2869,12 @@ window.abrirBuscadorVuelos = function() {
             badgeClass: 'bg-secondary'
         },
         {
-            nombre: 'Momondo',
-            icon: 'bi-globe2',
+            nombre: 'Despegar.com',
+            icon: 'bi-airplane',
             url: momondoUrl,
-            desc: 'Rutas alternativas y escalas económicas',
-            badge: '',
-            badgeClass: ''
+            desc: 'Vuelos desde México · Escalas y paquetes',
+            badge: 'MX',
+            badgeClass: 'bg-success'
         }
     ];
 

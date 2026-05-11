@@ -13,7 +13,7 @@ document.addEventListener('DOMContentLoaded', () => {
             { level: "Bajo Riesgo", alert: "Zona Segura. Procedimientos estándar de viaje.", color: "#28a745" },
             { level: "Precaución", alert: "Mantener precaución en aglomeraciones nocturnas.", color: "#ffc107" },
             { level: "Riesgo Alto", alert: "Revisar alertas climáticas o sociales estacionales.", color: "#fd7e14" },
-            { level: "Extremo", alert: "Requiere planificación previa severa. Zonas restringidas.", color: "#dc3545" }
+            { level: "Planificación Especial", alert: "Requiere preparación avanzada. Consulta con una agencia especializada antes de viajar.", color: "#dc3545" }
         ];
 
         let charSum = 0;
