@@ -1,0 +1,11 @@
+flask
+flask-mail
+flask-sqlalchemy
+itsdangerous
+werkzeug
+python-dotenv
+requests
+pymysql
+apscheduler
+gunicorn
+qrcode[pil]

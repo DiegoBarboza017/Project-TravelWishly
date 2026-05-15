@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: travelwishly
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn wsgi:app
+    envVars:
+      - key: SECRET_KEY
+        sync: false
+      - key: DATABASE_URL
+        sync: false
+      - key: MAIL_PASSWORD
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
