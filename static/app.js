@@ -2929,26 +2929,39 @@ document.addEventListener("DOMContentLoaded", () => {
 /** Minimiza el chat (solo header visible, sin burbuja) */
 window.minimizarChat = function() {
     const chatWindow = document.getElementById('chatWindow');
+    const bubbleBtn  = document.getElementById('chatBotBubble');
     if (!chatWindow) return;
-    if (chatWindow.classList.contains('minimized')) {
-        // Si ya está minimizado, expándelo
-        chatWindow.classList.remove('minimized');
-    } else {
-        chatWindow.classList.add('minimized');
-    }
+    // Cierra la ventana y restaura la burbuja (los mensajes se conservan)
+    chatWindow.classList.remove('active');
+    chatWindow.classList.remove('minimized');
+    if (bubbleBtn) bubbleBtn.style.transform = 'scale(1)';
 };
 
 /** Abre el chat desde la burbuja */
 window.abrirChat = function() {
-    const chatWindow = document.getElementById('chatWindow');
-    const bubbleBtn  = document.getElementById('chatBotBubble');
+    const chatWindow  = document.getElementById('chatWindow');
+    const bubbleBtn   = document.getElementById('chatBotBubble');
     const chatTooltip = document.getElementById('chatTooltip');
     if (!chatWindow) return;
     chatWindow.classList.add('active');
     chatWindow.classList.remove('minimized');
-    if (bubbleBtn) bubbleBtn.style.transform = 'scale(0)';
+    if (bubbleBtn)   bubbleBtn.style.transform = 'scale(0)';
     if (chatTooltip) chatTooltip.classList.add('hide');
 };
+
+/** Oculta el tooltip de la guía de flujo */
+window.minimizarGuia = function() {
+    const box = document.getElementById('guideTooltipBox');
+    if (box) box.classList.add('is-minimized');
+};
+
+/** Alterna la visibilidad del tooltip al hacer clic en la burbuja brújula */
+window.toggleGuideMobile = function() {
+    const box = document.getElementById('guideTooltipBox');
+    if (!box) return;
+    box.classList.toggle('is-minimized');
+};
+
 
 document.addEventListener("DOMContentLoaded", () => {
     const bubbleBtn = document.getElementById('chatBotBubble');
