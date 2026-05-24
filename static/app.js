@@ -2170,6 +2170,9 @@ window.exportarDashboardPDF = function() {
 
 let _exchangeAllCurrencies = [];  // lista de códigos
 let _exchangeRatesCache = {};     // { base: { rates, updated } }
+// Variables que rastrean la moneda actual seleccionada (más confiable que leer Choices.js)
+let _fromCurrVal = 'MXN';
+let _toCurrVal   = 'USD';
 
 // Instancias globales de Choices.js para los selects de moneda
 let _choicesFrom = null;
@@ -2243,8 +2246,29 @@ async function cargarListaMonedas() {
             };
             _choicesFrom = new Choices(fromSel, cfg);
             _choicesTo   = new Choices(toSel,   cfg);
-            fromSel.addEventListener('change', () => { if(window.convertCurrency) window.convertCurrency(); });
-            toSel.addEventListener('change',   () => { if(window.convertCurrency) window.convertCurrency(); });
+
+            // Sincronizar valores iniciales
+            _choicesFrom.setChoiceByValue('MXN');
+            _choicesTo.setChoiceByValue('USD');
+            _fromCurrVal = 'MXN';
+            _toCurrVal   = 'USD';
+
+            // Capturar selección vía evento 'addItem' de Choices.js
+            // Este evento incluye e.detail.value con el valor exacto seleccionado
+            fromSel.addEventListener('addItem', (e) => {
+                _fromCurrVal = e.detail.value;
+                if (window.convertCurrency) window.convertCurrency();
+            });
+            toSel.addEventListener('addItem', (e) => {
+                _toCurrVal = e.detail.value;
+                if (window.convertCurrency) window.convertCurrency();
+            });
+        } else {
+            // Fallback: native select sin Choices.js
+            fromSel.value = 'MXN';
+            toSel.value   = 'USD';
+            fromSel.addEventListener('change', () => { _fromCurrVal = fromSel.value; window.convertCurrency(); });
+            toSel.addEventListener('change',   () => { _toCurrVal   = toSel.value;   window.convertCurrency(); });
         }
 
         // Primera conversión automática
@@ -2257,8 +2281,9 @@ async function cargarListaMonedas() {
 /** @function convertCurrency Convierte con tipo de cambio real en tiempo real */
 window.convertCurrency = async function() {
     const amount = parseFloat(document.getElementById('currencyAmount').value);
-    const from = document.getElementById('fromCurrency')?.value;
-    const to = document.getElementById('toCurrency')?.value;
+    // Usar las variables de rastreo — siempre actualizadas por los eventos addItem
+    const from = _fromCurrVal;
+    const to   = _toCurrVal;
     const resultEl = document.getElementById('currencyResult');
     const rateEl = document.getElementById('currencyRate');
     const updEl = document.getElementById('currencyUpdated');

@@ -1237,47 +1237,113 @@ def create_app():
         # FALLBACK UNIVERSAL (¿Qué pasa si la IA falla?)
         # ----------------------------------------------------------------
         # Si Gemini se queda sin cuota o no responde, usamos este algoritmo matemático
-        # que funciona para CUALQUIER país del mundo. 
-        # Funciona basándose en el mes actual del servidor y detectando si el país 
-        # está en el hemisferio sur (donde las estaciones, como verano e invierno, 
-        # están invertidas respecto al hemisferio norte).
+        # que funciona para CUALQUIER país del mundo.
+        # Usa el mes de viaje proporcionado por el usuario si está disponible,
+        # o el mes actual del servidor como respaldo.
         import datetime as _dt
-        mes_actual = _dt.datetime.now().month
         d_lower = destino.lower()
+
+        # Convertir el mes en texto al número correspondiente
+        meses_map = {
+            'enero': 1, 'febrero': 2, 'marzo': 3, 'abril': 4,
+            'mayo': 5, 'junio': 6, 'julio': 7, 'agosto': 8,
+            'septiembre': 9, 'octubre': 10, 'noviembre': 11, 'diciembre': 12,
+            'january': 1, 'february': 2, 'march': 3, 'april': 4,
+            'may': 5, 'june': 6, 'july': 7, 'august': 8,
+            'september': 9, 'october': 10, 'november': 11, 'december': 12
+        }
+        mes_viaje = meses_map.get(mes.lower().strip(), None) if mes else None
+        mes_actual = mes_viaje if mes_viaje else _dt.datetime.now().month
+
+        # ----------------------------------------------------------------
+        # OVERRIDES ESPECÍFICOS POR PAÍS (antes de la lógica genérica)
+        # Para destinos con temporadas que no siguen el patrón hemisférico estándar
+        # ----------------------------------------------------------------
+        override_temporada = None
+        override_clima = None
+        override_razon = None
+
+        # JAPÓN: Temporada ALTA en primavera (Sakura) y otoño (Koyo/Momiji)
+        if any(x in d_lower for x in ['japón', 'japon', 'japan', 'tokyo', 'tokio', 'kyoto', 'kioto', 'osaka', 'hiroshima', 'nara']):
+            if mes_actual in [3, 4]:  # Sakura (flores de cerezo)
+                override_temporada = 'ALTA'
+                override_clima = 'Primavera — temporada de Sakura (flores de cerezo), clima ideal entre 10-18°C'
+                override_razon = 'TEMPORADA ALTA por Sakura: las flores de cerezo (marzo-abril) atraen millones de turistas. Hoteles con meses de anticipación y precios al máximo'
+            elif mes_actual in [10, 11]:  # Koyo / Momiji (foliaje otoñal)
+                override_temporada = 'ALTA'
+                override_clima = 'Otoño — temporada de Koyo (foliaje otoñal rojo/dorado), clima fresco entre 12-20°C'
+                override_razon = 'TEMPORADA ALTA por Koyo: el foliaje otoñal (octubre-noviembre) es tan popular como el Sakura. Alta demanda, precios elevados y parques llenos de colores'
+            elif mes_actual in [7, 8]:  # Verano caluroso y húmedo
+                override_temporada = 'ALTA'
+                override_clima = 'Verano caluroso y húmedo — hasta 35°C con alta humedad. Temporada de festivales (matsuri)'
+                override_razon = 'Temporada alta por vacaciones de verano y festivales tradicionales (Obon, Gion Matsuri). Calor intenso pero gran ambiente cultural'
+            elif mes_actual in [12, 1, 2]:  # Invierno
+                override_temporada = 'BAJA'
+                override_clima = 'Invierno frío — nieve en regiones del norte. Ideal para onsen y esquí en Hokkaido'
+                override_razon = 'Temporada baja: menos turistas y mejores precios, excepto en destinos de esquí. Excelente para onsen (baños termales) y experiencias de invierno'
+
+        # TAILANDIA / BALI / SUDESTE ASIÁTICO: temporada seca = ALTA
+        elif any(x in d_lower for x in ['tailandia', 'thailand', 'bangkok', 'phuket', 'bali', 'indonesia', 'vietnam', 'camboya', 'cambodia']):
+            if mes_actual in [11, 12, 1, 2, 3]:  # Temporada seca = alta turística
+                override_temporada = 'ALTA'
+                override_clima = 'Temporada seca — clima soleado y fresco, ideal para playas y templos'
+                override_razon = 'Temporada alta: clima seco y agradable (noviembre-marzo). Máxima afluencia turística y precios elevados'
+            elif mes_actual in [6, 7, 8, 9, 10]:  # Monzón = temporada baja
+                override_temporada = 'BAJA'
+                override_clima = 'Temporada de monzones — lluvias frecuentes y humedad alta'
+                override_razon = 'Temporada baja por monzones: lluvias diarias aunque cortas. Precios más bajos y menos turistas. Las playas pueden estar cerradas'
+
+        # INDIA: invierno = alta temporada (octubre-marzo)
+        elif any(x in d_lower for x in ['india', 'delhi', 'mumbai', 'rajasthan', 'goa', 'kerala']):
+            if mes_actual in [10, 11, 12, 1, 2, 3]:
+                override_temporada = 'ALTA'
+                override_clima = 'Invierno indio — clima seco y agradable, ideal para visitar templos y ciudades históricas'
+                override_razon = 'Temporada alta en India: el invierno (octubre-marzo) ofrece el mejor clima para viajar. Evita el calor extremo y los monzones'
+            elif mes_actual in [4, 5]:
+                override_temporada = 'BAJA'
+                override_clima = 'Pre-monzón — calor extremo de hasta 45°C en el norte'
+                override_razon = 'Temporada baja: calor extremo antes de los monzones. Precios bajos pero condiciones muy exigentes'
 
         # Paises/regiones del hemisferio SUR (estaciones invertidas)
         hemisferio_sur = any(x in d_lower for x in [
             'argentina', 'chile', 'australia', 'nueva zelanda', 'new zealand',
             'sudafrica', 'south africa', 'brasil', 'brazil', 'uruguay',
-            'paraguay', 'bolivia', 'peru', 'peru', 'ecuador',
+            'paraguay', 'bolivia', 'peru', 'ecuador',
             'mozambique', 'zimbabwe', 'zambia', 'madagascar', 'namibia',
             'angola', 'botswana', 'lesotho', 'eswatini', 'swaziland',
             'papua nueva guinea', 'papua new guinea', 'fiji', 'tonga', 'samoa'
         ])
 
-        # Si es hemisferio sur, desplazamos 6 meses para invertir la logica
-        mes_calc = mes_actual if not hemisferio_sur else ((mes_actual + 5) % 12 + 1)
+        # Usar override si existe, de lo contrario usar lógica genérica por hemisferio
+        if override_temporada:
+            temporada_fb = override_temporada
+            clima_fb = override_clima
+            razon_fb = override_razon
+            mejor_fb = 'Marzo-Abril (Sakura) y Octubre-Noviembre (Koyo)' if any(x in d_lower for x in ['japón', 'japon', 'japan']) else 'Noviembre a Marzo (temporada seca)'
+        else:
+            # Si es hemisferio sur, desplazamos 6 meses para invertir la logica
+            mes_calc = mes_actual if not hemisferio_sur else ((mes_actual + 5) % 12 + 1)
 
-        if mes_calc in [6, 7, 8]:
-            temporada_fb = 'ALTA'
-            clima_fb = 'Verano — dias calidos y soleados con alta afluencia turistica'
-            razon_fb = 'Temporada de verano con alta demanda y precios elevados'
-            mejor_fb = 'Junio a Agosto' if not hemisferio_sur else 'Diciembre a Febrero'
-        elif mes_calc in [12, 1]:
-            temporada_fb = 'ALTA'
-            clima_fb = 'Festividades de fin de ano — clima invernal festivo'
-            razon_fb = 'Vacaciones de Navidad y Ano Nuevo generan alta demanda turistica'
-            mejor_fb = 'Junio a Agosto' if not hemisferio_sur else 'Diciembre a Febrero'
-        elif mes_calc in [4, 5, 9, 10]:
-            temporada_fb = 'MEDIA'
-            clima_fb = 'Primavera/Otono — clima agradable con menos multitudes'
-            razon_fb = 'Temporada intermedia: buen clima y precios mas accesibles que en verano'
-            mejor_fb = 'Junio a Agosto' if not hemisferio_sur else 'Diciembre a Febrero'
-        else:  # 2, 3, 11
-            temporada_fb = 'BAJA'
-            clima_fb = 'Invierno — temporada tranquila con tarifas mas economicas'
-            razon_fb = 'Temporada baja: menos turistas y precios economicos ideales para presupuesto ajustado'
-            mejor_fb = 'Junio a Agosto' if not hemisferio_sur else 'Diciembre a Febrero'
+            if mes_calc in [6, 7, 8]:
+                temporada_fb = 'ALTA'
+                clima_fb = 'Verano — dias calidos y soleados con alta afluencia turistica'
+                razon_fb = 'Temporada de verano con alta demanda y precios elevados'
+                mejor_fb = 'Junio a Agosto' if not hemisferio_sur else 'Diciembre a Febrero'
+            elif mes_calc in [12, 1]:
+                temporada_fb = 'ALTA'
+                clima_fb = 'Festividades de fin de ano — clima invernal festivo'
+                razon_fb = 'Vacaciones de Navidad y Ano Nuevo generan alta demanda turistica'
+                mejor_fb = 'Junio a Agosto' if not hemisferio_sur else 'Diciembre a Febrero'
+            elif mes_calc in [4, 5, 9, 10]:
+                temporada_fb = 'MEDIA'
+                clima_fb = 'Primavera/Otono — clima agradable con menos multitudes'
+                razon_fb = 'Temporada intermedia: buen clima y precios mas accesibles que en verano'
+                mejor_fb = 'Junio a Agosto' if not hemisferio_sur else 'Diciembre a Febrero'
+            else:  # 2, 3, 11
+                temporada_fb = 'BAJA'
+                clima_fb = 'Invierno — temporada tranquila con tarifas mas economicas'
+                razon_fb = 'Temporada baja: menos turistas y precios economicos ideales para presupuesto ajustado'
+                mejor_fb = 'Junio a Agosto' if not hemisferio_sur else 'Diciembre a Febrero'
 
         t_baja  = 'Noviembre, Enero, Febrero, Marzo' if not hemisferio_sur else 'Mayo, Junio, Julio'
         t_media = 'Abril, Mayo, Septiembre, Octubre' if not hemisferio_sur else 'Octubre, Noviembre, Marzo'

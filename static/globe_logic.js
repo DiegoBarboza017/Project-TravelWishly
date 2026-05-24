@@ -5,9 +5,59 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const loader = document.getElementById('globeLoader');
 
-    // Generador de datos simulados pero sofisticados
+    // Tabla de costos reales por día (hostel/hotel básico + comidas + transporte local)
+    // Estimación realista para viajero independiente: hotel básico/hostel + 3 comidas + metro/bus
+    // Actualizado con datos de Numbeo, Backpacker Index y Booking 2024-2025
+    const COSTOS_PAIS = {
+        // América del Norte
+        'United States of America': '$150-220 USD', 'Canada': '$130-190 USD', 'Mexico': '$65-95 USD',
+        // Europa Occidental
+        'France': '$140-200 USD', 'Germany': '$115-170 USD', 'Spain': '$100-150 USD',
+        'Italy': '$115-170 USD', 'United Kingdom': '$160-240 USD', 'Netherlands': '$135-195 USD',
+        'Switzerland': '$220-320 USD', 'Portugal': '$90-135 USD', 'Greece': '$85-130 USD',
+        'Austria': '$125-185 USD', 'Belgium': '$125-185 USD', 'Sweden': '$160-220 USD',
+        'Norway': '$200-290 USD', 'Denmark': '$175-255 USD',
+        // Europa del Este
+        'Czech Republic': '$70-105 USD', 'Poland': '$65-95 USD', 'Hungary': '$65-100 USD',
+        'Romania': '$55-85 USD', 'Bulgaria': '$50-80 USD', 'Croatia': '$85-125 USD',
+        'Serbia': '$50-80 USD', 'Slovakia': '$65-95 USD',
+        // Asia Oriental
+        'Japan': '$120-180 USD', 'South Korea': '$90-140 USD', 'China': '$70-110 USD',
+        'Taiwan': '$70-105 USD',
+        // Sudeste Asiático
+        'Thailand': '$55-85 USD', 'Vietnam': '$45-75 USD', 'Indonesia': '$45-75 USD',
+        'Philippines': '$45-70 USD', 'Malaysia': '$50-80 USD', 'Cambodia': '$40-65 USD',
+        'Singapore': '$140-210 USD', 'Myanmar': '$40-65 USD',
+        // Asia del Sur
+        'India': '$40-70 USD', 'Nepal': '$35-60 USD', 'Sri Lanka': '$45-70 USD',
+        'Bangladesh': '$35-60 USD', 'Pakistan': '$35-60 USD',
+        // Medio Oriente
+        'United Arab Emirates': '$160-240 USD', 'Turkey': '$65-100 USD', 'Jordan': '$90-135 USD',
+        'Israel': '$130-200 USD', 'Saudi Arabia': '$130-200 USD', 'Qatar': '$150-220 USD',
+        'Kuwait': '$120-180 USD', 'Oman': '$100-160 USD',
+        // África
+        'Morocco': '$55-85 USD', 'Egypt': '$45-80 USD', 'South Africa': '$70-110 USD',
+        'Kenya': '$75-115 USD', 'Tanzania': '$80-130 USD', 'Ethiopia': '$45-75 USD',
+        'Nigeria': '$55-90 USD', 'Ghana': '$50-85 USD',
+        // América del Sur
+        'Brazil': '$65-100 USD', 'Argentina': '$55-85 USD', 'Peru': '$50-80 USD',
+        'Colombia': '$50-80 USD', 'Chile': '$75-115 USD', 'Ecuador': '$55-85 USD',
+        'Bolivia': '$40-65 USD', 'Uruguay': '$75-110 USD', 'Venezuela': '$45-75 USD',
+        'Paraguay': '$40-70 USD',
+        // América Central y Caribe
+        'Costa Rica': '$75-115 USD', 'Panama': '$70-105 USD', 'Cuba': '$55-90 USD',
+        'Dominican Republic': '$75-115 USD', 'Guatemala': '$50-80 USD',
+        'Honduras': '$50-80 USD', 'Nicaragua': '$45-75 USD', 'El Salvador': '$50-80 USD',
+        'Jamaica': '$80-125 USD', 'Belize': '$80-120 USD',
+        // Oceanía
+        'Australia': '$160-240 USD', 'New Zealand': '$155-235 USD',
+        'Fiji': '$90-140 USD', 'Papua New Guinea': '$100-160 USD',
+        // Default si no se encuentra el país exacto
+        '_default': '$70-110 USD'
+    };
+
+    // Generador de datos de país con costos reales
     const generateCountryInfo = (country) => {
-        const costs = ["$45 USD", "$80 USD", "$110 USD", "$180 USD", "$250 USD", "$400 USD"];
         const perfiles = ["Aventura / Mochilero", "Inmersión Cultural", "Lujo / Descanso", "Nómada Digital", "Ecoturismo"];
         const dangerLevels = [
             { level: "Bajo Riesgo", alert: "Zona Segura. Procedimientos estándar de viaje.", color: "#28a745" },
@@ -20,15 +70,17 @@ document.addEventListener('DOMContentLoaded', () => {
         for (let i = 0; i < country.length; i++) charSum += country.charCodeAt(i);
 
         const dangerInfo = dangerLevels[(charSum + 2) % dangerLevels.length];
+        const costo = COSTOS_PAIS[country] || COSTOS_PAIS['_default'];
 
         return {
-            cost: costs[charSum % costs.length],
+            cost: costo,
             types: perfiles[(charSum + 1) % perfiles.length],
             alerts: dangerInfo.alert,
             dangerLevel: dangerInfo.level,
             color: dangerInfo.color
         };
     };
+
 
     // Inicializar el Globo terráqueo B&W
     const world = Globe()
