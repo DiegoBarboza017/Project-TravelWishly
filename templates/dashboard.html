@@ -379,7 +379,9 @@
                                     <option value="INR">🇮🇳 INR - Rupia India</option>
                                 </select>
                             </div>
-                            <span class="fw-bold fs-5 flex-shrink-0"><i class="bi bi-arrow-right"></i></span>
+                            <button type="button" id="btnSwapCurrency" class="btn btn-outline-dark rounded-0 border-2 px-2 py-1 flex-shrink-0" style="box-shadow: 2px 2px 0 0 #000;" onclick="if(window.swapCurrencies) window.swapCurrencies()" title="Intercambiar monedas">
+                                <i class="bi bi-arrow-left-right"></i>
+                            </button>
                             <div class="flex-fill">
                                 <select id="toCurrency" class="form-select border-dark border-2 rounded-0 fw-bold" onchange="if(window.convertCurrency) window.convertCurrency()">
                                     <option value="MXN">🇲🇽 MXN - Peso Mexicano</option>
@@ -705,7 +707,7 @@ document.getElementById('ingresosMensuales').addEventListener('input', () => {
 // Inicializar Choices.js
 document.addEventListener("DOMContentLoaded", function() {
     if (typeof Choices !== 'undefined') {
-        const selects = ['divisaSeleccionada', 'fromCurrency', 'toCurrency'];
+        const selects = ['divisaSeleccionada'];
         selects.forEach(id => {
             const el = document.getElementById(id);
             if (el) {

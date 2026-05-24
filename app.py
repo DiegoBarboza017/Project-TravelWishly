@@ -437,6 +437,51 @@ def create_app():
             
         return render_template('reset_password_token.html', token=token)
 
+    @app.context_processor
+    def utility_processor():
+        def get_flag(destino):
+            destino_lower = (destino or '').lower()
+            mapping = {
+                'japon': '🇯🇵', 'japón': '🇯🇵', 'tokio': '🇯🇵', 'kyoto': '🇯🇵', 'kioto': '🇯🇵',
+                'alemania': '🇩🇪', 'berlin': '🇩🇪', 'munich': '🇩🇪',
+                'argentina': '🇦🇷', 'buenos aires': '🇦🇷', 'patagonia': '🇦🇷',
+                'australia': '🇦🇺', 'sydney': '🇦🇺', 'melbourne': '🇦🇺',
+                'brasil': '🇧🇷', 'rio': '🇧🇷', 'sao paulo': '🇧🇷',
+                'canada': '🇨🇦', 'canadá': '🇨🇦', 'toronto': '🇨🇦', 'vancouver': '🇨🇦',
+                'colombia': '🇨🇴', 'bogota': '🇨🇴', 'bogotá': '🇨🇴', 'medellin': '🇨🇴', 'medellín': '🇨🇴',
+                'corea': '🇰🇷', 'seul': '🇰🇷', 'seúl': '🇰🇷',
+                'costa rica': '🇨🇷',
+                'cuba': '🇨🇺',
+                'chile': '🇨🇱', 'santiago': '🇨🇱',
+                'china': '🇨🇳', 'pekin': '🇨🇳', 'shanghai': '🇨🇳',
+                'egipto': '🇪🇬',
+                'dubai': '🇦🇪', 'dubái': '🇦🇪', 'emiratos': '🇦🇪',
+                'espana': '🇪🇸', 'españa': '🇪🇸', 'madrid': '🇪🇸', 'barcelona': '🇪🇸', 'ibiza': '🇪🇸',
+                'estados unidos': '🇺🇸', 'usa': '🇺🇸', 'eeuu': '🇺🇸', 'new york': '🇺🇸', 'nueva york': '🇺🇸', 'los angeles': '🇺🇸',
+                'francia': '🇫🇷', 'paris': '🇫🇷', 'parís': '🇫🇷',
+                'grecia': '🇬🇷', 'atenas': '🇬🇷', 'santorini': '🇬🇷',
+                'india': '🇮🇳',
+                'indonesia': '🇮🇩', 'bali': '🇮🇩',
+                'italia': '🇮🇹', 'roma': '🇮🇹', 'venecia': '🇮🇹',
+                'jordania': '🇯🇴',
+                'marruecos': '🇲🇦',
+                'mexico': '🇲🇽', 'méxico': '🇲🇽', 'cancun': '🇲🇽', 'cancún': '🇲🇽', 'tulum': '🇲🇽',
+                'nueva zelanda': '🇳🇿',
+                'paises bajos': '🇳🇱', 'países bajos': '🇳🇱', 'amsterdam': '🇳🇱', 'ámsterdam': '🇳🇱',
+                'peru': '🇵🇪', 'perú': '🇵🇪', 'cusco': '🇵🇪', 'machu picchu': '🇵🇪',
+                'polinesia': '🇵🇫', 'bora bora': '🇵🇫',
+                'reino unido': '🇬🇧', 'londres': '🇬🇧', 'uk': '🇬🇧', 'inglaterra': '🇬🇧',
+                'dominicana': '🇩🇴', 'punta cana': '🇩🇴',
+                'suiza': '🇨🇭',
+                'tailandia': '🇹🇭', 'bangkok': '🇹🇭',
+                'turquia': '🇹🇷', 'turquía': '🇹🇷'
+            }
+            for kw, flag in mapping.items():
+                if kw in destino_lower:
+                    return flag
+            return '✈️'
+        return dict(get_flag=get_flag)
+
     @app.route('/logout')
     def logout():
         """Módulo de Usuario: Cerrar Sesión"""
@@ -487,7 +532,9 @@ def create_app():
             return jsonify({'success': False, 'message': 'Datos incompletos'}), 400
             
         try:
+            import json
             token = uuid.uuid4().hex
+            itinerary_steps = data.get('itinerary_steps') or data.get('itinerario_steps') or []
             nueva_ruta = SavedRoute(
                 user_id=session['user_id'],
                 origen=data.get('origen'),
@@ -497,6 +544,7 @@ def create_app():
                 mochila_state=data.get('mochila_state', '[]'),
                 vibes_state=data.get('vibes_state', '[]'),
                 packing_state=data.get('packing_state', '[]'),
+                itinerary_state=json.dumps(itinerary_steps),
                 is_draft=bool(data.get('is_draft', False)),
                 share_token=token
             )
@@ -658,6 +706,9 @@ def create_app():
             return jsonify({'success': False, 'message': 'Datos incompletos'}), 400
 
         try:
+            import json
+            itinerary_steps = data.get('itinerary_steps') or data.get('itinerario_steps') or []
+
             # Si ya existe un draft para este destino del usuario, actualizarlo
             existing = SavedRoute.query.filter_by(
                 user_id=session['user_id'],
@@ -675,6 +726,7 @@ def create_app():
                 existing.mochila_state = data.get('mochila_state', existing.mochila_state)
                 existing.vibes_state = data.get('vibes_state', existing.vibes_state)
                 existing.packing_state = data.get('packing_state', existing.packing_state)
+                existing.itinerary_state = json.dumps(itinerary_steps)
                 existing.is_draft = is_draft_val
                 db.session.commit()
                 return jsonify({'success': True, 'message': 'Viaje actualizado.', 'route_id': existing.id})
@@ -688,6 +740,7 @@ def create_app():
                     mochila_state=data.get('mochila_state', '[]'),
                     vibes_state=data.get('vibes_state', '[]'),
                     packing_state=data.get('packing_state', '[]'),
+                    itinerary_state=json.dumps(itinerary_steps),
                     is_draft=is_draft_val
                 )
                 db.session.add(borrador)
@@ -898,6 +951,7 @@ def create_app():
             'mochila_state': ruta.mochila_state,
             'vibes_state': ruta.vibes_state,
             'packing_state': ruta.packing_state,
+            'itinerary_state': ruta.itinerary_state,
             'is_draft': ruta.is_draft
         })
 
@@ -941,6 +995,14 @@ def create_app():
                         db.session.commit()
             else:
                 print("[MIGRATION] Columna share_token ya existe — OK.")
+
+            if 'itinerary_state' not in existing_cols:
+                with db.engine.connect() as conn:
+                    conn.execute(text("ALTER TABLE saved_routes ADD COLUMN itinerary_state TEXT"))
+                    conn.commit()
+                print("[MIGRATION] Columna itinerary_state añadida a saved_routes.")
+            else:
+                print("[MIGRATION] Columna itinerary_state ya existe — OK.")
         except Exception as e:
             print(f"[MIGRATION] Aviso: {e}")
 
@@ -1048,42 +1110,70 @@ def create_app():
         if cache_key in _image_cache:
             return jsonify({'urls': _image_cache[cache_key]})
 
-        # Intentar DuckDuckGo primero (puede tener rate limit)
-        ddg_urls = []
-        try:
-            from duckduckgo_search import DDGS
-            with DDGS() as ddgs:
-                results = list(ddgs.images(query, max_results=limit + 5))
-                # Solo aceptar imágenes de dominios confiables que permiten hotlinking
-                trusted = ['unsplash.com', 'wikimedia.org', 'wikipedia.org', 'pexels.com',
-                           'pixabay.com', 'staticflickr.com', 'imgur.com']
-                for img in results:
-                    url = img.get('image', '')
-                    if any(d in url for d in trusted):
-                        ddg_urls.append(url)
-                    if len(ddg_urls) >= limit:
-                        break
-        except Exception as e:
-            print(f"[IMAGE SEARCH ERROR] {query}: {e}")
-
-        if len(ddg_urls) >= limit:
-            _image_cache[cache_key] = ddg_urls[:limit]
-            return jsonify({'urls': ddg_urls[:limit]})
-
-        # Fallback determinista usando Unsplash con seed basado en query
-        # Unsplash source API: pública, sin key, permite hotlinking
-        seed = int(hashlib.md5(query.encode()).hexdigest(), 16)
-        keywords = query.replace(' ', ',').lower()[:80]
         urls = []
-        for i in range(limit):
-            idx = (seed + i) % len(UNSPLASH_TRAVEL_IDS)
-            photo_id = UNSPLASH_TRAVEL_IDS[idx]
-            # Usar diferentes tamaños para variedad visual
-            w = 800 + (i % 3) * 100
-            urls.append(f'https://images.unsplash.com/{photo_id}?w={w}&q=80&fit=crop&auto=format')
 
-        _image_cache[cache_key] = urls
-        return jsonify({'urls': urls})
+        # 1. Intentar Wikimedia Commons primero (Sin rate limit, altamente confiable para monumentos)
+        try:
+            # Limpiar query de palabras clave genéricas para evitar dilución en búsqueda de Wikimedia
+            clean_query = query.lower()
+            for term in ['travel', 'photography', 'high quality', 'hd', '4k', 'beautiful', 'scenic', 'photo']:
+                clean_query = clean_query.replace(term, '')
+            clean_query = ' '.join(clean_query.split()).strip()
+
+            wiki_url = 'https://commons.wikimedia.org/w/api.php'
+            headers = {'User-Agent': 'TravelWishlyApp/1.0 (info@travelwishly.com)'}
+            params = {
+                'action': 'query',
+                'generator': 'search',
+                'gsrsearch': clean_query,
+                'gsrnamespace': 6,
+                'gsrlimit': limit,
+                'prop': 'imageinfo',
+                'iiprop': 'url',
+                'format': 'json'
+            }
+            res = requests.get(wiki_url, params=params, headers=headers, timeout=5).json()
+            pages = res.get('query', {}).get('pages', {})
+            for page in pages.values():
+                img_info = page.get('imageinfo', [])
+                if img_info:
+                    img_url = img_info[0].get('url')
+                    if img_url and img_url not in urls:
+                        urls.append(img_url)
+            
+            print(f"[WIKI SEARCH] Query: '{clean_query}' -> Encontradas {len(urls)} imágenes.")
+        except Exception as e:
+            print(f"[WIKI SEARCH ERROR] {query}: {e}")
+
+        # 2. Si faltan imágenes, intentar DuckDuckGo como fallback secundario
+        if len(urls) < limit:
+            try:
+                from duckduckgo_search import DDGS
+                with DDGS() as ddgs:
+                    remaining = limit - len(urls)
+                    results = list(ddgs.images(query, max_results=remaining + 5))
+                    trusted = ['unsplash.com', 'wikimedia.org', 'wikipedia.org', 'pexels.com',
+                               'pixabay.com', 'staticflickr.com', 'imgur.com']
+                    for img in results:
+                        url = img.get('image', '')
+                        if url and url not in urls and any(d in url for d in trusted):
+                            urls.append(url)
+                        if len(urls) >= limit:
+                            break
+            except Exception as e:
+                print(f"[DDG SEARCH ERROR] {query}: {e}")
+
+        # 3. Fallback de emergencia: Unsplash determinista con seed
+        if len(urls) < limit:
+            seed = int(hashlib.md5(query.encode()).hexdigest(), 16)
+            for i in range(limit - len(urls)):
+                idx = (seed + i) % len(UNSPLASH_TRAVEL_IDS)
+                photo_id = UNSPLASH_TRAVEL_IDS[idx]
+                w = 800 + (i % 3) * 100
+                urls.append(f'https://images.unsplash.com/{photo_id}?w={w}&q=80&fit=crop&auto=format')
+
+        _image_cache[cache_key] = urls[:limit]
+        return jsonify({'urls': urls[:limit]})
 
     # =======================================================
     # NUEVOS MÓDULOS (SHARING & LEIA 2.0 AI)
@@ -1449,7 +1539,14 @@ def create_app():
     def shared_itinerary(token):
         """Módulo Compartición: Ver viaje de modo solo lectura usando token unico."""
         ruta = SavedRoute.query.filter_by(share_token=token).first_or_404()
-        return render_template('shared_itinerary.html', ruta=ruta)
+        import json
+        pasos = []
+        if ruta.itinerary_state:
+            try:
+                pasos = json.loads(ruta.itinerary_state)
+            except Exception:
+                pasos = []
+        return render_template('shared_itinerary.html', ruta=ruta, pasos=pasos)
 
     @app.route('/api/gemini_chat', methods=['POST'])
     def gemini_chat():

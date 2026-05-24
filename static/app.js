@@ -84,9 +84,25 @@ document.addEventListener("DOMContentLoaded", () => {
                     if (document.getElementById('rutaDuracion')) document.getElementById('rutaDuracion').value = data.duracion_dias;
                     if (document.getElementById('rutaFecha') && data.fecha_ideal && data.fecha_ideal !== 'None') document.getElementById('rutaFecha').value = data.fecha_ideal;
                     
-                    // Auto-trigger principal de la generación (UX)
+                    // Auto-trigger principal de la generación (UX) o Rehidratación del timeline guardado
                     setTimeout(() => {
-                        if(window.generarRutaInteligente) window.generarRutaInteligente();
+                        if (data.itinerary_state) {
+                            try {
+                                window.travelTimeline = JSON.parse(data.itinerary_state);
+                                if (window.travelTimeline && window.travelTimeline.length > 0) {
+                                    window.renderizarTimeline();
+                                    window.rutaYaGenerada = true;
+                                    if (window.evaluarDocumentacion) window.evaluarDocumentacion();
+                                    if (window.cargarPackingList) window.cargarPackingList(data.destino);
+                                } else {
+                                    if(window.generarRutaInteligente) window.generarRutaInteligente();
+                                }
+                            } catch(e) {
+                                if(window.generarRutaInteligente) window.generarRutaInteligente();
+                            }
+                        } else {
+                            if(window.generarRutaInteligente) window.generarRutaInteligente();
+                        }
                     }, 600);
 
                     // Rehidratación Asincrónica en Cascada (Mochila, Vibes, PackingList)
@@ -275,7 +291,8 @@ function calcularDistribucion() {
     const toSelect = document.getElementById('toCurrency');
     if (fromSelect && toSelect) {
         // En base a la moneda del presupuesto meta
-        fromSelect.value = divisaSelec;
+        _fromCurrVal = divisaSelec;
+        
         // Asignar divisa destino en base a la DB (extraer país)
         let monedaTargetStr = "USD"; 
         if (typeof TODOS_DESTINOS_DB !== 'undefined') {
@@ -286,7 +303,9 @@ function calcularDistribucion() {
             }
         }
         
-        // Agregar option dinamicamente si no existe
+        _toCurrVal = monedaTargetStr;
+        
+        // Agregar option dinamicamente si no existe en el select original
         let opts = Array.from(toSelect.options).map(o => o.value);
         if(!opts.includes(monedaTargetStr)) {
             let nOpt = document.createElement('option');
@@ -294,7 +313,14 @@ function calcularDistribucion() {
             nOpt.text = monedaTargetStr;
             toSelect.add(nOpt);
         }
-        toSelect.value = monedaTargetStr;
+        
+        if (_choicesFrom && _choicesTo) {
+            _choicesFrom.setChoiceByValue(divisaSelec);
+            _choicesTo.setChoiceByValue(monedaTargetStr);
+        } else {
+            fromSelect.value = divisaSelec;
+            toSelect.value = monedaTargetStr;
+        }
         if(window.convertCurrency) window.convertCurrency();
     }
 
@@ -602,15 +628,83 @@ const INTELIGENCIA_DESTINOS_DB = [
 ];
 
 // Módulo de Salud y Visados Global
-const SALUD_DESTINOS_DB = {
-    "mexico": "🏥 Sistema básico. No hay vacunas legalmente obligatorias para entrar en territorio mexicano. Recomendable repelente ecológico en costa.",
-    "colombia": "🏥 Vacuna de Fiebre Amarilla es altamente documentable al aterrizar e ingresar por fronteras amazónicas. Seguros médicos se sugieren fuertemente.",
-    "tailandia": "🩸 Obligatorio disponer del carnet de vacunación certificado contra la Fiebre Amarilla. Prevención contra mosquito portador de Dengue indispensable.",
-    "brasil": "🩸 OBLIGACIÓN sanitaria internacional de certificado validado de Fiebre Amarilla, más altamente sugerido tratamiento profiláctico de Malaria en el lado norte.",
-    "peru": "🏥 Zonas montañosas altas pueden causar 'Soroche' (mal de altura), se aconseja té de coca y Pastillas aclimatadoras al arribo. Fiebre Amarilla sugerida en jungla.",
-    "japon": "🩺 Sistema Médico Ultra Seguro pero los precios a turistas son abismales sin la documentación o un seguro de viajero total. Visado usualmente de tránsito por 90 días.",
-    "francia": "🛡️ Siendo de territorio 'Schengen' Europeo obligatorio arribar con pre-vuelos de salida y reservas garantizadas de hotel para evadir deportaciones aéreas express.",
-    "reino unido": "🛡️ Frontera estricta del First World. Exigen itinerario completo documentable, tarjeta de crédito y seguro médico extenso bajo juramento consuetudinario."
+// Módulo de Salud y Visados Global Expandido
+const ALERTAS_DOCUMENTACION_DB = {
+    "mexico": {
+        visa: "Exención de visa por turismo hasta 180 días para la mayoría de países de América y Europa. Nacionalidades como Ecuador, El Salvador o Venezuela requieren visa consular previa obligatoria.",
+        salud: "No hay vacunas obligatorias. Se aconseja repelente ecológico en zonas de costa (prevención contra el Dengue y Zika) y beber únicamente agua embotellada.",
+        documentos: "Pasaporte vigente por la estancia, formato FMM Digital, reservación de hospedaje confirmada (o carta invitación) y solvencia económica (~$50 USD diarios)."
+    },
+    "colombia": {
+        visa: "Exención de visa para turismo hasta 90 días para ciudadanos de México, EE.UU., la Unión Europea y la mayoría de Sudamérica.",
+        salud: "Vacuna de Fiebre Amarilla obligatoria si visitas zonas selváticas (Parques Nacionales, Amazonas) o viajas desde países endémicos. Altamente recomendable seguro médico.",
+        documentos: "Pasaporte con vigencia mínima de 6 meses, pre-registro migratorio 'Check-Mig' completado 24 horas antes del vuelo y boleto de salida del país."
+    },
+    "tailandia": {
+        visa: "Exención de visa de hasta 30-60 días para México, España y otros países (Visa on Arrival o exención directa). Requiere pasaporte con al menos 6 meses de vigencia.",
+        salud: "Obligatorio disponer del carnet de vacunación certificado contra la Fiebre Amarilla si viajas de un país endémico (América del Sur/África). Prevención contra mosquitos.",
+        documentos: "Pasaporte con 6 meses de vigencia, boleto de retorno confirmado, fondos suficientes (10,000 THB por persona) y reservación del primer hotel."
+    },
+    "brasil": {
+        visa: "Exención de visa por 90 días para ciudadanos mexicanos, españoles y de la UE. Viajeros de EE.UU., Canadá y Australia requieren e-Visa previa.",
+        salud: "Certificado de vacuna de Fiebre Amarilla recomendado/obligatorio según procedencia. Tratamiento preventivo contra la Malaria aconsejable en el Amazonas.",
+        documentos: "Pasaporte con vigencia mínima de 6 meses, boleto de ida/vuelta y comprobante de medios de subsistencia durante la estadía."
+    },
+    "peru": {
+        visa: "Exención de visa por turismo hasta 180 días para la mayoría de países americanos y de la Unión Europea.",
+        salud: "Recomendada la vacuna de Fiebre Amarilla para visitas al Amazonas. Zonas altas como Cusco pueden causar mal de altura ('Soroche'); se sugiere aclimatación y té de coca.",
+        documentos: "Pasaporte vigente con al menos 6 meses de validez, boleto de salida del territorio y seguro médico con cobertura internacional (altamente sugerido)."
+    },
+    "japon": {
+        visa: "Exención de visa de turista de hasta 90 días para España, EE.UU. y otros 68 países. Ciudadanos de México, Colombia, etc., requieren pre-registro o visa consular según regulaciones recientes.",
+        salud: "Sin vacunas obligatorias. Sistema médico de primer nivel pero de altísimo costo para turistas sin seguro de viajero con cobertura internacional.",
+        documentos: "Pasaporte vigente por la estancia, código QR generado en el portal 'Visit Japan Web' (migración y aduana) y boleto de retorno obligatorio."
+    },
+    "francia": {
+        visa: "Exención de visa de corta estancia (Schengen) hasta 90 días para ciudadanos de México, Argentina, Colombia y EE.UU. España es miembro directo.",
+        salud: "Sin requisitos especiales de vacunas. Seguro médico internacional Schengen con cobertura mínima de 30,000 EUR es legalmente obligatorio para ingresar.",
+        documentos: "Pasaporte vigente (mínimo 3 meses después de la salida planeada), boleto de salida confirmado, justificante de hospedaje y fondos económicos verificables."
+    },
+    "reino unido": {
+        visa: "Exención de visa hasta 6 meses para turismo para México, EE.UU., UE y la mayoría de países de América. Requiere pasaporte vigente.",
+        salud: "Sin vacunas obligatorias. Costo de atención de salud pública alto para no residentes; es indispensable contar con seguro de viajero amplio.",
+        documentos: "Pasaporte vigente, itinerario de viaje detallado, estados de cuenta bancarios que demuestren solvencia y boleto de salida."
+    },
+    "estados unidos": {
+        visa: "Requiere visa física de turista B1/B2 para la mayoría de Latinoamérica (México, Colombia, etc.). Países del programa Visa Waiver (España, Chile) requieren autorización ESTA aprobada.",
+        salud: "Sin vacunas obligatorias. Sistema de salud privado sumamente costoso; es de carácter crítico e indispensable contar con seguro de gastos médicos mayores.",
+        documentos: "Pasaporte vigente con al menos 6 meses de validez, visa física o ESTA aprobado, boleto de retorno y la dirección exacta de tu primer hospedaje."
+    },
+    "alemania": {
+        visa: "Exención de visa corta estancia Schengen de hasta 90 días para la mayoría de países americanos. Requiere pasaporte vigente.",
+        salud: "Sin vacunas obligatorias. Sistema médico excelente pero costoso. Obligatorio seguro médico internacional con cobertura mínima de 30,000 EUR.",
+        documentos: "Pasaporte vigente (mínimo 3 meses tras salida de zona Schengen), reserva hotelera o carta de invitación formal y solvencia económica comprobable."
+    },
+    "espana": {
+        visa: "Exención de visa corta estancia Schengen hasta por 90 días para la mayoría de países americanos (México, Colombia, Argentina, etc.).",
+        salud: "Sin vacunas especiales. Seguro médico obligatorio Schengen con cobertura de repatriación y mínimo de 30,000 EUR de gastos médicos.",
+        documentos: "Pasaporte con vigencia de 3 meses después del viaje, boleto de regreso confirmado, reservas de hotel o carta de invitación y solvencia financiera."
+    },
+    "canada": {
+        visa: "Ciudadanos mexicanos requieren eTA previa para arribo aéreo si cumplen requisitos de visa de EE.UU. o eTA previa, o visa de turista regular. Latinoamericanos requieren visa regular. Españoles requieren eTA.",
+        salud: "Sin vacunas obligatorias. Sistema médico de primer nivel pero no cubre a extranjeros de forma gratuita; seguro médico robusto es muy aconsejable.",
+        documentos: "Pasaporte vigente, eTA aprobada (o visa física), boleto de retorno y prueba de solvencia financiera para costear la estadía."
+    },
+    "australia": {
+        visa: "Todos los visitantes requieren visa previa. Ciudadanos de la UE pueden solicitar eVisitor (gratuita), latinoamericanos requieren visa de turismo Visitor Visa (Subclass 600) de pago.",
+        salud: "Sin requisitos especiales de salud a menos que se proceda de zonas endémicas de Fiebre Amarilla. Repelente recomendado para la fauna local.",
+        documentos: "Pasaporte con vigencia por la estadía, visa australiana aprobada vinculada al pasaporte y boleto de salida confirmado."
+    },
+    "argentina": {
+        visa: "Exención de visa por turismo hasta 90 días para la mayoría de países americanos y de la Unión Europea.",
+        salud: "Sin vacunas obligatorias. Seguro médico de viajero muy recomendable. Se aconseja estar al día con vacunas básicas.",
+        documentos: "Pasaporte vigente, boleto de regreso y constancia de solvencia económica demostrable en aduana."
+    },
+    "italia": {
+        visa: "Exención de visa corta estancia Schengen hasta por 90 días para ciudadanos americanos (México, Colombia, EE.UU., etc.).",
+        salud: "Sin vacunas obligatorias. Requiere seguro médico Schengen de cobertura mínima de 30,000 EUR, válido en todo el territorio europeo.",
+        documentos: "Pasaporte con vigencia de al menos 3 meses tras la salida planificada, reserva de alojamiento, boleto de retorno y fondos verificables."
+    }
 };
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -702,13 +796,29 @@ window.cargarGuiaSegura = function cargarGuiaSegura() {
     const healthBox = document.getElementById('healthAlertBox');
     const healthText = document.getElementById('healthAlertText');
     if (healthBox && healthText) {
-        let notaSaludEncontrada = "";
-        if(SALUD_DESTINOS_DB[docPaisLower]) {
-            notaSaludEncontrada = SALUD_DESTINOS_DB[docPaisLower];
-        } else {
-            notaSaludEncontrada = `ℹ️ Para el territorio de ${destinoObj.pais}, se aconseja viajar con un Seguro Gastos Médicos de Cobertura Amplia. Los visados dependen expresamente de los tratados de comercio con tu pasaporte.`;
+        let alerta = ALERTAS_DOCUMENTACION_DB[docPaisLower] || null;
+        if (!alerta) {
+            alerta = {
+                visa: "Los requisitos de visado varían según tu nacionalidad. Por favor, consulta con la embajada correspondiente antes de viajar.",
+                salud: "Se recomienda contar con un seguro médico internacional con cobertura amplia y vacunas básicas al día (Tétanos, Hepatitis A y B).",
+                documentos: "Pasaporte con vigencia mínima de 6 meses, boleto de ida y vuelta confirmado, y comprobantes de solvencia económica."
+            };
         }
-        healthText.innerText = notaSaludEncontrada;
+        
+        healthText.innerHTML = `
+            <div class="mb-3 border-bottom border-white border-1 pb-2">
+                <span class="badge bg-warning text-dark rounded-0 fw-black text-uppercase me-2 mb-2"><i class="bi bi-card-checklist me-1"></i> Visa y Visados</span>
+                <p class="mb-0 text-white small fw-bold text-uppercase" style="line-height:1.4; opacity: 0.95;">${alerta.visa}</p>
+            </div>
+            <div class="mb-3 border-bottom border-white border-1 pb-2">
+                <span class="badge bg-warning text-dark rounded-0 fw-black text-uppercase me-2 mb-2"><i class="bi bi-heart-pulse-fill me-1"></i> Sanidad y Vacunas</span>
+                <p class="mb-0 text-white small fw-bold text-uppercase" style="line-height:1.4; opacity: 0.95;">${alerta.salud}</p>
+            </div>
+            <div>
+                <span class="badge bg-warning text-dark rounded-0 fw-black text-uppercase me-2 mb-2"><i class="bi bi-file-earmark-text-fill me-1"></i> Documentos al Arribo</span>
+                <p class="mb-0 text-white small fw-bold text-uppercase" style="line-height:1.4; opacity: 0.95;">${alerta.documentos}</p>
+            </div>
+        `;
         healthBox.classList.remove('d-none');
     }
 
@@ -2007,11 +2117,27 @@ document.addEventListener("DOMContentLoaded", () => {
             listEl.appendChild(opt);
         });
     }
+    // Sincronizar sugerencia cuando cambia el estilo de viaje
+    const selectorEstilo = document.getElementById('estiloViaje');
+    if (selectorEstilo) {
+        selectorEstilo.addEventListener('change', () => {
+            const destInput = document.getElementById('destinoSugerido');
+            if (destInput && destInput.value && window.sugerirPresupuestoBuscador) {
+                window.sugerirPresupuestoBuscador(destInput.value);
+            }
+        });
+    }
 });
 
 window.sugerirPresupuestoBuscador = function(valTyped) {
     const inputViaje = document.getElementById('viajeObjetivo');
+    const selectorEstilo = document.getElementById('estiloViaje');
     if (!inputViaje || !valTyped) return;
+
+    let estilo = selectorEstilo ? selectorEstilo.value : 'estandar';
+    let factor = 1.0;
+    if (estilo === 'mochilero') factor = 0.6;
+    else if (estilo === 'lujo') factor = 1.8;
     
     // Buscar si coinciden exactamente de la lista
     let match = PRESUPUESTOS_DESTINOS_GLOBALES.find(d => d.nombre.toLowerCase() === valTyped.toLowerCase());
@@ -2028,7 +2154,8 @@ window.sugerirPresupuestoBuscador = function(valTyped) {
     }
 
     if (match) {
-        inputViaje.value = match.budget;
+        let suggestedBudget = Math.ceil((match.budget * factor) / 100) * 100;
+        inputViaje.value = suggestedBudget;
         // Flash visual para atención inmediata
         inputViaje.style.transition = "transform 0.1s linear";
         inputViaje.style.transform = "scale(1.05)";
@@ -2044,6 +2171,10 @@ window.sugerirPresupuestoBuscador = function(valTyped) {
         }
     }
 };
+
+/* =========================================================================
+
+
 
 /* =========================================================================
    MÓDULO UNIFICADO: BUSCADOR MUNDIAL (INTEGRACIÓN OPENSTREETMAP - NOMINATIM)
@@ -2278,12 +2409,42 @@ async function cargarListaMonedas() {
     }
 }
 
+window.swapCurrencies = function() {
+    const fromSel = document.getElementById('fromCurrency');
+    const toSel = document.getElementById('toCurrency');
+    if (!fromSel || !toSel) return;
+
+    const temp = fromSel.value;
+    const newFrom = toSel.value;
+    const newTo = temp;
+
+    _fromCurrVal = newFrom;
+    _toCurrVal = newTo;
+
+    if (_choicesFrom && _choicesTo) {
+        _choicesFrom.setChoiceByValue(newFrom);
+        _choicesTo.setChoiceByValue(newTo);
+    } else {
+        fromSel.value = newFrom;
+        toSel.value = newTo;
+    }
+    if (window.convertCurrency) window.convertCurrency();
+};
+
 /** @function convertCurrency Convierte con tipo de cambio real en tiempo real */
 window.convertCurrency = async function() {
+    const fromSel = document.getElementById('fromCurrency');
+    const toSel = document.getElementById('toCurrency');
+    if (!fromSel || !toSel) return;
+
     const amount = parseFloat(document.getElementById('currencyAmount').value);
-    // Usar las variables de rastreo — siempre actualizadas por los eventos addItem
-    const from = _fromCurrVal;
-    const to   = _toCurrVal;
+    const from = fromSel.value;
+    const to   = toSel.value;
+    
+    // Sincronizar las variables de rastreo globales
+    _fromCurrVal = from;
+    _toCurrVal = to;
+
     const resultEl = document.getElementById('currencyResult');
     const rateEl = document.getElementById('currencyRate');
     const updEl = document.getElementById('currencyUpdated');

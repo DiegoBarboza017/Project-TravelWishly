@@ -60,6 +60,7 @@ class SavedRoute(db.Model):
     mochila_state = db.Column(db.Text)
     vibes_state = db.Column(db.Text)
     packing_state = db.Column(db.Text)
+    itinerary_state = db.Column(db.Text, nullable=True)
     is_draft = db.Column(db.Boolean, default=False, nullable=False, server_default='0')
     share_token = db.Column(db.String(36), unique=True, nullable=True)
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))

@@ -31,7 +31,12 @@
                 {% if ruta.is_draft %}
                 <span class="draft-badge"><i class="bi bi-pencil-fill"></i> Borrador</span>
                 {% endif %}
-                <h1 class="display-4 fw-black text-warning mb-0">#{{ loop.index }}</h1>
+                <div class="display-3 mb-0 fw-black text-warning" style="line-height: 1;">
+                    {{ get_flag(ruta.destino) }}
+                </div>
+                <span class="badge bg-warning text-dark border border-dark rounded-0 fw-bold px-2 py-1 mt-2 mb-2 small text-uppercase" style="font-size: 11px;">
+                    Ruta #{{ loop.index }}
+                </span>
                 <h4 class="mb-0 fw-black text-uppercase tracking-wider text-truncate w-100 mt-2 text-white" title="{{ ruta.destino }}">
                     <i class="bi bi-geo-alt-fill me-2 text-danger"></i>{{ ruta.destino }}
                 </h4>

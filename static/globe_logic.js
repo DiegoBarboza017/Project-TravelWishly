@@ -139,7 +139,30 @@ document.addEventListener('DOMContentLoaded', () => {
                 document.getElementById('modalCountryName').innerText = countryName;
                 const locFull = document.getElementById('modalLocationFull');
                 if (locFull) locFull.innerHTML = `<i class="bi bi-geo-alt-fill me-1"></i>[PAÍS] Polígono Nacional`;
-                document.getElementById('modalCost').innerText = info.cost;
+                // Parsear el costo (ej: "$65-95 USD") para calcular perfiles
+                let costMin = 50, costMax = 90, currency = "USD";
+                const matchCost = info.cost.match(/\$?(\d+)(?:\s*-\s*\$?(\d+))?\s*([A-Za-z]+)?/);
+                if (matchCost) {
+                    costMin = parseInt(matchCost[1], 10);
+                    costMax = matchCost[2] ? parseInt(matchCost[2], 10) : costMin;
+                    currency = matchCost[3] || "USD";
+                }
+
+                const mochileroMin = Math.round(costMin * 0.6);
+                const mochileroMax = Math.round(costMax * 0.6);
+                const lujoMin = Math.round(costMin * 1.8);
+                const lujoMax = Math.round(costMax * 1.8);
+
+                const formatRange = (min, max, cur) => `$${min}-${max} ${cur}`;
+
+                const elMochilero = document.getElementById('modalCostMochilero');
+                const elEstandar = document.getElementById('modalCostEstandar');
+                const elLujo = document.getElementById('modalCostLujo');
+
+                if (elMochilero) elMochilero.innerText = formatRange(mochileroMin, mochileroMax, currency);
+                if (elEstandar) elEstandar.innerText = formatRange(costMin, costMax, currency);
+                if (elLujo) elLujo.innerText = formatRange(lujoMin, lujoMax, currency);
+
                 document.getElementById('modalTypes').innerText = info.types;
                 document.getElementById('modalAlerts').innerText = `[${info.dangerLevel.toUpperCase()}] - ${info.alerts}`;
 

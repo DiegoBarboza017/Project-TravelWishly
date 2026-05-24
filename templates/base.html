@@ -2,6 +2,12 @@
 <html lang="es">
 
 <head>
+    <script>
+        (function() {
+            const savedTheme = localStorage.getItem('tw_theme') || 'light';
+            document.documentElement.setAttribute('data-theme', savedTheme);
+        })();
+    </script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description"
@@ -81,6 +87,12 @@
                                 <li><button class="dropdown-item fw-bold text-dark py-2 text-center" onclick="cambiarIdioma('ja')">JAPONÉS</button></li>
                             </ul>
                         </div>
+                    </li>
+                    <!-- Toggle Modo Oscuro -->
+                    <li class="nav-item">
+                        <button class="btn btn-outline-dark fw-bold btn-sm rounded-0 py-1 px-2 border-2 d-flex align-items-center justify-content-center" id="darkModeToggle" title="Cambiar Tema" onclick="window.toggleDarkMode()" style="font-size: 0.72rem; min-height: 29px;">
+                            <i class="bi bi-moon-fill" id="darkModeIcon"></i>
+                        </button>
                     </li>
                     {% if session.get('user_id') %}
                     <li class="nav-item d-flex align-items-center ms-xl-2 mt-2 mt-xl-0">
@@ -362,6 +374,40 @@
         window.addEventListener('offline', showOffline);
         window.addEventListener('online', showOnline);
     })();
+
+    // ===== LÓGICA MODO OSCURO =====
+    window.toggleDarkMode = function() {
+        const currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
+        const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+        document.documentElement.setAttribute('data-theme', newTheme);
+        localStorage.setItem('tw_theme', newTheme);
+        window.updateDarkModeIcon(newTheme);
+    };
+
+    window.updateDarkModeIcon = function(theme) {
+        const icon = document.getElementById('darkModeIcon');
+        const btn = document.getElementById('darkModeToggle');
+        if (icon) {
+            if (theme === 'dark') {
+                icon.className = 'bi bi-sun-fill';
+                if (btn) {
+                    btn.classList.remove('btn-outline-dark');
+                    btn.classList.add('btn-outline-light');
+                }
+            } else {
+                icon.className = 'bi bi-moon-fill';
+                if (btn) {
+                    btn.classList.remove('btn-outline-light');
+                    btn.classList.add('btn-outline-dark');
+                }
+            }
+        }
+    };
+
+    document.addEventListener('DOMContentLoaded', () => {
+        const currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
+        window.updateDarkModeIcon(currentTheme);
+    });
 
     // ===== MINIMIZAR GUIA =====
     window.minimizarGuia = function() {

@@ -48,6 +48,26 @@
                         </div>
                     </div>
 
+                    <h3 class="fw-black text-uppercase border-bottom border-dark border-2 pb-2 mb-4">
+                        🗺️ Itinerario Planeado
+                    </h3>
+                    <div class="timeline-shared mb-5">
+                        {% if pasos %}
+                            {% for step in pasos %}
+                            <div class="d-flex align-items-start mb-3">
+                                <div class="bg-dark text-white rounded-circle d-flex align-items-center justify-content-center fw-bold flex-shrink-0" style="width:30px; height:30px; font-size:11px; border: 2px solid #000; box-shadow: 2px 2px 0 0 rgba(0,0,0,0.25);">
+                                    {{ loop.index }}
+                                </div>
+                                <div class="ms-3 pt-1">
+                                    <p class="mb-0 fw-bold text-dark">{{ step | safe }}</p>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        {% else %}
+                            <p class="text-muted fw-bold"><i class="bi bi-info-circle me-1"></i>No se registraron actividades específicas para esta ruta.</p>
+                        {% endif %}
+                    </div>
+
                     <div class="bg-dark text-white p-4 border border-dark border-3 mt-4 rounded-0 text-center">
                         <h4 class="fw-black text-uppercase mb-3">¡Crea el tuyo gratis!</h4>
                         <p class="fw-bold fs-6">Con TravelWishly puedes diseñar presupuestos inteligentes, estimar viajes, revisar alertas sanitarias y calcular tu ahorro mensual.</p>
