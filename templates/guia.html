@@ -38,6 +38,107 @@
             color: #000;
             transition: all 0.15s ease;
         }
+        /* Soporte de Modo Oscuro con Alto Contraste */
+        [data-theme="dark"] .btn-interes {
+            background-color: #2b2b2b !important;
+            color: #fff !important;
+            border-color: #fff !important;
+        }
+        [data-theme="dark"] .btn-interes.btn-warning {
+            background-color: #ffc107 !important;
+            color: #000 !important;
+            border-color: #000 !important;
+            box-shadow: 3px 3px 0 0 #fff !important;
+        }
+        /* ===== DARK MODE GLOBAL en Guia ===== */
+        [data-theme="dark"] .text-dark { color: #ffffff !important; }
+        [data-theme="dark"] .text-muted { color: #aaaaaa !important; }
+
+        /* Encabezado de la guía */
+        [data-theme="dark"] h2.fw-black.text-dark,
+        [data-theme="dark"] p.lead.text-dark { color: #ffffff !important; }
+
+        /* Selector de intereses (contenedor bg-light) */
+        [data-theme="dark"] .p-4.mb-4.bg-light.border.border-dark.border-3 {
+            background-color: #2a2a2a !important;
+            border-color: #ffffff !important;
+            color: #ffffff !important;
+        }
+        [data-theme="dark"] .p-4.mb-4.bg-light h4 { color: #ffffff !important; }
+
+        /* Panel del destino seleccionado (bg-light border-dark en guia) */
+        [data-theme="dark"] #panelDestinoInfo {
+            background-color: #2a2a2a !important;
+            border-color: #ffffff !important;
+            color: #ffffff !important;
+        }
+        [data-theme="dark"] #panelTitulo { color: #ffffff !important; }
+
+        /* Cultura */
+        [data-theme="dark"] #panelCultura {
+            background-color: #2a2a2a !important;
+            color: #ffffff !important;
+            border-color: #ffffff !important;
+        }
+
+        /* Puntos de interés (contenedor bg-white) */
+        [data-theme="dark"] .bg-white.border-dark.border-3.p-4 {
+            background-color: #1e1e1e !important;
+        }
+        [data-theme="dark"] #panelRecomendaciones { color: #ffffff !important; }
+        [data-theme="dark"] #panelRecomendaciones li {
+            color: #ffffff !important;
+            border-color: #555 !important;
+        }
+        [data-theme="dark"] #panelRecomendaciones li:hover {
+            background: #333 !important;
+        }
+
+        /* Seasonality */
+        [data-theme="dark"] #panelSeasonality {
+            background-color: #2a2a2a !important;
+            border-color: #ffffff !important;
+            color: #ffffff !important;
+        }
+        [data-theme="dark"] #seasonalityBadge { border-color: #ffffff !important; }
+        [data-theme="dark"] #seasonalityAltaWrapper,
+        [data-theme="dark"] #seasonalityBajaWrapper { border-color: #555 !important; }
+
+        /* Zonas rojas */
+        [data-theme="dark"] #panelZonasRojas {
+            background-color: #3a1212 !important;
+            border-color: #ff6b6b !important;
+            color: #ffcccc !important;
+        }
+
+        /* Alertas de documentación */
+        [data-theme="dark"] #panelDocumentacion,
+        [data-theme="dark"] #panelVisaInfo,
+        [data-theme="dark"] #panelSaludInfo {
+            background-color: #2a2a2a !important;
+            border-color: #ffffff !important;
+            color: #ffffff !important;
+        }
+
+        /* Survival kit */
+        [data-theme="dark"] #survivalKitSection { color: #ffffff !important; }
+        [data-theme="dark"] #survivalKitGrid { color: #ffffff !important; }
+        [data-theme="dark"] #phrasesList { color: #ffffff !important; }
+        [data-theme="dark"] .phrase-item {
+            background-color: #2a2a2a !important;
+            border-color: #ffffff !important;
+            color: #ffffff !important;
+        }
+
+        /* Dividers */
+        [data-theme="dark"] hr.border-dark,
+        [data-theme="dark"] .border-bottom.border-dark {
+            border-color: #ffffff !important;
+        }
+
+        /* Headings h5, h6 en paneles */
+        [data-theme="dark"] h5.text-dark,
+        [data-theme="dark"] h6.text-dark { color: #ffffff !important; }
     </style>
     <div class="d-flex flex-wrap justify-content-center gap-2 mb-3">
         <button class="btn btn-outline-dark fw-bold rounded-0 border-2 btn-interes"

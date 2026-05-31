@@ -10,24 +10,24 @@ document.addEventListener('DOMContentLoaded', () => {
     // Actualizado con datos de Numbeo, Backpacker Index y Booking 2024-2025
     const COSTOS_PAIS = {
         // América del Norte
-        'United States of America': '$150-220 USD', 'Canada': '$130-190 USD', 'Mexico': '$65-95 USD',
+        'United States of America': '$220-300 USD', 'Canada': '$200-270 USD', 'Mexico': '$65-95 USD',
         // Europa Occidental
-        'France': '$140-200 USD', 'Germany': '$115-170 USD', 'Spain': '$100-150 USD',
-        'Italy': '$115-170 USD', 'United Kingdom': '$160-240 USD', 'Netherlands': '$135-195 USD',
-        'Switzerland': '$220-320 USD', 'Portugal': '$90-135 USD', 'Greece': '$85-130 USD',
-        'Austria': '$125-185 USD', 'Belgium': '$125-185 USD', 'Sweden': '$160-220 USD',
-        'Norway': '$200-290 USD', 'Denmark': '$175-255 USD',
+        'France': '$190-260 USD', 'Germany': '$160-230 USD', 'Spain': '$140-200 USD',
+        'Italy': '$160-230 USD', 'United Kingdom': '$210-290 USD', 'Netherlands': '$190-260 USD',
+        'Switzerland': '$260-360 USD', 'Portugal': '$95-140 USD', 'Greece': '$90-135 USD',
+        'Austria': '$140-200 USD', 'Belgium': '$140-200 USD', 'Sweden': '$200-270 USD',
+        'Norway': '$250-340 USD', 'Denmark': '$220-300 USD',
         // Europa del Este
         'Czech Republic': '$70-105 USD', 'Poland': '$65-95 USD', 'Hungary': '$65-100 USD',
-        'Romania': '$55-85 USD', 'Bulgaria': '$50-80 USD', 'Croatia': '$85-125 USD',
+        'Romania': '$55-85 USD', 'Bulgaria': '$50-80 USD', 'Croatia': '$90-135 USD',
         'Serbia': '$50-80 USD', 'Slovakia': '$65-95 USD',
         // Asia Oriental
-        'Japan': '$120-180 USD', 'South Korea': '$90-140 USD', 'China': '$70-110 USD',
+        'Japan': '$170-240 USD', 'South Korea': '$110-160 USD', 'China': '$70-110 USD',
         'Taiwan': '$70-105 USD',
         // Sudeste Asiático
         'Thailand': '$55-85 USD', 'Vietnam': '$45-75 USD', 'Indonesia': '$45-75 USD',
         'Philippines': '$45-70 USD', 'Malaysia': '$50-80 USD', 'Cambodia': '$40-65 USD',
-        'Singapore': '$140-210 USD', 'Myanmar': '$40-65 USD',
+        'Singapore': '$195-270 USD', 'Myanmar': '$40-65 USD',
         // Asia del Sur
         'India': '$40-70 USD', 'Nepal': '$35-60 USD', 'Sri Lanka': '$45-70 USD',
         'Bangladesh': '$35-60 USD', 'Pakistan': '$35-60 USD',
@@ -48,9 +48,9 @@ document.addEventListener('DOMContentLoaded', () => {
         'Costa Rica': '$75-115 USD', 'Panama': '$70-105 USD', 'Cuba': '$55-90 USD',
         'Dominican Republic': '$75-115 USD', 'Guatemala': '$50-80 USD',
         'Honduras': '$50-80 USD', 'Nicaragua': '$45-75 USD', 'El Salvador': '$50-80 USD',
-        'Jamaica': '$80-125 USD', 'Belize': '$80-120 USD',
+        'Jamaica': '$85-130 USD', 'Belize': '$80-120 USD',
         // Oceanía
-        'Australia': '$160-240 USD', 'New Zealand': '$155-235 USD',
+        'Australia': '$220-300 USD', 'New Zealand': '$210-290 USD',
         'Fiji': '$90-140 USD', 'Papua New Guinea': '$100-160 USD',
         // Default si no se encuentra el país exacto
         '_default': '$70-110 USD'
@@ -82,15 +82,28 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
 
-    // Inicializar el Globo terráqueo B&W
+    // Inicializar el Globo terráqueo B&W con soporte dinámico de temas
+    const currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
+    const initialBgColor = currentTheme === 'dark' ? '#121212' : '#ffffff';
+    const initialAtmColor = currentTheme === 'dark' ? '#ffffff' : '#000000';
+
     const world = Globe()
         (globeContainer)
         .width(globeContainer.clientWidth)
         .height(globeContainer.clientHeight)
-        .backgroundColor('#ffffff')
+        .backgroundColor(initialBgColor)
         .showAtmosphere(true)
-        .atmosphereColor('#000000')
+        .atmosphereColor(initialAtmColor)
         .atmosphereAltitude(0.12);
+
+    // Escuchar el cambio dinámico de tema (Modo Oscuro) sin refrescar
+    document.addEventListener('themechanged', (e) => {
+        const theme = e.detail.theme;
+        const bgColor = theme === 'dark' ? '#121212' : '#ffffff';
+        const atmColor = theme === 'dark' ? '#ffffff' : '#000000';
+        world.backgroundColor(bgColor);
+        world.atmosphereColor(atmColor);
+    });
 
     // Obtener geometría de los países (GeoJSON) - Datos libres
     fetch('https://raw.githubusercontent.com/vasturiano/globe.gl/master/example/datasets/ne_110m_admin_0_countries.geojson')
@@ -178,7 +191,25 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             };
 
-            world.onPolygonClick(polygon => showCountryDetails(polygon));
+            // === ANILLO DE IMPACTO (Ring Animation) al seleccionar destino ===
+            const showRingAt = (lat, lng) => {
+                const N = 3; // Número de anillos en cascada
+                const ringsData = [{ lat, lng, maxR: 5, propagationSpeed: 2.5, repeatPeriod: 700 }];
+                world.ringsData(ringsData)
+                    .ringColor(() => t => `rgba(255,255,255,${1 - t})`)
+                    .ringMaxRadius('maxR')
+                    .ringPropagationSpeed('propagationSpeed')
+                    .ringRepeatPeriod('repeatPeriod');
+                // Limpiar anillos después de 2.5 segundos
+                setTimeout(() => { world.ringsData([]); }, 2500);
+            };
+
+            world.onPolygonClick(polygon => {
+                const lat = polygon.bbox ? (polygon.bbox[1] + polygon.bbox[3]) / 2 : 0;
+                const lng = polygon.bbox ? (polygon.bbox[0] + polygon.bbox[2]) / 2 : 0;
+                if (lat !== 0 || lng !== 0) showRingAt(lat, lng);
+                showCountryDetails(polygon);
+            });
 
             // --- Buscador ---
             const searchInput = document.getElementById('countrySearchInput');
@@ -214,20 +245,63 @@ document.addEventListener('DOMContentLoaded', () => {
                                 endLat: lat, endLng: lng, color: ['#000000', '#ffffff']
                             }]);
                             world.pointOfView({ lat: lat, lng: lng, altitude: 0.8 }, 1500);
+                            // Anillo de impacto en el destino encontrado
+                            showRingAt(lat, lng);
 
                             // Extraer el país para colorearlo si es posible
                             const components = data[0].display_name.split(', ');
-                            const countryExtracted = components[components.length-1].toLowerCase();
-                            feature = countries.features.find(f => f.properties.ADMIN.toLowerCase() === countryExtracted || f.properties.NAME.toLowerCase() === countryExtracted);
+                            let lookupName = "Canada"; // default fallback
+                            if (feature && feature.properties && feature.properties.ADMIN) {
+                                lookupName = feature.properties.ADMIN;
+                            } else {
+                                // Buscar el nombre del país en los componentes de la dirección de Nominatim
+                                for (let comp of components) {
+                                    const cleanedComp = comp.toLowerCase().trim();
+                                    const matchedF = countries.features.find(f => {
+                                        const admin = f.properties.ADMIN ? f.properties.ADMIN.toLowerCase() : '';
+                                        const name = f.properties.NAME ? f.properties.NAME.toLowerCase() : '';
+                                        return admin === cleanedComp || name === cleanedComp;
+                                    });
+                                    if (matchedF) {
+                                        lookupName = matchedF.properties.ADMIN;
+                                        feature = matchedF;
+                                        break;
+                                    }
+                                }
+                            }
                             
                             if (searchError) searchError.classList.add('d-none');
                             
                             // Construir modal con el dato EXACTO MUNDIAL
-                            const info = generateCountryInfo(data[0].display_name);
+                            const info = generateCountryInfo(lookupName);
                             document.getElementById('modalCountryName').innerText = components[0];
                             const locFull = document.getElementById('modalLocationFull');
                             if (locFull) locFull.innerHTML = `<i class="bi bi-geo-alt-fill me-1"></i>${data[0].display_name}`;
-                            document.getElementById('modalCost').innerText = info.cost;
+                            
+                            // Parsear el costo (ej: "$65-95 USD") para calcular perfiles
+                            let costMin = 50, costMax = 90, currency = "USD";
+                            const matchCost = info.cost.match(/\$?(\d+)(?:\s*-\s*\$?(\d+))?\s*([A-Za-z]+)?/);
+                            if (matchCost) {
+                                costMin = parseInt(matchCost[1], 10);
+                                costMax = matchCost[2] ? parseInt(matchCost[2], 10) : costMin;
+                                currency = matchCost[3] || "USD";
+                            }
+
+                            const mochileroMin = Math.round(costMin * 0.6);
+                            const mochileroMax = Math.round(costMax * 0.6);
+                            const lujoMin = Math.round(costMin * 1.8);
+                            const lujoMax = Math.round(costMax * 1.8);
+
+                            const formatRange = (min, max, cur) => `$${min}-${max} ${cur}`;
+
+                            const elMochilero = document.getElementById('modalCostMochilero');
+                            const elEstandar = document.getElementById('modalCostEstandar');
+                            const elLujo = document.getElementById('modalCostLujo');
+
+                            if (elMochilero) elMochilero.innerText = formatRange(mochileroMin, mochileroMax, currency);
+                            if (elEstandar) elEstandar.innerText = formatRange(costMin, costMax, currency);
+                            if (elLujo) elLujo.innerText = formatRange(lujoMin, lujoMax, currency);
+
                             document.getElementById('modalTypes').innerText = info.types;
                             document.getElementById('modalAlerts').innerText = `[${info.dangerLevel.toUpperCase()}] - ${info.alerts}`;
             

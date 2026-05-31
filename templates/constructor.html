@@ -67,7 +67,7 @@
     </div>
 </div>
 
-<div id="constructorCaptureZone" class="w-100 overflow-hidden" style="background: white;">
+<div id="constructorCaptureZone" class="w-100 overflow-hidden">
 
 <!-- ===== Tabs de Navegación del Itinerario ===== -->
 <ul class="nav nav-tabs border-dark border-3 mb-0" id="constructorTabs" role="tablist" style="gap:4px;">
@@ -413,7 +413,77 @@
 .t-gray   { color: #666; }
 .t-orange { color: #fd7e14; }
 .t-red    { color: #ff5f57; }
+
+/* ===== DARK MODE: PACKING ITEMS ===== */
+[data-theme="dark"] .packing-item {
+    background: #2a2a2a !important;
+    border-color: #ffffff !important;
+    color: #ffffff !important;
+}
+[data-theme="dark"] .packing-item:hover {
+    background: #3a3a3a !important;
+    box-shadow: -5px 0 0 0 #ffffff !important;
+}
+[data-theme="dark"] .packing-item.checked {
+    background: #ffffff !important;
+    color: #000000 !important;
+    border-color: #000 !important;
+}
+[data-theme="dark"] .packing-item.checked .packing-label {
+    color: #000000 !important;
+}
+[data-theme="dark"] .packing-label {
+    color: #ffffff !important;
+}
+/* Dark mode: tabs del constructor */
+[data-theme="dark"] #constructorTabs .nav-link {
+    background-color: #2a2a2a !important;
+    color: #aaaaaa !important;
+    border-color: #ffffff !important;
+}
+[data-theme="dark"] #constructorTabs .nav-link.active {
+    background-color: #ffffff !important;
+    color: #000000 !important;
+    border-bottom-color: #ffffff !important;
+}
+/* Dark mode: panel de contenido tabs */
+[data-theme="dark"] #constructorTabContent {
+    background-color: #1e1e1e !important;
+    border-color: #ffffff !important;
+    color: #ffffff !important;
+}
+/* Dark mode: constructorCaptureZone (tiene background: white inline) */
+[data-theme="dark"] #constructorCaptureZone {
+    background: #1e1e1e !important;
+}
+/* Dark mode: cards de categorías de packing */
+[data-theme="dark"] #packingCategoriesRow .card {
+    background-color: #1e1e1e !important;
+    border-color: #ffffff !important;
+}
+[data-theme="dark"] #packingCategoriesRow .card-header {
+    background-color: #000000 !important;
+    color: #ffffff !important;
+}
+[data-theme="dark"] #packingCategoriesRow .card-body {
+    background-color: #1e1e1e !important;
+}
+/* Dark mode: form checks en mochila */
+[data-theme="dark"] .form-check.form-switch.p-3.border {
+    background-color: #2a2a2a !important;
+    border-color: #ffffff !important;
+    color: #ffffff !important;
+}
+[data-theme="dark"] .form-check-label {
+    color: #ffffff !important;
+}
+/* Dark mode: panel guardar viaje al final */
+[data-theme="dark"] #packingGrid > div:last-child .p-4 {
+    background-color: #2a2a2a !important;
+    border-color: #ffffff !important;
+}
 </style>
+
 
 <!-- ===== Sección Oculta para el PDF ===== -->
 <div id="reportePDF"

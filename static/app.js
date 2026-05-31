@@ -360,59 +360,68 @@ function renderizarPanelGraficas(distr) {
     wrapper.classList.remove('d-none');
     canvas.classList.remove('d-none');
 
-    // Inicializar o Re-crear Contexto ChartJS
-    const areaContextual = canvas.getContext('2d');
+    // Force a reflow
+    void canvas.offsetHeight;
+    void wrapper.offsetHeight;
+
+    if (window._chartAnimTimeout) {
+        clearTimeout(window._chartAnimTimeout);
+    }
 
     // Limpieza de memoria (Obligatorio en ChartJS al redibujar variables)
     if(donutGráficoInstancia !== null) {
         donutGráficoInstancia.destroy();
+        donutGráficoInstancia = null;
     }
 
-    donutGráficoInstancia = new Chart(areaContextual, {
-        type: 'doughnut',
-        data: {
-            labels: [
-                distr.perfil_nombres.hospedaje, 
-                distr.perfil_nombres.vuelos, 
-                distr.perfil_nombres.comida, 
-                distr.perfil_nombres.actividades
-            ],
-            datasets: [{
-                label: `Cifra Asignada (${distr.divisa})`,
-                data: [distr.hospedaje, distr.vuelos, distr.comida, distr.actividades],
-                backgroundColor: [
-                    '#FF3366', // Vibrant Pink
-                    '#00E5FF', // Cyan
-                    '#FFEA00', // Yellow
-                    '#00E676'  // Bright Green
+    window._chartAnimTimeout = setTimeout(() => {
+        const areaContextual = canvas.getContext('2d');
+        donutGráficoInstancia = new Chart(areaContextual, {
+            type: 'doughnut',
+            data: {
+                labels: [
+                    distr.perfil_nombres.hospedaje, 
+                    distr.perfil_nombres.vuelos, 
+                    distr.perfil_nombres.comida, 
+                    distr.perfil_nombres.actividades
                 ],
-                borderWidth: 3,
-                borderColor: '#000000',
-                hoverOffset: 12
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            animation: {
-                duration: 1500,
-                easing: 'easeOutQuart',
-                animateScale: true,
-                animateRotate: true
+                datasets: [{
+                    label: `Cifra Asignada (${distr.divisa})`,
+                    data: [distr.hospedaje, distr.vuelos, distr.comida, distr.actividades],
+                    backgroundColor: [
+                        '#FF3366', // Vibrant Pink
+                        '#00E5FF', // Cyan
+                        '#FFEA00', // Yellow
+                        '#00E676'  // Bright Green
+                    ],
+                    borderWidth: 3,
+                    borderColor: '#000000',
+                    hoverOffset: 12
+                }]
             },
-            plugins: {
-                legend: {
-                    position: 'bottom',
-                    labels: { boxWidth: 15, font: {family: "'Segoe UI', sans-serif"} }
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                animation: {
+                    duration: 1500,
+                    easing: 'easeOutQuart',
+                    animateScale: true,
+                    animateRotate: true
                 },
-                tooltip: {
-                    callbacks: {
-                        label: function(ctx) { return ` ${distr.simbolo}` + ctx.parsed.toFixed(2); }
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: { boxWidth: 15, font: {family: "'Segoe UI', sans-serif"} }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(ctx) { return ` ${distr.simbolo}` + ctx.parsed.toFixed(2); }
+                        }
                     }
                 }
             }
-        }
-    });
+        });
+    }, 50);
 }
 
 /* =========================================================================
@@ -719,6 +728,59 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 });
 
+window.traducirIdiomaAlEspanol = function(lang) {
+    if (!lang) return '';
+    const dict = {
+        'arabic': 'Árabe',
+        'berber': 'Bereber',
+        'french': 'Francés',
+        'spanish': 'Español',
+        'english': 'Inglés',
+        'japanese': 'Japonés',
+        'italian': 'Italiano',
+        'german': 'Alemán',
+        'portuguese': 'Portugués',
+        'dutch': 'Neerlandés',
+        'thai': 'Tailandés',
+        'vietnamese': 'Vietnamita',
+        'chinese': 'Chino',
+        'korean': 'Coreano',
+        'russian': 'Ruso',
+        'hindi': 'Hindi',
+        'bengali': 'Bengalí',
+        'punjabi': 'Panyabí',
+        'indonesian': 'Indonesio',
+        'javanese': 'Javanés',
+        'icelandic': 'Islandés',
+        'czech': 'Checo',
+        'tahitian': 'Tahitiano',
+        'greek': 'Griego',
+        'turkish': 'Turco',
+        'polish': 'Polaco',
+        'swedish': 'Sueco',
+        'norwegian': 'Noruego',
+        'danish': 'Danés',
+        'finnish': 'Finés',
+        'hebrew': 'Hebreo',
+        'urdu': 'Urdu',
+        'persian': 'Persa',
+        'swahili': 'Suajili',
+        'catalan': 'Catalán',
+        'galician': 'Gallego',
+        'basque': 'Vasco',
+        'quechua': 'Quechua',
+        'aymara': 'Aimara',
+        'guarani': 'Guaraní',
+        'irish': 'Irlandés',
+        'welsh': 'Galés',
+        'scottish gaelic': 'Gaélico escocés',
+        'latin': 'Latín',
+        'esperanto': 'Esperanto'
+    };
+    const key = lang.trim().toLowerCase();
+    return dict[key] || lang;
+};
+
 /** @function cargarGuiaSegura busca dentro del array y reemplaza/anima elementos DOM */
 window.cargarGuiaSegura = function cargarGuiaSegura() {
     const selectorObj = document.getElementById('destinosDropdown');
@@ -845,6 +907,9 @@ window.cargarGuiaSegura = function cargarGuiaSegura() {
         "Chequia":    ["Checo"],
         "Polinesia":  ["Francés", "Tahitiano"],
         "Países Bajos": ["Neerlandés"],
+        "Morocco":    ["Árabe", "Bereber"],
+        "Marruecos":  ["Árabe", "Bereber"],
+        "Morroco":    ["Árabe", "Bereber"]
     };
 
     // Fetch Dinámico de Idiomas Mundiales (Primary, Secondary)
@@ -855,7 +920,7 @@ window.cargarGuiaSegura = function cargarGuiaSegura() {
             .then(r => r.json())
             .then(data => {
                 if (data && data[0] && data[0].languages) {
-                    const l = Object.values(data[0].languages);
+                    const l = Object.values(data[0].languages).map(window.traducirIdiomaAlEspanol);
                     if (l.length >= 2) {
                         panelIdioma.innerHTML = `<i class="bi bi-translate me-2"></i> PRINCIPAL: ${l[0].toUpperCase()} | SECUNDARIO: ${l.slice(1).join(', ').toUpperCase()}`;
                     } else {
@@ -1340,7 +1405,8 @@ window.generarKitVocabulario = async function(destinoString) {
         if (data.success && data.data && data.data.length > 0) {
             let html = '';
             data.data.forEach((langData) => {
-                html += `<div class="col-12 mt-2"><div class="fw-black bg-light border border-dark border-2 text-dark p-1 text-center text-uppercase mb-2" style="font-size:0.7rem;">IDIOMA: ${langData.idioma}</div></div>`;
+                const transLang = window.traducirIdiomaAlEspanol(langData.idioma);
+                html += `<div class="col-12 mt-2"><div class="fw-black bg-light border border-dark border-2 text-dark p-1 text-center text-uppercase mb-2" style="font-size:0.7rem;">IDIOMA: ${transLang}</div></div>`;
                 langData.phrases.forEach(phrase => {
                     const safeLocalStr = phrase.local.replace(/'/g, "\\'");
                     html += `
@@ -1549,57 +1615,9 @@ window.pintarMapaLeaflet = async function(destinoString) {
     };
 })();
 
-window.convertCurrency = function() {
-    const fromSelect = document.getElementById('fromCurrency');
-    const toSelect = document.getElementById('toCurrency');
-    const amtInput = document.getElementById('currencyAmount');
-    const resultElement = document.getElementById('currencyResult');
-    const updatedTag = document.getElementById('currencyUpdated');
-    
-    if (!fromSelect || !toSelect || !amtInput || !resultElement) return;
-    
-    const amount = parseFloat(amtInput.value) || 0;
-    const from = fromSelect.value;
-    const to = toSelect.value;
 
-    function formatDiv(val, curr) {
-        return new Intl.NumberFormat('en-US', { style: 'currency', currency: curr, minimumFractionDigits: 2 }).format(val);
-    }
+// (convertCurrency se define m\u00e1s adelante en el m\u00f3dulo EXTRAS con l\u00f3gica correcta de Choices.js)
 
-    // Si ya estamos usando la proxy interna de las tasas reales
-    if (window.TASAS_CAMBIO && window.TASAS_CAMBIO[to] && typeof window.TASAS_CAMBIO[from] !== 'undefined') {
-        const mxnFrom = from === 'MXN' ? 1 : (1 / window.TASAS_CAMBIO[from].tasa);
-        const toValMxn = to === 'MXN' ? 1 : window.TASAS_CAMBIO[to].tasa;
-        
-        const finalRate = mxnFrom * toValMxn;
-        const finalResult = amount * finalRate;
-        
-        resultElement.innerText = formatDiv(finalResult, to);
-        if(updatedTag) updatedTag.innerText = "Calculado localmente";
-        return;
-    }
-
-    // Fallback: usar API Externa en vivo si no tenemos los datos pre-cargados localmente
-    fetch(`https://api.exchangerate-api.com/v4/latest/${from}`)
-        .then(res => res.json())
-        .then(data => {
-            if(data && data.rates && data.rates[to]) {
-                const rate = data.rates[to];
-                const calcObj = amount * rate;
-                resultElement.innerText = formatDiv(calcObj, to);
-                if(updatedTag) {
-                    const d = new Date(data.time_last_updated * 1000);
-                    updatedTag.innerText = `Última act. API: ${d.toLocaleTimeString()}`;
-                }
-            } else {
-                resultElement.innerText = "Error API";
-            }
-        })
-        .catch(err => {
-            console.error("Exchange API Falló", err);
-            resultElement.innerText = "Modo Offline";
-        });
-};
 
 const TODOS_DESTINOS_DB = [
     { 
@@ -2071,41 +2089,44 @@ window.seleccionarParaPresupuesto = function() {
     }
 };
 
+// Presupuestos base por destino en MXN para viaje de ~7 días (estilo estándar)
+// Incluye: hospedaje + 3 comidas/día + transporte local + actividades básicas
+// Precios base por día (estándar): MX~$800/d | US~$2,800/d | CA~$2,400/d | EU~$2,200/d
 const PRESUPUESTOS_DESTINOS_GLOBALES = [
-    { nombre: "Alemania (Berlín, Múnich)", budget: 45000 },
-    { nombre: "Argentina (Buenos Aires, Patagonia)", budget: 18000 },
-    { nombre: "Australia (Sídney, Melbourne)", budget: 70000 },
-    { nombre: "Brasil (Río de Janeiro, São Paulo)", budget: 20000 },
-    { nombre: "Canadá (Toronto, Vancouver)", budget: 35000 },
-    { nombre: "Colombia (Bogotá, Medellín)", budget: 12000 },
-    { nombre: "Corea del Sur (Seúl)", budget: 55000 },
-    { nombre: "Costa Rica (San José)", budget: 18000 },
-    { nombre: "Cuba (La Habana)", budget: 15000 },
-    { nombre: "Chile (Santiago, Atacama)", budget: 20000 },
-    { nombre: "China (Pekín, Shanghái)", budget: 60000 },
-    { nombre: "Egipto (El Cairo)", budget: 40000 },
-    { nombre: "Emiratos Árabes (Dubái)", budget: 80000 },
-    { nombre: "España (Madrid, Barcelona)", budget: 40000 },
-    { nombre: "Estados Unidos (Nueva York, LA)", budget: 35000 },
-    { nombre: "Francia (París)", budget: 48000 },
-    { nombre: "Grecia (Atenas, Santorini)", budget: 50000 },
-    { nombre: "India (Nueva Delhi)", budget: 45000 },
-    { nombre: "Indonesia (Bali)", budget: 35000 },
-    { nombre: "Italia (Roma, Venecia)", budget: 46000 },
-    { nombre: "Japón (Tokio, Kioto)", budget: 65000 },
-    { nombre: "Jordania (Petra)", budget: 55000 },
-    { nombre: "Marruecos (Marrakech)", budget: 35000 },
-    { nombre: "México Nacional (Pueblos Mágicos)", budget: 6000 },
-    { nombre: "México Playa (Cancún, Tulum)", budget: 15000 },
-    { nombre: "Nueva Zelanda (Auckland)", budget: 75000 },
-    { nombre: "Países Bajos (Ámsterdam)", budget: 45000 },
-    { nombre: "Perú (Cusco, Machu Picchu)", budget: 14000 },
-    { nombre: "Polinesia Francesa (Bora Bora)", budget: 120000 },
-    { nombre: "Reino Unido (Londres)", budget: 55000 },
-    { nombre: "República Dominicana (Punta Cana)", budget: 18000 },
-    { nombre: "Suiza (Zúrich, Alpes)", budget: 65000 },
-    { nombre: "Tailandia (Bangkok, Phuket)", budget: 38000 },
-    { nombre: "Turquía (Estambul, Capadocia)", budget: 40000 }
+    { nombre: "Alemania (Berlín, Múnich)",          budget: 55000 },  // ~$155 USD/día
+    { nombre: "Argentina (Buenos Aires, Patagonia)", budget: 22000 },  // ~$62 USD/día
+    { nombre: "Australia (Sídney, Melbourne)",       budget: 90000 },  // ~$255 USD/día
+    { nombre: "Brasil (Río de Janeiro, São Paulo)",  budget: 28000 },  // ~$80 USD/día
+    { nombre: "Canadá (Toronto, Vancouver)",         budget: 62000 },  // ~$175 USD/día
+    { nombre: "Colombia (Bogotá, Medellín)",         budget: 16000 },  // ~$45 USD/día
+    { nombre: "Corea del Sur (Seúl)",               budget: 65000 },  // ~$185 USD/día
+    { nombre: "Costa Rica (San José)",              budget: 25000 },  // ~$70 USD/día
+    { nombre: "Cuba (La Habana)",                   budget: 20000 },  // ~$57 USD/día
+    { nombre: "Chile (Santiago, Atacama)",          budget: 28000 },  // ~$80 USD/día
+    { nombre: "China (Pekín, Shanghái)",            budget: 65000 },  // ~$185 USD/día
+    { nombre: "Egipto (El Cairo)",                  budget: 45000 },  // ~$128 USD/día
+    { nombre: "Emiratos Árabes (Dubái)",            budget: 100000 }, // ~$285 USD/día
+    { nombre: "España (Madrid, Barcelona)",         budget: 52000 },  // ~$148 USD/día
+    { nombre: "Estados Unidos (Nueva York, LA)",    budget: 60000 },  // ~$170 USD/día
+    { nombre: "Francia (París)",                    budget: 65000 },  // ~$185 USD/día
+    { nombre: "Grecia (Atenas, Santorini)",         budget: 58000 },  // ~$165 USD/día
+    { nombre: "India (Nueva Delhi)",                budget: 40000 },  // ~$114 USD/día
+    { nombre: "Indonesia (Bali)",                   budget: 35000 },  // ~$100 USD/día
+    { nombre: "Italia (Roma, Venecia)",             budget: 58000 },  // ~$165 USD/día
+    { nombre: "Japón (Tokio, Kioto)",               budget: 80000 },  // ~$228 USD/día
+    { nombre: "Jordania (Petra)",                   budget: 60000 },  // ~$170 USD/día
+    { nombre: "Marruecos (Marrakech)",              budget: 38000 },  // ~$108 USD/día
+    { nombre: "México Nacional (Pueblos Mágicos)",  budget: 8000  },  // ~$23 USD/día
+    { nombre: "México Playa (Cancún, Tulum)",       budget: 20000 },  // ~$57 USD/día
+    { nombre: "Nueva Zelanda (Auckland)",           budget: 90000 },  // ~$255 USD/día
+    { nombre: "Países Bajos (Ámsterdam)",           budget: 58000 },  // ~$165 USD/día
+    { nombre: "Perú (Cusco, Machu Picchu)",         budget: 18000 },  // ~$51 USD/día
+    { nombre: "Polinesia Francesa (Bora Bora)",     budget: 150000 }, // ~$428 USD/día
+    { nombre: "Reino Unido (Londres)",              budget: 72000 },  // ~$205 USD/día
+    { nombre: "República Dominicana (Punta Cana)",  budget: 22000 },  // ~$63 USD/día
+    { nombre: "Suiza (Zúrich, Alpes)",              budget: 85000 },  // ~$242 USD/día
+    { nombre: "Tailandia (Bangkok, Phuket)",        budget: 40000 },  // ~$114 USD/día
+    { nombre: "Turquía (Estambul, Capadocia)",      budget: 45000 }   // ~$128 USD/día
 ];
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -2414,19 +2435,20 @@ window.swapCurrencies = function() {
     const toSel = document.getElementById('toCurrency');
     if (!fromSel || !toSel) return;
 
-    const temp = fromSel.value;
-    const newFrom = toSel.value;
-    const newTo = temp;
+    // Use tracked variables since Choices.js may not reflect native select value
+    const currentFrom = _fromCurrVal || fromSel.value || 'MXN';
+    const currentTo   = _toCurrVal   || toSel.value   || 'USD';
 
-    _fromCurrVal = newFrom;
-    _toCurrVal = newTo;
+    // Swap them
+    _fromCurrVal = currentTo;
+    _toCurrVal   = currentFrom;
 
     if (_choicesFrom && _choicesTo) {
-        _choicesFrom.setChoiceByValue(newFrom);
-        _choicesTo.setChoiceByValue(newTo);
+        _choicesFrom.setChoiceByValue(_fromCurrVal);
+        _choicesTo.setChoiceByValue(_toCurrVal);
     } else {
-        fromSel.value = newFrom;
-        toSel.value = newTo;
+        fromSel.value = _fromCurrVal;
+        toSel.value   = _toCurrVal;
     }
     if (window.convertCurrency) window.convertCurrency();
 };
@@ -2438,12 +2460,11 @@ window.convertCurrency = async function() {
     if (!fromSel || !toSel) return;
 
     const amount = parseFloat(document.getElementById('currencyAmount').value);
-    const from = fromSel.value;
-    const to   = toSel.value;
-    
-    // Sincronizar las variables de rastreo globales
-    _fromCurrVal = from;
-    _toCurrVal = to;
+    // Use tracked variables (_fromCurrVal/_toCurrVal) since Choices.js wraps native selects
+    // and fromSel.value may not reflect what the user actually selected.
+    // Fallback to native value if tracking vars are not yet set.
+    const from = _fromCurrVal || fromSel.value || 'MXN';
+    const to   = _toCurrVal   || toSel.value   || 'USD';
 
     const resultEl = document.getElementById('currencyResult');
     const rateEl = document.getElementById('currencyRate');
@@ -2469,7 +2490,6 @@ window.convertCurrency = async function() {
         resultEl.innerText = converted.toLocaleString('es-MX', {minimumFractionDigits: 2, maximumFractionDigits: 4}) + ' ' + to;
         if (rateEl) rateEl.innerText = `1 ${from} = ${rate.toLocaleString('es-MX', {minimumFractionDigits: 4, maximumFractionDigits: 6})} ${to}`;
         if (updEl && cache.updated) {
-            const d = new Date(cache.updated);
             updEl.innerHTML = `<i class="bi bi-clock me-1"></i>Última actualización: ${cache.updated.replace(' +0000 UTC','').replace(' UTC','')}`;
         }
     } catch (error) {

@@ -1501,6 +1501,55 @@ def create_app():
                     txt = txt[start_idx:end_idx+1]
                 try:
                     datos = json.loads(txt)
+                    # Traducir los nombres de los idiomas al español
+                    dict_tr = {
+                        'arabic': 'Árabe',
+                        'berber': 'Bereber',
+                        'french': 'Francés',
+                        'spanish': 'Español',
+                        'english': 'Inglés',
+                        'japanese': 'Japonés',
+                        'italian': 'Italiano',
+                        'german': 'Alemán',
+                        'portuguese': 'Portugués',
+                        'dutch': 'Neerlandés',
+                        'thai': 'Tailandés',
+                        'vietnamese': 'Vietnamita',
+                        'chinese': 'Chino',
+                        'korean': 'Coreano',
+                        'russian': 'Ruso',
+                        'hindi': 'Hindi',
+                        'bengali': 'Bengalí',
+                        'punjabi': 'Panyabí',
+                        'indonesian': 'Indonesio',
+                        'javanese': 'Javanés',
+                        'icelandic': 'Islandés',
+                        'czech': 'Checo',
+                        'tahitian': 'Tahitiano',
+                        'greek': 'Griego',
+                        'turkish': 'Turco',
+                        'polish': 'Polaco',
+                        'swedish': 'Sueco',
+                        'norwegian': 'Noruego',
+                        'danish': 'Danés',
+                        'finnish': 'Finés',
+                        'hebrew': 'Hebreo',
+                        'urdu': 'Urdu',
+                        'persian': 'Persa',
+                        'swahili': 'Suajili',
+                        'catalan': 'Catalán',
+                        'galician': 'Gallego',
+                        'basque': 'Vasco',
+                        'quechua': 'Quechua',
+                        'aymara': 'Aimara',
+                        'guarani': 'Guaraní'
+                    }
+                    if isinstance(datos, list):
+                        for item in datos:
+                            if isinstance(item, dict) and 'idioma' in item:
+                                val = item['idioma'].strip().lower()
+                                if val in dict_tr:
+                                    item['idioma'] = dict_tr[val]
                     return jsonify({'success': True, 'data': datos})
                 except Exception as parse_err:
                     print(f"[PHRASES] JSON parse error: {parse_err} | TXT: {txt[:200]}")
@@ -1515,22 +1564,49 @@ def create_app():
         es_phrases = [{"es":"Hola","local":"Hola"},{"es":"Gracias","local":"Gracias"},{"es":"Disculpe","local":"Disculpe"},{"es":"¿Dónde está el baño?","local":"¿Dónde está el baño?"},{"es":"Ayuda","local":"Ayuda"},{"es":"La cuenta por favor","local":"La cuenta por favor"}]
 
         if any(x in d for x in ['japan','japon','tokyo','osaka']):
-            langs = [{"idioma":"日本語","lang_code":"ja-JP","phrases":[{"es":"Hola","local":"Konnichiwa"},{"es":"Gracias","local":"Arigatou"},{"es":"Disculpe","local":"Sumimasen"},{"es":"¿Dónde está el baño?","local":"Toire wa doko desu ka?"},{"es":"Ayuda","local":"Tasukete!"},{"es":"La cuenta por favor","local":"Okaikei onegaishimasu"}]},{"idioma":"English","lang_code":"en-US","phrases":en_phrases}]
+            langs = [{"idioma":"Japonés","lang_code":"ja-JP","phrases":[{"es":"Hola","local":"Konnichiwa"},{"es":"Gracias","local":"Arigatou"},{"es":"Disculpe","local":"Sumimasen"},{"es":"¿Dónde está el baño?","local":"Toire wa doko desu ka?"},{"es":"Ayuda","local":"Tasukete!"},{"es":"La cuenta por favor","local":"Okaikei onegaishimasu"}]},{"idioma":"Inglés","lang_code":"en-US","phrases":en_phrases}]
         elif any(x in d for x in ['france','paris','francais','senegal','cameroon','cameroun','cote','haiti','belgium']):
-            langs = [{"idioma":"Français","lang_code":"fr-FR","phrases":[{"es":"Hola","local":"Bonjour"},{"es":"Gracias","local":"Merci"},{"es":"Disculpe","local":"Excusez-moi"},{"es":"¿Dónde está el baño?","local":"Où sont les toilettes?"},{"es":"Ayuda","local":"Au secours!"},{"es":"La cuenta por favor","local":"L'addition s'il vous plaît"}]},{"idioma":"English","lang_code":"en-US","phrases":en_phrases}]
+            langs = [{"idioma":"Francés","lang_code":"fr-FR","phrases":[{"es":"Hola","local":"Bonjour"},{"es":"Gracias","local":"Merci"},{"es":"Disculpe","local":"Excusez-moi"},{"es":"¿Dónde está el baño?","local":"Où sont les toilettes?"},{"es":"Ayuda","local":"Au secours!"},{"es":"La cuenta por favor","local":"L'addition s'il vous plaît"}]},{"idioma":"Inglés","lang_code":"en-US","phrases":en_phrases}]
         elif any(x in d for x in ['brazil','brasil','portugal','angola']):
-            langs = [{"idioma":"Português","lang_code":"pt-BR","phrases":[{"es":"Hola","local":"Olá"},{"es":"Gracias","local":"Obrigado/a"},{"es":"Disculpe","local":"Desculpe"},{"es":"¿Dónde está el baño?","local":"Onde fica o banheiro?"},{"es":"Ayuda","local":"Socorro!"},{"es":"La cuenta por favor","local":"A conta por favor"}]},{"idioma":"English","lang_code":"en-US","phrases":en_phrases}]
+            langs = [{"idioma":"Português","lang_code":"pt-BR","phrases":[{"es":"Hola","local":"Olá"},{"es":"Gracias","local":"Obrigado/a"},{"es":"Disculpe","local":"Desculpe"},{"es":"¿Dónde está el baño?","local":"Onde fica o banheiro?"},{"es":"Ayuda","local":"Socorro!"},{"es":"La cuenta por favor","local":"A conta por favor"}]},{"idioma":"Inglés","lang_code":"en-US","phrases":en_phrases}]
         elif any(x in d for x in ['italy','italia','rome','milan','venice']):
-            langs = [{"idioma":"Italiano","lang_code":"it-IT","phrases":[{"es":"Hola","local":"Ciao"},{"es":"Gracias","local":"Grazie"},{"es":"Disculpe","local":"Mi scusi"},{"es":"¿Dónde está el baño?","local":"Dov'è il bagno?"},{"es":"Ayuda","local":"Aiuto!"},{"es":"La cuenta por favor","local":"Il conto per favore"}]},{"idioma":"English","lang_code":"en-US","phrases":en_phrases}]
+            langs = [{"idioma":"Italiano","lang_code":"it-IT","phrases":[{"es":"Hola","local":"Ciao"},{"es":"Gracias","local":"Grazie"},{"es":"Disculpe","local":"Mi scusi"},{"es":"¿Dónde está el baño?","local":"Dov'è il baño?"},{"es":"Ayuda","local":"Aiuto!"},{"es":"La cuenta por favor","local":"Il conto per favore"}]},{"idioma":"Inglés","lang_code":"en-US","phrases":en_phrases}]
         elif any(x in d for x in ['germany','austria','berlin','munich','deutsch']):
-            langs = [{"idioma":"Deutsch","lang_code":"de-DE","phrases":[{"es":"Hola","local":"Hallo"},{"es":"Gracias","local":"Danke"},{"es":"Disculpe","local":"Entschuldigung"},{"es":"¿Dónde está el baño?","local":"Wo ist die Toilette?"},{"es":"Ayuda","local":"Hilfe!"},{"es":"La cuenta por favor","local":"Die Rechnung bitte"}]},{"idioma":"English","lang_code":"en-US","phrases":en_phrases}]
+            langs = [{"idioma":"Alemán","lang_code":"de-DE","phrases":[{"es":"Hola","local":"Hallo"},{"es":"Gracias","local":"Danke"},{"es":"Disculpe","local":"Entschuldigung"},{"es":"¿Dónde está el baño?","local":"Wo ist die Toilette?"},{"es":"Ayuda","local":"Hilfe!"},{"es":"La cuenta por favor","local":"Die Rechnung bitte"}]},{"idioma":"Inglés","lang_code":"en-US","phrases":en_phrases}]
         elif any(x in d for x in ['china','beijing','shanghai','guangzhou']):
-            langs = [{"idioma":"中文","lang_code":"zh-CN","phrases":[{"es":"Hola","local":"Nǐ hǎo"},{"es":"Gracias","local":"Xièxiè"},{"es":"Disculpe","local":"Duìbuqǐ"},{"es":"¿Dónde está el baño?","local":"Xǐshǒujiān zài nǎlǐ?"},{"es":"Ayuda","local":"Jiùmìng!"},{"es":"La cuenta por favor","local":"Mǎidān"}]},{"idioma":"English","lang_code":"en-US","phrases":en_phrases}]
+            langs = [{"idioma":"Chino","lang_code":"zh-CN","phrases":[{"es":"Hola","local":"Nǐ hǎo"},{"es":"Gracias","local":"Xièxiè"},{"es":"Disculpe","local":"Duìbuqǐ"},{"es":"¿Dónde está el baño?","local":"Xǐshǒujiān zài nǎlǐ?"},{"es":"Ayuda","local":"Jiùmìng!"},{"es":"La cuenta por favor","local":"Mǎidān"}]},{"idioma":"Inglés","lang_code":"en-US","phrases":en_phrases}]
+        elif any(x in d for x in ['morocco', 'marruecos', 'marrakech', 'rabat', 'morroco']):
+            langs = [
+                {
+                    "idioma": "Árabe",
+                    "lang_code": "ar-MA",
+                    "phrases": [
+                        {"es": "Hola", "local": "السلام عليكم (Salam Alaykum)"},
+                        {"es": "Gracias", "local": "شكراً (Shukran)"},
+                        {"es": "Disculpe", "local": "عذراً (Adhran)"},
+                        {"es": "¿Dónde está el baño?", "local": "أين الحمام؟ (Ayna al-hammam?)"},
+                        {"es": "Ayuda", "local": "مساعدة (Musa'adah)"},
+                        {"es": "La cuenta por favor", "local": "الحساب من فضلك (Al-hisab min fadlik)"}
+                    ]
+                },
+                {
+                    "idioma": "Bereber",
+                    "lang_code": "ber",
+                    "phrases": [
+                        {"es": "Hola", "local": "Azul"},
+                        {"es": "Gracias", "local": "Tanmirt"},
+                        {"es": "Disculpe", "local": "Surfegh"},
+                        {"es": "¿Dónde está el baño?", "local": "Mani gh illa Lbit lma?"},
+                        {"es": "Ayuda", "local": "Tiwwisi"},
+                        {"es": "La cuenta por favor", "local": "Lfetura, afak"}
+                    ]
+                }
+            ]
         elif any(x in d for x in ['united states','usa','england','australia','canada','new zealand','ireland','uk','nigeria','ghana','kenya','south africa']):
-            langs = [{"idioma":"English","lang_code":"en-US","phrases":en_phrases},{"idioma":"Español","lang_code":"es-MX","phrases":es_phrases}]
+            langs = [{"idioma":"Inglés","lang_code":"en-US","phrases":en_phrases},{"idioma":"Español","lang_code":"es-MX","phrases":es_phrases}]
         else:
             # Genérico: español + inglés
-            langs = [{"idioma":"Español","lang_code":"es-MX","phrases":es_phrases},{"idioma":"English","lang_code":"en-US","phrases":en_phrases}]
+            langs = [{"idioma":"Español","lang_code":"es-MX","phrases":es_phrases},{"idioma":"Inglés","lang_code":"en-US","phrases":en_phrases}]
 
         return jsonify({'success': True, 'data': langs, 'source': 'fallback'})
 

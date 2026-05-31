@@ -85,6 +85,75 @@
     letter-spacing: 0.4px;
 }
 #mapSearchSuggestions .sugg-item:hover { background: #fff9c4; }
+
+/* ===== DARK MODE: DASHBOARD ===== */
+[data-theme="dark"] .choices__inner {
+    background: #2a2a2a !important;
+    border-color: #ffffff !important;
+    color: #ffffff !important;
+}
+[data-theme="dark"] .choices__list--single .choices__item {
+    color: #ffffff !important;
+}
+[data-theme="dark"] .choices__placeholder {
+    color: #aaaaaa !important;
+}
+[data-theme="dark"] .choices__list--dropdown {
+    background: #1e1e1e !important;
+    border-color: #ffffff !important;
+}
+[data-theme="dark"] .choices__list--dropdown .choices__item {
+    color: #ffffff !important;
+    background: #1e1e1e !important;
+}
+[data-theme="dark"] .choices__list--dropdown .choices__item--selectable.is-highlighted {
+    background: #ffffff !important;
+    color: #000000 !important;
+}
+[data-theme="dark"] .choices__input {
+    background: #2a2a2a !important;
+    color: #ffffff !important;
+    border-color: #ffffff !important;
+}
+[data-theme="dark"] #mapSearchInput {
+    background: rgba(30,30,30,0.97) !important;
+    color: #ffffff !important;
+    border-color: #ffffff !important;
+}
+[data-theme="dark"] #mapSearchInput::placeholder { color: #aaaaaa !important; }
+[data-theme="dark"] #mapSearchSuggestions {
+    background: #1e1e1e !important;
+    border-color: #ffffff !important;
+}
+[data-theme="dark"] #mapSearchSuggestions .sugg-item {
+    color: #ffffff !important;
+    border-bottom-color: #444 !important;
+}
+[data-theme="dark"] #mapSearchSuggestions .sugg-item:hover {
+    background: #333 !important;
+    color: #ffffff !important;
+}
+[data-theme="dark"] #survivalKitGrid .btn-outline-dark:hover,
+[data-theme="dark"] #survivalKitGrid .btn-outline-dark:focus,
+[data-theme="dark"] #survivalKitGrid .btn-outline-dark.active {
+    background-color: #333 !important;
+    color: #ffffff !important;
+}
+/* Card headers con bg-white en el dashboard */
+[data-theme="dark"] .card-header.bg-white {
+    background-color: #000000 !important;
+    color: #ffffff !important;
+    border-color: #ffffff !important;
+}
+[data-theme="dark"] .card-header.bg-white * {
+    color: #ffffff !important;
+}
+/* Resultado del conversor de divisas */
+[data-theme="dark"] .mt-4.p-3.border.border-dark.border-2.bg-light {
+    background-color: #2a2a2a !important;
+    color: #ffffff !important;
+    border-color: #ffffff !important;
+}
 </style>
 <!-- CSS para impresion/PDF limpio -->
 <style>

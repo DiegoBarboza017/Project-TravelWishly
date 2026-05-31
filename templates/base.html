@@ -382,6 +382,10 @@
         document.documentElement.setAttribute('data-theme', newTheme);
         localStorage.setItem('tw_theme', newTheme);
         window.updateDarkModeIcon(newTheme);
+        
+        // Despachar evento para componentes dinámicos (Globo 3D, mapas, etc.)
+        const event = new CustomEvent('themechanged', { detail: { theme: newTheme } });
+        document.dispatchEvent(event);
     };
 
     window.updateDarkModeIcon = function(theme) {
